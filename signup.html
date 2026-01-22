@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yareema Data Hub - Sign Up</title>
+    <link href="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .auth-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        }
+        
+        .auth-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .form-input:focus {
+            border-color: #1E3D5C;
+            box-shadow: 0 0 0 3px rgba(30, 61, 92, 0.1);
+        }
+        
+        .checkbox:checked {
+            background-color: #1E3D5C;
+            border-color: #1E3D5C;
+        }
+        
+        .btn-primary {
+            background-color: #1E3D5C;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            background-color: #16304a;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(30, 61, 92, 0.3);
+        }
+        
+        .btn-primary:disabled {
+            background-color: #cbd5e1;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .password-toggle {
+            cursor: pointer;
+            color: #64748b;
+            transition: color 0.2s ease;
+        }
+        
+        .password-toggle:hover {
+            color: #1E3D5C;
+        }
+        
+        .terms-link {
+            color: #1E3D5C;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        
+        .terms-link:hover {
+            color: #16304a;
+        }
+        
+        .auth-link {
+            color: #1E3D5C;
+            font-weight: 600;
+        }
+        
+        .auth-link:hover {
+            color: #16304a;
+            text-decoration: underline;
+        }
+        
+        .error-message {
+            color: #dc2626;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="w-full max-w-lg p-8 sm:p-8">
+            <div class="auth-card p-10 sm:p-8">
+               
+<!-- Logo -->
+<div class="flex justify-center">
+    <div class="h-40 w-40 flex items-center justify-center">
+        <img src="logo.png" 
+             alt="Yareema Data Hub Logo" 
+             class="h-full w-full object-contain"
+             ">
+    </div>
+</div>
+                <div class="text-center mb-6">
+                    
+                    <h2 class="text-2xl font-bold text-slate-900 mb-2">Create Account</h2>
+                    <p class="text-slate-600">Join Yareema Data Hub today</p>
+                </div>
+
+                <!-- Sign Up Form -->
+                <form id="signup-form" class="space-y-4">
+                    <!-- Full Name -->
+                    <div>
+                        <label for="full-name" class="block text-sm font-medium text-slate-700 mb-1">
+                            Full Name
+                        </label>
+                        <div class="relative">
+                            <i data-lucide="user" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400"></i>
+                            <input
+                                type="text"
+                                id="full-name"
+                                class="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg form-input focus:outline-none"
+                                placeholder="Enter your full name"
+                            >
+                        </div>
+                        <div id="name-error" class="error-message"></div>
+                    </div>
+
+                    <!-- Email -->
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-slate-700 mb-1">
+                            Email Address
+                        </label>
+                        <div class="relative">
+                            <i data-lucide="mail" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400"></i>
+                            <input
+                                type="email"
+                                id="email"
+                                class="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg form-input focus:outline-none"
+                                placeholder="Enter your email"
+                            >
+                        </div>
+                        <div id="email-error" class="error-message"></div>
+                    </div>
+
+                    <!-- Phone -->
+                    <div>
+                        <label for="phone" class="block text-sm font-medium text-slate-700 mb-1">
+                            Phone Number
+                        </label>
+                        <div class="relative">
+                            <i data-lucide="phone" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400"></i>
+                            <input
+                                type="tel"
+                                id="phone"
+                                class="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg form-input focus:outline-none"
+                                placeholder="Enter your phone number"
+                                maxlength="11"
+                            >
+                        </div>
+                        <div id="phone-error" class="error-message"></div>
+                    </div>
+
+                    <!-- Password -->
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-slate-700 mb-1">
+                            Password
+                        </label>
+                        <div class="relative">
+                            <i data-lucide="lock" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400"></i>
+                            <input
+                                type="password"
+                                id="password"
+                                class="w-full pl-10 pr-12 py-3 border border-slate-300 rounded-lg form-input focus:outline-none"
+                                placeholder="Create a password"
+                            >
+                            <button type="button" id="toggle-password" class="password-toggle absolute right-3 top-1/2 transform -translate-y-1/2">
+                                <i data-lucide="eye" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                        <div id="password-error" class="error-message"></div>
+                    </div>
+
+                    <!-- Confirm Password -->
+                    <div>
+                        <label for="confirm-password" class="block text-sm font-medium text-slate-700 mb-1">
+                            Confirm Password
+                        </label>
+                        <div class="relative">
+                            <i data-lucide="lock" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400"></i>
+                            <input
+                                type="password"
+                                id="confirm-password"
+                                class="w-full pl-10 pr-12 py-3 border border-slate-300 rounded-lg form-input focus:outline-none"
+                                placeholder="Re-enter your password"
+                            >
+                            <button type="button" id="toggle-confirm-password" class="password-toggle absolute right-3 top-1/2 transform -translate-y-1/2">
+                                <i data-lucide="eye" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                        <div id="confirm-password-error" class="error-message"></div>
+                    </div>
+
+                    <!-- Terms & Conditions -->
+                    <div class="flex items-start space-x-3 pt-2">
+                        <input
+                            type="checkbox"
+                            id="agree-terms"
+                            class="checkbox mt-1 w-5 h-5 text-primary rounded border-slate-300 focus:ring-primary focus:ring-2"
+                        >
+                        <label for="agree-terms" class="text-sm text-slate-600">
+                            I agree to the <span class="terms-link" id="view-terms">Terms and Conditions</span>
+                        </label>
+                    </div>
+                    <div id="terms-error" class="error-message"></div>
+
+                    <!-- Error Message -->
+                    <div id="signup-error" class="error-message"></div>
+
+                    <!-- Sign Up Button -->
+                    <button type="submit" id="signup-btn" class="w-full py-3 bg-primary text-white font-semibold rounded-lg btn-primary mt-4">
+                        Create Account
+                    </button>
+
+                    <!-- Login Link -->
+                    <p class="text-center text-slate-600 text-sm pt-4">
+                        Already have an account? 
+                        <a href="login.html" class="auth-link ml-1">Login</a>
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terms Modal -->
+    <div id="terms-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-slate-900">Terms and Conditions</h3>
+                    <button id="close-terms" class="text-slate-400 hover:text-slate-600">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <div class="text-sm text-slate-600 space-y-3">
+                    <p>By creating an account with Yareema Data Hub, you agree to the following terms:</p>
+                    <ul class="list-disc pl-5 space-y-2">
+                        <li>You must provide accurate and complete information</li>
+                        <li>You are responsible for maintaining the confidentiality of your account</li>
+                        <li>All transactions are final and non-refundable</li>
+                        <li>We reserve the right to modify services and pricing</li>
+                        <li>Your data will be handled according to our Privacy Policy</li>
+                    </ul>
+                    <p>By clicking "Agree", you acknowledge that you have read and understood these terms.</p>
+                </div>
+                <div class="mt-6 flex justify-end">
+                    <button id="agree-terms-modal" class="px-4 py-2 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark">
+                        I Agree
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Password visibility toggle functions
+        function togglePasswordVisibility(inputElement, toggleButton) {
+            const icon = toggleButton.querySelector('i');
+            if (inputElement.type === 'password') {
+                inputElement.type = 'text';
+                icon.setAttribute('data-lucide', 'eye-off');
+            } else {
+                inputElement.type = 'password';
+                icon.setAttribute('data-lucide', 'eye');
+            }
+            lucide.createIcons();
+        }
+
+        // Setup password toggles
+        document.getElementById('toggle-password').addEventListener('click', () => {
+            const password = document.getElementById('password');
+            const toggleButton = document.getElementById('toggle-password');
+            togglePasswordVisibility(password, toggleButton);
+        });
+
+        document.getElementById('toggle-confirm-password').addEventListener('click', () => {
+            const confirmPassword = document.getElementById('confirm-password');
+            const toggleButton = document.getElementById('toggle-confirm-password');
+            togglePasswordVisibility(confirmPassword, toggleButton);
+        });
+
+        // Terms modal
+        const termsModal = document.getElementById('terms-modal');
+        const agreeTermsCheckbox = document.getElementById('agree-terms');
+
+        document.getElementById('view-terms').addEventListener('click', () => {
+            termsModal.classList.remove('hidden');
+        });
+
+        document.getElementById('close-terms').addEventListener('click', () => {
+            termsModal.classList.add('hidden');
+        });
+
+        document.getElementById('agree-terms-modal').addEventListener('click', () => {
+            agreeTermsCheckbox.checked = true;
+            termsModal.classList.add('hidden');
+            updateSignupButton();
+        });
+
+        // Update signup button state
+        function updateSignupButton() {
+            const signupBtn = document.getElementById('signup-btn');
+            signupBtn.disabled = !agreeTermsCheckbox.checked;
+        }
+
+        agreeTermsCheckbox.addEventListener('change', updateSignupButton);
+
+        // Form validation
+        function showError(elementId, message) {
+            const errorElement = document.getElementById(elementId);
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+
+        function hideError(elementId) {
+            const errorElement = document.getElementById(elementId);
+            errorElement.style.display = 'none';
+        }
+
+        // Signup form submission
+        document.getElementById('signup-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const fullName = document.getElementById('full-name').value;
+            const email = document.getElementById('email').value;
+            const phone = document.getElementById('phone').value;
+            const passwordValue = document.getElementById('password').value;
+            const confirmPasswordValue = document.getElementById('confirm-password').value;
+            
+            // Reset errors
+            hideError('name-error');
+            hideError('email-error');
+            hideError('phone-error');
+            hideError('password-error');
+            hideError('confirm-password-error');
+            hideError('terms-error');
+            hideError('signup-error');
+            
+            let hasError = false;
+            
+            // Validation
+            if (!fullName) {
+                showError('name-error', 'Please enter your full name');
+                hasError = true;
+            }
+            
+            if (!email) {
+                showError('email-error', 'Please enter your email');
+                hasError = true;
+            } else if (!email.includes('@')) {
+                showError('email-error', 'Please enter a valid email');
+                hasError = true;
+            }
+            
+            if (!phone) {
+                showError('phone-error', 'Please enter your phone number');
+                hasError = true;
+            } else if (phone.length !== 11) {
+                showError('phone-error', 'Phone number must be 11 digits');
+                hasError = true;
+            }
+            
+            if (!passwordValue) {
+                showError('password-error', 'Please create a password');
+                hasError = true;
+            } else if (passwordValue.length < 6) {
+                showError('password-error', 'Password must be at least 6 characters');
+                hasError = true;
+            }
+            
+            if (!confirmPasswordValue) {
+                showError('confirm-password-error', 'Please confirm your password');
+                hasError = true;
+            } else if (passwordValue !== confirmPasswordValue) {
+                showError('confirm-password-error', 'Passwords do not match');
+                hasError = true;
+            }
+            
+            if (!agreeTermsCheckbox.checked) {
+                showError('terms-error', 'Please agree to terms and conditions');
+                hasError = true;
+            }
+            
+            if (hasError) return;
+            
+            // Simulate signup process
+            const signupBtn = document.getElementById('signup-btn');
+            signupBtn.disabled = true;
+            signupBtn.textContent = 'Creating Account...';
+            
+            // Simulate API call
+            setTimeout(() => {
+                alert('Account created successfully! Welcome to Yareema Data Hub.');
+                
+                // Reset form
+                document.getElementById('signup-form').reset();
+                agreeTermsCheckbox.checked = false;
+                updateSignupButton();
+                
+                // Reset button
+                signupBtn.disabled = false;
+                signupBtn.textContent = 'Create Account';
+                
+                // Redirect to login
+                window.location.href = 'login.html';
+            }, 2000);
+        });
+
+        // Initialize
+        updateSignupButton();
+    </script>
+</body>
+</html>
