@@ -1,7 +1,7 @@
 // API Configuration
 const API_CONFIG = {
     // Update these with your actual API endpoints
-    BASE_URL: 'https://vtu-api-d3q2.onrender.com',  
+    BASE_URL: 'https://vtu-api-d3q2.onrender.com',  // Change to your API URL
     
     // Endpoints
     ENDPOINTS: {
