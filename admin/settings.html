@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Yareema Datahub Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{primary:'#2563eb',secondary:'#7c3aed',success:'#10b981',warning:'#f59e0b',error:'#ef4444',dark:'#0f172a',light:'#f8fafc'}}}}</script>
+</head>
+<body class="text-slate-800 antialiased">
+    <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+    <div class="flex flex-col lg:flex-row w-full">
+        <div id="sidebar-placeholder"></div>
+        <main class="flex-1 flex flex-col min-w-0 bg-slate-50">
+            <div id="header-placeholder"></div>
+            <div class="p-4 lg:p-8 flex-1 overflow-y-auto">
+                <div class="space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-2xl font-bold text-slate-900">System Settings</h2>
+                            <p class="text-slate-500 text-sm mt-1">Configure general system preferences.</p>
+                        </div>
+                        <button onclick="saveSettings()" class="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200">
+                            <i data-lucide="save" class="w-4 h-4"></i> Save All Changes
+                        </button>
+                    </div>
+
+                    <div class="flex gap-2 overflow-x-auto pb-2">
+                        <button onclick="switchSettingsTab('general')" class="settings-tab active px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg whitespace-nowrap">General</button>
+                        <button onclick="switchSettingsTab('security')" class="settings-tab px-4 py-2 text-sm font-medium bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 whitespace-nowrap">Security</button>
+                        <button onclick="switchSettingsTab('notifications')" class="settings-tab px-4 py-2 text-sm font-medium bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 whitespace-nowrap">Notifications</button>
+                        <button onclick="switchSettingsTab('backup')" class="settings-tab px-4 py-2 text-sm font-medium bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 whitespace-nowrap">Backup</button>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="font-bold text-slate-900 mb-6">General Settings</h3>
+                        <div class="space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Site Name</label>
+                                    <input type="text" value="Yareema Datahub" class="px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 w-full">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Default Currency</label>
+                                    <select class="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50 w-full">
+                                        <option>USD ($)</option>
+                                        <option>EUR (€)</option>
+                                        <option>GBP (£)</option>
+                                        <option>NGN (₦)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Timezone</label>
+                                    <select class="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50 w-full">
+                                        <option>UTC</option>
+                                        <option>America/New_York</option>
+                                        <option>Europe/London</option>
+                                        <option>Africa/Lagos</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Date Format</label>
+                                    <select class="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50 w-full">
+                                        <option>MM/DD/YYYY</option>
+                                        <option>DD/MM/YYYY</option>
+                                        <option>YYYY-MM-DD</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="pt-6 border-t border-slate-200">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h4 class="font-medium text-slate-900">Maintenance Mode</h4>
+                                        <p class="text-sm text-slate-500 mt-1">Temporarily disable user access for maintenance</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="pt-6 border-t border-slate-200">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h4 class="font-medium text-slate-900">User Registration</h4>
+                                        <p class="text-sm text-slate-500 mt-1">Allow new users to register accounts</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked class="sr-only peer">
+                                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="font-bold text-slate-900 mb-4">Logo & Branding</h3>
+                        <div class="flex items-center gap-6">
+                            <div class="w-24 h-24 bg-slate-100 rounded-lg flex items-center justify-center border-2 border-dashed border-slate-300">
+                                <i data-lucide="image" class="w-8 h-8 text-slate-400"></i>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-sm text-slate-600 mb-2">Upload your company logo (PNG, JPG, SVG)</p>
+                                <button onclick="showToast('File upload coming soon', 'info')" class="px-4 py-2 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-200 transition-colors">
+                                    Choose File
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/api-service.js"></script>
+    <script src="assets/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pay Bills - Yareema Agent Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{yareema:{primary:'#1E3D5C',secondary:'#16304a',dark:'#0f1f2e',light:'#e8edf2',success:'#10b981',warning:'#f59e0b',danger:'#ef4444'}}}}}</script>
+</head>
+<body class="text-slate-800 antialiased">
+    <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+    <div class="flex flex-col lg:flex-row w-full min-h-screen">
+        <div id="sidebarContainer"></div>
+        <main class="flex-1 flex flex-col min-w-0 bg-slate-50">
+            <div id="headerContainer"></div>
+            <div class="p-4 lg:p-8 flex-1 overflow-y-auto">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <h3 class="font-bold text-slate-900 mb-6 flex items-center gap-2">
+                            <i data-lucide="zap" class="w-5 h-5 text-amber-600"></i>
+                            <span>Electricity Bill</span>
+                        </h3>
+                        <form onsubmit="handleBillPayment(event, 'electricity')" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">Select DISCO</label>
+                                <select class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full" required>
+                                    <option value="">Choose DISCO...</option>
+                                    <option value="ikedc">IKEDC (2% commission)</option>
+                                    <option value="ekedc">EKEDC (2% commission)</option>
+                                    <option value="phed">PHED (2% commission)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">Meter Number</label>
+                                <input type="text" placeholder="Enter meter number" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">Amount</label>
+                                <input type="number" placeholder="Enter amount" min="1000" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full" required>
+                            </div>
+                            <button type="submit" class="w-full py-3 bg-amber-600 text-white font-bold rounded-xl hover:bg-amber-700 transition-colors">Pay Bill</button>
+                        </form>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <h3 class="font-bold text-slate-900 mb-6 flex items-center gap-2">
+                            <i data-lucide="tv" class="w-5 h-5 text-purple-600"></i>
+                            <span>TV Subscription</span>
+                        </h3>
+                        <form onsubmit="handleBillPayment(event, 'tv')" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">Select Provider</label>
+                                <select class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full" required>
+                                    <option value="">Choose provider...</option>
+                                    <option value="dstv">DSTV (2% commission)</option>
+                                    <option value="gotv">GOtv (2% commission)</option>
+                                    <option value="startimes">Startimes (2% commission)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">Smart Card Number</label>
+                                <input type="text" placeholder="Enter smart card number" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">Select Package</label>
+                                <select class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full" required>
+                                    <option value="">Choose package...</option>
+                                    <option value="compact">Compact - ₦9,000</option>
+                                    <option value="premium">Premium - ₦21,000</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="w-full py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition-colors">Subscribe</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <div id="modalsContainer"></div>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/services.js"></script>
+    <script src="assets/js/charts.js"></script>
+    <script>
+        fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();});
+        fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('bills');lucide.createIcons();});
+        fetch('partials/modals.html').then(r=>r.text()).then(d=>{document.getElementById('modalsContainer').innerHTML=d;lucide.createIcons();});
+    </script>
+</body>
+</html>

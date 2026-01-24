@@ -1,0 +1,160 @@
+<!-- Withdrawal Modal -->
+<div id="withdrawModal" class="modal">
+    <div class="modal-content bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4">
+        <div class="p-6 border-b border-slate-200">
+            <h3 class="text-xl font-bold text-slate-900" data-en="Withdraw Earnings" data-ha="Karbi Riba">Withdraw Earnings</h3>
+        </div>
+        <form onsubmit="handleWithdrawalSubmit(event)" class="p-6 space-y-4">
+            <div class="p-4 bg-green-50 border border-green-200 rounded-xl">
+                <p class="text-xs text-slate-600 mb-1" data-en="Available Balance" data-ha="Kudin Da Ake Da Shi">Available Balance</p>
+                <p class="text-2xl font-bold text-green-600">₦24,680.00</p>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2" data-en="Amount to Withdraw" data-ha="Adadin Da Za A Karɓa">Amount to Withdraw</label>
+                <input type="number" placeholder="Enter amount" min="1000" max="24680" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full" required>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2" data-en="Bank Account" data-ha="Asusun Banki">Bank Account</label>
+                <select class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full" required>
+                    <option value="">Select account...</option>
+                    <option value="1">GTBank - 0123456789</option>
+                    <option value="2">Access Bank - 9876543210</option>
+                </select>
+            </div>
+            <div class="flex gap-3 pt-4">
+                <button type="submit" class="flex-1 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors">
+                    <span data-en="Confirm Withdrawal" data-ha="Tabbatar Da Karɓa">Confirm Withdrawal</span>
+                </button>
+                <button type="button" onclick="closeModal('withdrawModal')" class="px-6 py-3 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors">
+                    <span data-en="Cancel" data-ha="Soke">Cancel</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Education Modal -->
+<div id="educationModal" class="modal">
+    <div class="modal-content bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4">
+        <div class="p-6 border-b border-slate-200">
+            <h3 class="text-xl font-bold text-slate-900" id="educationModalTitle">Buy Education PIN</h3>
+        </div>
+        <form onsubmit="handleEducationPurchase(event)" class="p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2" data-en="Quantity" data-ha="Adadi">Quantity</label>
+                <input type="number" id="educationQty" placeholder="Enter quantity" min="1" max="10" value="1" onchange="calculateEducationCost()" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full" required>
+            </div>
+            <div class="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-sm text-slate-600" data-en="Total Cost" data-ha="Jimlar Farashi">Total Cost</span>
+                    <span class="text-xl font-bold text-slate-900" id="educationCost">₦0</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-slate-600" data-en="Your Commission" data-ha="Ribar Ka">Your Commission</span>
+                    <span class="text-xl font-bold text-green-600" id="educationCommission">₦0</span>
+                </div>
+            </div>
+            <div class="flex gap-3 pt-4">
+                <button type="submit" class="flex-1 py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition-colors">
+                    <span data-en="Buy PIN" data-ha="Sayi PIN">Buy PIN</span>
+                </button>
+                <button type="button" onclick="closeModal('educationModal')" class="px-6 py-3 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors">
+                    <span data-en="Cancel" data-ha="Soke">Cancel</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Customer Modal -->
+<div id="addCustomerModal" class="modal">
+    <div class="modal-content bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4">
+        <div class="p-6 border-b border-slate-200">
+            <h3 class="text-xl font-bold text-slate-900" data-en="Add New Customer" data-ha="Ƙara Sabon Abokin Ciniki">Add New Customer</h3>
+        </div>
+        <form onsubmit="handleAddCustomer(event)" class="p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2" data-en="Full Name" data-ha="Cikakken Suna">Full Name</label>
+                <input type="text" placeholder="Enter customer name" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full" required>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2" data-en="Phone Number" data-ha="Lambar Waya">Phone Number</label>
+                <input type="tel" placeholder="08012345678" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full" required>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2" data-en="Email (Optional)" data-ha="Imel (Ba Dole Ba)">Email (Optional)</label>
+                <input type="email" placeholder="customer@example.com" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full">
+            </div>
+            <div class="flex gap-3 pt-4">
+                <button type="submit" class="flex-1 py-3 bg-yareema-primary text-white font-bold rounded-xl hover:bg-yareema-dark transition-colors">
+                    <span data-en="Add Customer" data-ha="Ƙara Abokin Ciniki">Add Customer</span>
+                </button>
+                <button type="button" onclick="closeModal('addCustomerModal')" class="px-6 py-3 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors">
+                    <span data-en="Cancel" data-ha="Soke">Cancel</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Change PIN Modal -->
+<div id="changePINModal" class="modal">
+    <div class="modal-content bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4">
+        <div class="p-6 border-b border-slate-200">
+            <h3 class="text-xl font-bold text-slate-900" data-en="Change Transaction PIN" data-ha="Canza PIN Ciniki">Change Transaction PIN</h3>
+        </div>
+        <form onsubmit="handleChangePIN(event)" class="p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2" data-en="Current PIN" data-ha="PIN Na Yanzu">Current PIN</label>
+                <input type="password" maxlength="4" placeholder="****" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full text-center text-2xl tracking-widest" required>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2" data-en="New PIN" data-ha="Sabon PIN">New PIN</label>
+                <input type="password" maxlength="4" placeholder="****" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full text-center text-2xl tracking-widest" required>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2" data-en="Confirm New PIN" data-ha="Tabbatar Da Sabon PIN">Confirm New PIN</label>
+                <input type="password" maxlength="4" placeholder="****" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full text-center text-2xl tracking-widest" required>
+            </div>
+            <div class="flex gap-3 pt-4">
+                <button type="submit" class="flex-1 py-3 bg-yareema-primary text-white font-bold rounded-xl hover:bg-yareema-dark transition-colors">
+                    <span data-en="Update PIN" data-ha="Sabunta PIN">Update PIN</span>
+                </button>
+                <button type="button" onclick="closeModal('changePINModal')" class="px-6 py-3 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors">
+                    <span data-en="Cancel" data-ha="Soke">Cancel</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Change Password Modal -->
+<div id="changePasswordModal" class="modal">
+    <div class="modal-content bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4">
+        <div class="p-6 border-b border-slate-200">
+            <h3 class="text-xl font-bold text-slate-900" data-en="Change Password" data-ha="Canza Kalmar Sirri">Change Password</h3>
+        </div>
+        <form onsubmit="handleChangePassword(event)" class="p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2" data-en="Current Password" data-ha="Kalmar Sirri Ta Yanzu">Current Password</label>
+                <input type="password" placeholder="Enter current password" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full" required>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2" data-en="New Password" data-ha="Sabuwar Kalmar Sirri">New Password</label>
+                <input type="password" placeholder="Enter new password" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full" required>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2" data-en="Confirm New Password" data-ha="Tabbatar Da Sabuwar Kalmar Sirri">Confirm New Password</label>
+                <input type="password" placeholder="Confirm new password" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full" required>
+            </div>
+            <div class="flex gap-3 pt-4">
+                <button type="submit" class="flex-1 py-3 bg-yareema-primary text-white font-bold rounded-xl hover:bg-yareema-dark transition-colors">
+                    <span data-en="Update Password" data-ha="Sabunta Kalmar Sirri">Update Password</span>
+                </button>
+                <button type="button" onclick="closeModal('changePasswordModal')" class="px-6 py-3 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors">
+                    <span data-en="Cancel" data-ha="Soke">Cancel</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

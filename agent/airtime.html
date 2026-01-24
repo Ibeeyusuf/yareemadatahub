@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buy Airtime - Yareema Agent Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{yareema:{primary:'#1E3D5C',secondary:'#16304a',dark:'#0f1f2e',light:'#e8edf2',success:'#10b981',warning:'#f59e0b',danger:'#ef4444'}}}}}</script>
+</head>
+<body class="text-slate-800 antialiased">
+    <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+    <div class="flex flex-col lg:flex-row w-full min-h-screen">
+        <div id="sidebarContainer"></div>
+        <main class="flex-1 flex flex-col min-w-0 bg-slate-50">
+            <div id="headerContainer"></div>
+            <div class="p-4 lg:p-8 flex-1 overflow-y-auto">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <h3 class="font-bold text-slate-900 mb-6" data-en="Buy Airtime" data-ha="Sayi Airtime">Buy Airtime</h3>
+                    <form onsubmit="handleAirtimePurchase(event)" class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2" data-en="Select Network" data-ha="Zaɓi Network">Select Network</label>
+                                <select id="airtimeNetwork" onchange="calculateCommission('airtime')" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full">
+                                    <option value="">Choose network...</option>
+                                    <option value="mtn" data-rate="3">MTN (3% commission)</option>
+                                    <option value="airtel" data-rate="3">Airtel (3% commission)</option>
+                                    <option value="glo" data-rate="2.5">Glo (2.5% commission)</option>
+                                    <option value="9mobile" data-rate="2.5">9mobile (2.5% commission)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2" data-en="Phone Number" data-ha="Lambar Waya">Phone Number</label>
+                                <input type="tel" placeholder="08012345678" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full" required>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-semibold text-slate-700 mb-2" data-en="Amount" data-ha="Adadi">Amount</label>
+                                <input type="number" id="airtimeAmount" placeholder="Enter amount (₦100 - ₦50,000)" min="100" max="50000" onchange="calculateCommission('airtime')" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full" required>
+                            </div>
+                        </div>
+                        <div id="airtimeCommissionPreview" class="hidden p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
+                            <div class="grid grid-cols-3 gap-4 text-center">
+                                <div>
+                                    <p class="text-xs text-slate-600 mb-1" data-en="Amount" data-ha="Adadi">Amount</p>
+                                    <p class="text-2xl font-bold text-slate-900" id="airtimeAmountDisplay">₦0</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-slate-600 mb-1" data-en="Your Commission" data-ha="Ribar Ka">Your Commission</p>
+                                    <p class="text-2xl font-bold text-green-600" id="airtimeCommission">₦0</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-slate-600 mb-1" data-en="Commission Rate" data-ha="Kashi">Commission Rate</p>
+                                    <p class="text-2xl font-bold text-blue-600" id="airtimeRate">0%</p>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full py-4 bg-gradient-to-r from-green-600 to-green-700 text-white font-bold rounded-xl hover:shadow-lg transition-all text-lg">
+                            <span data-en="Complete Purchase" data-ha="Kammala Sayayya">Complete Purchase</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+    <div id="modalsContainer"></div>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/services.js"></script>
+    <script>
+        fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();});
+        fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('airtime');lucide.createIcons();});
+        fetch('partials/modals.html').then(r=>r.text()).then(d=>{document.getElementById('modalsContainer').innerHTML=d;lucide.createIcons();});
+    </script>
+</body>
+</html>

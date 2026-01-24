@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports - Yareema Datahub Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{primary:'#2563eb',secondary:'#7c3aed',success:'#10b981',warning:'#f59e0b',error:'#ef4444',dark:'#0f172a',light:'#f8fafc'}}}}</script>
+</head>
+<body class="text-slate-800 antialiased">
+    <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+    <div class="flex flex-col lg:flex-row w-full">
+        <div id="sidebar-placeholder"></div>
+        <main class="flex-1 flex flex-col min-w-0 bg-slate-50">
+            <div id="header-placeholder"></div>
+            <div class="p-4 lg:p-8 flex-1 overflow-y-auto">
+                <div class="space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-2xl font-bold text-slate-900">Reports & Analytics</h2>
+                            <p class="text-slate-500 text-sm mt-1">Generate insights and export data.</p>
+                        </div>
+                        <button onclick="showToast('Custom report feature coming soon', 'info')" class="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Custom Report
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div onclick="generateReport('financial')" class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                            <div class="flex items-center gap-4 mb-4">
+                                <div class="p-3 bg-blue-50 text-blue-600 rounded-lg">
+                                    <i data-lucide="dollar-sign" class="w-6 h-6"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-900">Financial Report</h3>
+                                    <p class="text-xs text-slate-500">Revenue, profit & loss</p>
+                                </div>
+                            </div>
+                            <button class="w-full py-2 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-200 transition-colors">
+                                Generate Report
+                            </button>
+                        </div>
+                        <div onclick="generateReport('user')" class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                            <div class="flex items-center gap-4 mb-4">
+                                <div class="p-3 bg-green-50 text-green-600 rounded-lg">
+                                    <i data-lucide="users" class="w-6 h-6"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-900">User Analytics</h3>
+                                    <p class="text-xs text-slate-500">Growth & engagement</p>
+                                </div>
+                            </div>
+                            <button class="w-full py-2 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-200 transition-colors">
+                                Generate Report
+                            </button>
+                        </div>
+                        <div onclick="generateReport('transaction')" class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                            <div class="flex items-center gap-4 mb-4">
+                                <div class="p-3 bg-purple-50 text-purple-600 rounded-lg">
+                                    <i data-lucide="arrow-left-right" class="w-6 h-6"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-900">Transaction Report</h3>
+                                    <p class="text-xs text-slate-500">Volume & success rate</p>
+                                </div>
+                            </div>
+                            <button class="w-full py-2 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-200 transition-colors">
+                                Generate Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/api-service.js"></script>
+    <script src="assets/js/main.js"></script>
+</body>
+</html>

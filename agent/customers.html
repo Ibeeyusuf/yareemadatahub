@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Customers - Yareema Agent Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{yareema:{primary:'#1E3D5C',secondary:'#16304a',dark:'#0f1f2e',light:'#e8edf2',success:'#10b981',warning:'#f59e0b',danger:'#ef4444'}}}}}</script>
+</head>
+<body class="text-slate-800 antialiased">
+    <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+    <div class="flex flex-col lg:flex-row w-full min-h-screen">
+        <div id="sidebarContainer"></div>
+        <main class="flex-1 flex flex-col min-w-0 bg-slate-50">
+            <div id="headerContainer"></div>
+            <div class="p-4 lg:p-8 flex-1 overflow-y-auto space-y-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-900">My Customers</h3>
+                        <p class="text-sm text-slate-500">Manage your customer database</p>
+                    </div>
+                    <button onclick="openModal('addCustomerModal')" class="px-4 py-2 bg-yareema-primary text-white font-medium rounded-lg hover:bg-yareema-dark transition-colors flex items-center gap-2">
+                        <i data-lucide="user-plus" class="w-4 h-4"></i>
+                        <span>Add Customer</span>
+                    </button>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <div class="relative">
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" placeholder="Search customers by name or phone..." class="pl-10 pr-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+                        <div class="flex items-start gap-4 mb-4">
+                            <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" class="w-12 h-12 rounded-full object-cover border-2 border-slate-200" alt="Customer">
+                            <div class="flex-1">
+                                <h4 class="font-bold text-slate-900">Fatima Abubakar</h4>
+                                <p class="text-sm text-slate-500">08012345678</p>
+                            </div>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">Total Purchases:</span>
+                                <span class="font-medium text-slate-900">₦45,600</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">Transactions:</span>
+                                <span class="font-medium text-slate-900">28</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 mt-4">
+                            <button class="flex-1 py-2 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-200 transition-colors">View History</button>
+                            <button class="px-3 py-2 bg-yareema-primary text-white text-sm font-medium rounded-lg hover:bg-yareema-dark transition-colors">
+                                <i data-lucide="message-square" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+                        <div class="flex items-start gap-4 mb-4">
+                            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" class="w-12 h-12 rounded-full object-cover border-2 border-slate-200" alt="Customer">
+                            <div class="flex-1">
+                                <h4 class="font-bold text-slate-900">Ahmed Sani</h4>
+                                <p class="text-sm text-slate-500">08098765432</p>
+                            </div>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">Total Purchases:</span>
+                                <span class="font-medium text-slate-900">₦32,400</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">Transactions:</span>
+                                <span class="font-medium text-slate-900">19</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 mt-4">
+                            <button class="flex-1 py-2 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-200 transition-colors">View History</button>
+                            <button class="px-3 py-2 bg-yareema-primary text-white text-sm font-medium rounded-lg hover:bg-yareema-dark transition-colors">
+                                <i data-lucide="message-square" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <div id="modalsContainer"></div>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/services.js"></script>
+    <script>
+        fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();});
+        fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('customers');lucide.createIcons();});
+        fetch('partials/modals.html').then(r=>r.text()).then(d=>{document.getElementById('modalsContainer').innerHTML=d;lucide.createIcons();});
+    </script>
+</body>
+</html>

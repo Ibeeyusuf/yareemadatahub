@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Yareema Agent Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        primary: '#1E3D5C',
+                        secondary: '#16304a',
+                        yareema: {
+                            primary: '#1E3D5C',
+                            secondary: '#16304a',
+                            dark: '#0f1f2e',
+                            light: '#e8edf2',
+                            success: '#10b981',
+                            warning: '#f59e0b',
+                            danger: '#ef4444',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="text-slate-800 antialiased">
+    
+    <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+
+    <div class="flex flex-col lg:flex-row w-full min-h-screen">
+        
+        <!-- Sidebar -->
+        <div id="sidebarContainer"></div>
+
+        <main class="flex-1 flex flex-col min-w-0 bg-slate-50">
+            
+            <!-- Header -->
+            <div id="headerContainer"></div>
+
+            <div class="p-4 lg:p-8 flex-1 overflow-y-auto">
+                
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div class="earnings-card p-6 rounded-xl shadow-lg text-white">
+                        <div class="flex items-center justify-between mb-3">
+                            <p class="text-sm text-green-100" data-en="Today's Earnings" data-ha="Ribar Yau">Today's Earnings</p>
+                            <i data-lucide="trending-up" class="w-5 h-5 text-green-100"></i>
+                        </div>
+                        <h3 class="text-3xl font-bold mb-1">₦2,450</h3>
+                        <p class="text-xs text-green-100">+15% from yesterday</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <div class="flex items-center justify-between mb-3">
+                            <p class="text-sm text-slate-500" data-en="Total Transactions" data-ha="Jimlar Ciniki">Total Transactions</p>
+                            <i data-lucide="arrow-left-right" class="w-5 h-5 text-blue-500"></i>
+                        </div>
+                        <h3 class="text-3xl font-bold text-slate-900 mb-1">156</h3>
+                        <p class="text-xs text-green-600">+12 today</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <div class="flex items-center justify-between mb-3">
+                            <p class="text-sm text-slate-500" data-en="Active Customers" data-ha="Abokan Ciniki">Active Customers</p>
+                            <i data-lucide="users" class="w-5 h-5 text-purple-500"></i>
+                        </div>
+                        <h3 class="text-3xl font-bold text-slate-900 mb-1">48</h3>
+                        <p class="text-xs text-blue-600">+3 this week</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <div class="flex items-center justify-between mb-3">
+                            <p class="text-sm text-slate-500" data-en="Success Rate" data-ha="Nasara">Success Rate</p>
+                            <i data-lucide="check-circle" class="w-5 h-5 text-green-500"></i>
+                        </div>
+                        <h3 class="text-3xl font-bold text-slate-900 mb-1">98.5%</h3>
+                        <p class="text-xs text-green-600">Excellent!</p>
+                    </div>
+                </div>
+
+                <!-- Service Cards -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
+                    <a href="data.html" class="service-card bg-white p-6 rounded-xl shadow-sm border-2 border-slate-200">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center">
+                                <i data-lucide="wifi" class="w-7 h-7 text-blue-600"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-slate-900" data-en="Buy Data" data-ha="Sayi Data">Buy Data</h3>
+                                <p class="text-xs text-slate-500" data-en="Earn up to 5% commission" data-ha="Samu har zuwa 5% riba">Earn up to 5% commission</p>
+                            </div>
+                        </div>
+                        <button class="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+                            <span data-en="Sell Now" data-ha="Sayar Yanzu">Sell Now</span>
+                        </button>
+                    </a>
+
+                    <a href="airtime.html" class="service-card bg-white p-6 rounded-xl shadow-sm border-2 border-slate-200">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-14 h-14 bg-green-50 rounded-xl flex items-center justify-center">
+                                <i data-lucide="phone" class="w-7 h-7 text-green-600"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-slate-900" data-en="Buy Airtime" data-ha="Sayi Airtime">Buy Airtime</h3>
+                                <p class="text-xs text-slate-500" data-en="Earn up to 3% commission" data-ha="Samu har zuwa 3% riba">Earn up to 3% commission</p>
+                            </div>
+                        </div>
+                        <button class="w-full py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors">
+                            <span data-en="Sell Now" data-ha="Sayar Yanzu">Sell Now</span>
+                        </button>
+                    </a>
+
+                    <a href="bills.html" class="service-card bg-white p-6 rounded-xl shadow-sm border-2 border-slate-200">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-14 h-14 bg-amber-50 rounded-xl flex items-center justify-center">
+                                <i data-lucide="zap" class="w-7 h-7 text-amber-600"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-slate-900" data-en="Pay Bills" data-ha="Biya Kudin Wuta">Pay Bills</h3>
+                                <p class="text-xs text-slate-500" data-en="Earn up to 2% commission" data-ha="Samu har zuwa 2% riba">Earn up to 2% commission</p>
+                            </div>
+                        </div>
+                        <button class="w-full py-3 bg-amber-600 text-white font-semibold rounded-lg hover:bg-amber-700 transition-colors">
+                            <span data-en="Sell Now" data-ha="Sayar Yanzu">Sell Now</span>
+                        </button>
+                    </a>
+
+                    <a href="education.html" class="service-card bg-white p-6 rounded-xl shadow-sm border-2 border-slate-200">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-14 h-14 bg-purple-50 rounded-xl flex items-center justify-center">
+                                <i data-lucide="graduation-cap" class="w-7 h-7 text-purple-600"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-slate-900" data-en="Education PINs" data-ha="PIN Karatu">Education PINs</h3>
+                                <p class="text-xs text-slate-500" data-en="WAEC, NECO, JAMB" data-ha="WAEC, NECO, JAMB">WAEC, NECO, JAMB</p>
+                            </div>
+                        </div>
+                        <button class="w-full py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors">
+                            <span data-en="Sell Now" data-ha="Sayar Yanzu">Sell Now</span>
+                        </button>
+                    </a>
+
+                    <a href="sms.html" class="service-card bg-white p-6 rounded-xl shadow-sm border-2 border-slate-200">
+                        <div class="flex items-center gap-4 mb-4">
+                            <div class="w-14 h-14 bg-pink-50 rounded-xl flex items-center justify-center">
+                                <i data-lucide="message-square" class="w-7 h-7 text-pink-600"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-slate-900" data-en="Bulk SMS" data-ha="SMS Da Yawa">Bulk SMS</h3>
+                                <p class="text-xs text-slate-500" data-en="Send to multiple contacts" data-ha="Aika zuwa mutane da yawa">Send to multiple contacts</p>
+                            </div>
+                        </div>
+                        <button class="w-full py-3 bg-pink-600 text-white font-semibold rounded-lg hover:bg-pink-700 transition-colors">
+                            <span data-en="Send SMS" data-ha="Aika SMS">Send SMS</span>
+                        </button>
+                    </a>
+                </div>
+
+                <!-- Recent Transactions -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200">
+                    <div class="p-6 border-b border-slate-200 flex items-center justify-between">
+                        <h3 class="font-bold text-slate-900" data-en="Recent Transactions" data-ha="Ciniki Na Baya-bayan Nan">Recent Transactions</h3>
+                        <a href="reports.html" class="text-yareema-primary text-sm font-medium hover:underline" data-en="View All" data-ha="Duba Duka">View All</a>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 font-semibold">
+                                    <th class="p-4" data-en="Service" data-ha="Aiki">Service</th>
+                                    <th class="p-4" data-en="Customer" data-ha="Abokin Ciniki">Customer</th>
+                                    <th class="p-4" data-en="Amount" data-ha="Adadi">Amount</th>
+                                    <th class="p-4" data-en="Commission" data-ha="Riba">Commission</th>
+                                    <th class="p-4" data-en="Status" data-ha="Matsayi">Status</th>
+                                    <th class="p-4" data-en="Date" data-ha="Kwanan Wata">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-sm">
+                                <tr class="hover:bg-slate-50">
+                                    <td class="p-4">
+                                        <div class="flex items-center gap-2">
+                                            <i data-lucide="wifi" class="w-4 h-4 text-blue-600"></i>
+                                            <span class="font-medium text-slate-900">MTN 5GB</span>
+                                        </div>
+                                    </td>
+                                    <td class="p-4 text-slate-600">Fatima Abubakar</td>
+                                    <td class="p-4 font-medium text-slate-900">₦1,500</td>
+                                    <td class="p-4 font-bold text-green-600">₦75</td>
+                                    <td class="p-4"><span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">Success</span></td>
+                                    <td class="p-4 text-slate-500">2 mins ago</td>
+                                </tr>
+                                <tr class="hover:bg-slate-50">
+                                    <td class="p-4">
+                                        <div class="flex items-center gap-2">
+                                            <i data-lucide="phone" class="w-4 h-4 text-green-600"></i>
+                                            <span class="font-medium text-slate-900">Airtel ₦500</span>
+                                        </div>
+                                    </td>
+                                    <td class="p-4 text-slate-600">Ahmed Sani</td>
+                                    <td class="p-4 font-medium text-slate-900">₦500</td>
+                                    <td class="p-4 font-bold text-green-600">₦15</td>
+                                    <td class="p-4"><span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">Success</span></td>
+                                    <td class="p-4 text-slate-500">15 mins ago</td>
+                                </tr>
+                                <tr class="hover:bg-slate-50">
+                                    <td class="p-4">
+                                        <div class="flex items-center gap-2">
+                                            <i data-lucide="zap" class="w-4 h-4 text-amber-600"></i>
+                                            <span class="font-medium text-slate-900">IKEDC ₦5,000</span>
+                                        </div>
+                                    </td>
+                                    <td class="p-4 text-slate-600">Halima Yusuf</td>
+                                    <td class="p-4 font-medium text-slate-900">₦5,000</td>
+                                    <td class="p-4 font-bold text-green-600">₦100</td>
+                                    <td class="p-4"><span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">Success</span></td>
+                                    <td class="p-4 text-slate-500">1 hour ago</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="modalsContainer"></div>
+
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/services.js"></script>
+    <script src="assets/js/charts.js"></script>
+    <script>
+        // Load partials
+        fetch('partials/sidebar.html')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('sidebarContainer').innerHTML = data;
+                lucide.createIcons();
+            });
+        
+        fetch('partials/header.html')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('headerContainer').innerHTML = data;
+                updatePageTitle('dashboard');
+                lucide.createIcons();
+            });
+        
+        fetch('partials/modals.html')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('modalsContainer').innerHTML = data;
+                lucide.createIcons();
+            });
+    </script>
+</body>
+</html>
