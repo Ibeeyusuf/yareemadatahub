@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-logo">
+            <img src="assets/images/logo.png" alt="Logo">
+            <h1>Yareema Data Hub</h1>
+        </div>
+        <div class="sidebar-nav">
+            <a href="home.html" class="nav-item"><i data-lucide="home" style="width: 20px; height: 20px;"></i><span>Dashboard</span></a>
+            <a href="services.html" class="nav-item"><i data-lucide="grid" style="width: 20px; height: 20px;"></i><span>Services</span></a>
+            <a href="transactions.html" class="nav-item"><i data-lucide="receipt" style="width: 20px; height: 20px;"></i><span>Transactions</span></a>
+            <a href="wallet.html" class="nav-item"><i data-lucide="wallet" style="width: 20px; height: 20px;"></i><span>Wallet</span></a>
+            <a href="profile.html" class="nav-item active"><i data-lucide="user" style="width: 20px; height: 20px;"></i><span>Profile</span></a>
+        </div>
+        <div class="sidebar-footer">
+            <div class="user-profile" onclick="window.location.href='profile.html'">
+                <div class="user-avatar" id="sidebarAvatar">U</div>
+                <div class="user-info"><h3 id="sidebarName">User</h3><p>View Profile</p></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="top-bar">
+            <h1>My Profile</h1>
+            <button class="btn-primary" onclick="openModal('editprofile')">Edit Profile</button>
+        </div>
+
+        <div class="profile-container">
+            <div class="profile-card">
+                <div class="profile-avatar" id="avatar">U</div>
+                <h2 class="profile-name" id="userName">User</h2>
+                <p class="profile-email" id="userEmail">email@example.com</p>
+                <p class="profile-email" id="userPhone">+234</p>
+                <div id="badges" style="display: flex; gap: 8px; justify-content: center; margin-top: 16px;"></div>
+            </div>
+
+            <div class="profile-section">
+                <h3>Account Information</h3>
+                <div class="profile-item" onclick="openModal('personaldetails')">
+                    <div class="profile-item-left">
+                        <i data-lucide="user" style="width: 20px; height: 20px; color: #1e3d5c;"></i>
+                        <span>Personal Details</span>
+                    </div>
+                    <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: #94a3b8;"></i>
+                </div>
+                <div class="profile-item" onclick="openModal('security')">
+                    <div class="profile-item-left">
+                        <i data-lucide="shield-check" style="width: 20px; height: 20px; color: #1e3d5c;"></i>
+                        <span>Security Settings</span>
+                    </div>
+                    <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: #94a3b8;"></i>
+                </div>
+                <div class="profile-item" onclick="openModal('notifications')">
+                    <div class="profile-item-left">
+                        <i data-lucide="bell" style="width: 20px; height: 20px; color: #1e3d5c;"></i>
+                        <span>Notifications</span>
+                    </div>
+                    <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: #94a3b8;"></i>
+                </div>
+            </div>
+
+            <div class="profile-section">
+                <h3>Preferences</h3>
+                <div class="profile-item" onclick="openModal('devices')">
+                    <div class="profile-item-left">
+                        <i data-lucide="smartphone" style="width: 20px; height: 20px; color: #1e3d5c;"></i>
+                        <span>Device Management</span>
+                    </div>
+                    <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: #94a3b8;"></i>
+                </div>
+                <div class="profile-item">
+                    <div class="profile-item-left">
+                        <i data-lucide="languages" style="width: 20px; height: 20px; color: #1e3d5c;"></i>
+                        <span>Language</span>
+                    </div>
+                    <span style="color: #64748b;">English</span>
+                </div>
+                <div class="profile-item">
+                    <div class="profile-item-left">
+                        <i data-lucide="palette" style="width: 20px; height: 20px; color: #1e3d5c;"></i>
+                        <span>Theme</span>
+                    </div>
+                    <span style="color: #64748b;">Light</span>
+                </div>
+            </div>
+
+            <div class="profile-section">
+                <h3>More</h3>
+                <div class="profile-item" onclick="openModal('referral')">
+                    <div class="profile-item-left">
+                        <i data-lucide="gift" style="width: 20px; height: 20px; color: #1e3d5c;"></i>
+                        <span>Referral Program</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="refCode" style="color: #64748b; font-size: 14px;"></span>
+                        <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: #94a3b8;"></i>
+                    </div>
+                </div>
+                <div class="profile-item" onclick="openModal('help')">
+                    <div class="profile-item-left">
+                        <i data-lucide="help-circle" style="width: 20px; height: 20px; color: #1e3d5c;"></i>
+                        <span>Help & Support</span>
+                    </div>
+                    <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: #94a3b8;"></i>
+                </div>
+                <div class="profile-item">
+                    <div class="profile-item-left">
+                        <i data-lucide="info" style="width: 20px; height: 20px; color: #1e3d5c;"></i>
+                        <span>About</span>
+                    </div>
+                    <span style="color: #64748b;">v1.0.0</span>
+                </div>
+            </div>
+
+            <button onclick="logout()" class="btn-secondary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; border-color: #dc2626; color: #dc2626;">
+                <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
+                <span>Logout</span>
+            </button>
+        </div>
+    </div>
+
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script src="modals/native-modals.js"></script>
+    <script>
+        function load() {
+            const u = JSON.parse(localStorage.getItem('user') || '{}');
+            const name = `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'User';
+            document.getElementById('userName').textContent = name;
+            document.getElementById('userEmail').textContent = u.email || 'email@example.com';
+            document.getElementById('userPhone').textContent = u.phoneNumber || '+234';
+            document.getElementById('avatar').textContent = `${u.firstName?.[0] || 'U'}${u.lastName?.[0] || ''}`.toUpperCase();
+            document.getElementById('sidebarName').textContent = u.firstName || 'User';
+            document.getElementById('sidebarAvatar').textContent = `${u.firstName?.[0] || 'U'}${u.lastName?.[0] || ''}`.toUpperCase();
+            if (u.referralCode) document.getElementById('refCode').textContent = u.referralCode;
+            let badges = [];
+            if (u.isEmailVerified) badges.push('<span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; background: #dcfce7; border-radius: 16px; font-size: 12px; font-weight: 600; color: #16a34a;"><i data-lucide="check-circle" style="width: 14px; height: 14px;"></i>Email Verified</span>');
+            if (u.isPhoneVerified) badges.push('<span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; background: #dcfce7; border-radius: 16px; font-size: 12px; font-weight: 600; color: #16a34a;"><i data-lucide="check-circle" style="width: 14px; height: 14px;"></i>Phone Verified</span>');
+            if (badges.length) document.getElementById('badges').innerHTML = badges.join('');
+            lucide.createIcons();
+        }
+        function logout() {
+            Swal.fire({
+                title: 'Logout?',
+                text: 'Are you sure you want to logout?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, Logout',
+                confirmButtonColor: '#1e3d5c',
+                cancelButtonColor: '#64748b'
+            }).then(r => { if (r.isConfirmed) api.logout(); });
+        }
+        if (!api.getToken()) window.location.href = 'index.html'; else load();
+        lucide.createIcons();
+    </script>
+</body>
+</html>

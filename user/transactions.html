@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transactions</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    
+    <div class="sidebar">
+        <div class="sidebar-logo">
+            <img src="assets/images/logo.png" alt="Logo">
+            <h1>Yareema Data Hub</h1>
+        </div>
+        <div class="sidebar-nav">
+            <a href="home.html" class="nav-item">
+                <i data-lucide="home" style="width: 20px; height: 20px;"></i><span>Dashboard</span>
+            </a>
+            <a href="services.html" class="nav-item">
+                <i data-lucide="grid" style="width: 20px; height: 20px;"></i><span>Services</span>
+            </a>
+            <a href="transactions.html" class="nav-item active">
+                <i data-lucide="receipt" style="width: 20px; height: 20px;"></i><span>Transactions</span>
+            </a>
+            <a href="wallet.html" class="nav-item">
+                <i data-lucide="wallet" style="width: 20px; height: 20px;"></i><span>Wallet</span>
+            </a>
+            <a href="profile.html" class="nav-item">
+                <i data-lucide="user" style="width: 20px; height: 20px;"></i><span>Profile</span>
+            </a>
+        </div>
+        <div class="sidebar-footer">
+            <div class="user-profile" onclick="window.location.href='profile.html'">
+                <div class="user-avatar" id="sidebarAvatar">U</div>
+                <div class="user-info"><h3 id="sidebarName">User</h3><p>View Profile</p></div>
+            </div>
+        </div>
+    </div>
+    <div class="main-content">
+        <div class="top-bar">
+            <h1>Transaction History</h1>
+            <button class="icon-btn" onclick="loadTxns()"><i data-lucide="refresh-cw" style="width: 20px; height: 20px;"></i></button>
+        </div>
+        <div class="activity-list" id="txnsList" style="min-height: 400px;"><div style="text-align: center; padding: 48px; color: #94a3b8;">Loading...</div></div>
+    </div>
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script>
+        async function loadTxns() {
+            try {
+                const r = await api.getTransactions();
+                const txns = r.data?.transactions || r.transactions || [];
+                document.getElementById('txnsList').innerHTML = txns.length ? txns.map(t => `<div class="activity-item"><div class="activity-icon" style="background: #eff6ff;"><i data-lucide="receipt" style="width: 24px; height: 24px; color: #1e3d5c;"></i></div><div class="activity-info"><div class="activity-title">${t.type}</div><div class="activity-time">${new Date(t.createdAt).toLocaleString()}</div></div><div class="activity-amount">${t.amount < 0 ? '-' : '+'}₦${Math.abs(t.amount).toLocaleString()}</div></div>`).join('') : '<div style="text-align: center; padding: 48px; color: #94a3b8;">No transactions yet</div>';
+                lucide.createIcons();
+            } catch (e) { document.getElementById('txnsList').innerHTML = '<div style="text-align: center; padding: 48px; color: #ef4444;">Error loading</div>'; }
+        }
+        if (!api.getToken()) window.location.href = 'index.html'; else loadTxns();
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (user.firstName) { document.getElementById('sidebarName').textContent = user.firstName; document.getElementById('sidebarAvatar').textContent = (user.firstName[0] + (user.lastName?.[0] || '')).toUpperCase(); }
+        lucide.createIcons();
+    </script>
+</body>
+</html>

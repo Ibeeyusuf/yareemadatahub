@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - Yareema Data Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <div class="app-container" style="padding: 32px; overflow-y: auto;">
+        <div style="text-align: center; margin-bottom: 32px;">
+            <img src="assets/images/logo.png" alt="Logo" style="width: 200px; height: 200px; margin: 0 auto;">
+            <h1 style="font-size: 24px; font-weight: 700; margin-top: -20px; margin-bottom: 8px;">Create Account</h1>
+            <p style="color: #64748b; font-size: 14px;">Join Yareema Data Hub today</p>
+        </div>
+
+        <form id="signupForm" style="display: flex; flex-direction: column; gap: 16px; max-width: 400px; margin: 0 auto;">
+            <div>
+                <label class="form-label">Full Name</label>
+                <input type="text" id="fullName" class="form-input" placeholder="Enter your full name" required>
+            </div>
+            <div>
+                <label class="form-label">Email</label>
+                <input type="email" id="email" class="form-input" placeholder="Enter your email" required>
+            </div>
+            <div>
+                <label class="form-label">Phone Number</label>
+                <input type="tel" id="phone" class="form-input" placeholder="08012345678" required>
+            </div>
+            <div>
+                <label class="form-label">Password</label>
+                <input type="password" id="password" class="form-input" placeholder="Create a password" required>
+            </div>
+            <div>
+                <label class="form-label">Confirm Password</label>
+                <input type="password" id="confirmPassword" class="form-input" placeholder="Confirm your password" required>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="agreeTerms" required style="width: 16px; height: 16px;">
+                <label for="agreeTerms" style="font-size: 14px; color: #64748b;">I agree to the Terms and Conditions</label>
+            </div>
+
+            <button type="submit" id="signupBtn" class="btn btn-primary">
+                <span id="signupText">Create Account</span>
+            </button>
+
+            <p style="text-align: center; font-size: 12px; color: #64748b; margin-top: 16px;">
+                Already have an account? <a href="index.html" style="color: #1e3d5c; font-weight: 600; text-decoration: none;">Login</a>
+            </p>
+        </form>
+    </div>
+
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script>
+        lucide.createIcons();
+
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const fullName = document.getElementById('fullName').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (password !== confirmPassword) {
+                Swal.fire('Error', 'Passwords do not match', 'error');
+                return;
+            }
+
+            const nameParts = fullName.split(' ');
+            const firstName = nameParts[0];
+            const lastName = nameParts.slice(1).join(' ') || nameParts[0];
+
+            const btn = document.getElementById('signupBtn');
+            const text = document.getElementById('signupText');
+
+            btn.disabled = true;
+            text.textContent = 'Creating account...';
+
+            try {
+                await api.register({ firstName, lastName, email, phoneNumber: phone, password });
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: 'Account created successfully. Please login.',
+                    confirmButtonText: 'Go to Login'
+                }).then(() => {
+                    window.location.href = 'index.html';
+                });
+            } catch (error) {
+                Swal.fire('Error', error.message || 'Signup failed', 'error');
+                btn.disabled = false;
+                text.textContent = 'Create Account';
+            }
+        });
+    </script>
+</body>
+</html>

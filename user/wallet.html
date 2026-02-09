@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    
+    <div class="sidebar">
+        <div class="sidebar-logo">
+            <img src="assets/images/logo.png" alt="Logo">
+            <h1>Yareema Data Hub</h1>
+        </div>
+        <div class="sidebar-nav">
+            <a href="home.html" class="nav-item">
+                <i data-lucide="home" style="width: 20px; height: 20px;"></i><span>Dashboard</span>
+            </a>
+            <a href="services.html" class="nav-item">
+                <i data-lucide="grid" style="width: 20px; height: 20px;"></i><span>Services</span>
+            </a>
+            <a href="transactions.html" class="nav-item">
+                <i data-lucide="receipt" style="width: 20px; height: 20px;"></i><span>Transactions</span>
+            </a>
+            <a href="wallet.html" class="nav-item active">
+                <i data-lucide="wallet" style="width: 20px; height: 20px;"></i><span>Wallet</span>
+            </a>
+            <a href="profile.html" class="nav-item">
+                <i data-lucide="user" style="width: 20px; height: 20px;"></i><span>Profile</span>
+            </a>
+        </div>
+        <div class="sidebar-footer">
+            <div class="user-profile" onclick="window.location.href='profile.html'">
+                <div class="user-avatar" id="sidebarAvatar">U</div>
+                <div class="user-info"><h3 id="sidebarName">User</h3><p>View Profile</p></div>
+            </div>
+        </div>
+    </div>
+    <div class="main-content">
+        <div class="top-bar"><h1>My Wallet</h1></div>
+        <div class="wallet-card">
+            <div class="wallet-label">Available Balance</div>
+            <div class="wallet-balance" id="balance">₦0.00</div>
+            <div style="margin-top: 24px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                <button class="wallet-btn" onclick="openModal('fund')"><i data-lucide="plus-circle" style="width: 20px; height: 20px;"></i><span>Fund Wallet</span></button>
+                <button class="wallet-btn" onclick="openModal('transfer')"><i data-lucide="send" style="width: 20px; height: 20px;"></i><span>Transfer</span></button>
+                <button class="wallet-btn" onclick="openModal('withdraw')"><i data-lucide="download" style="width: 20px; height: 20px;"></i><span>Withdraw</span></button>
+            </div>
+        </div>
+        <div class="section-header" style="margin-top: 32px;"><h2 class="section-title">Recent Transactions</h2></div>
+        <div class="activity-list" id="recent"><div style="text-align: center; padding: 48px; color: #94a3b8;">Loading...</div></div>
+    </div>
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script src="modals/native-modals.js"></script>
+    <script>
+        async function load() {
+            try {
+                const w = await api.getWalletBalance();
+                document.getElementById('balance').textContent = '₦' + (w.data?.balance || 0).toLocaleString('en-US', {minimumFractionDigits: 2});
+                const t = await api.getTransactions({ limit: 5 });
+                const txns = t.data?.transactions || [];
+                document.getElementById('recent').innerHTML = txns.length ? txns.map(x => `<div class="activity-item"><div class="activity-icon" style="background: #eff6ff;"><i data-lucide="receipt" style="width: 24px; height: 24px; color: #1e3d5c;"></i></div><div class="activity-info"><div class="activity-title">${x.type}</div><div class="activity-time">${new Date(x.createdAt).toLocaleString()}</div></div><div class="activity-amount">${x.amount < 0 ? '-' : '+'}₦${Math.abs(x.amount).toLocaleString()}</div></div>`).join('') : '<div style="text-align: center; padding: 48px; color: #94a3b8;">No transactions</div>';
+                lucide.createIcons();
+            } catch (e) { console.error(e); }
+        }
+        if (!api.getToken()) window.location.href = 'index.html'; else load();
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (user.firstName) { document.getElementById('sidebarName').textContent = user.firstName; document.getElementById('sidebarAvatar').textContent = (user.firstName[0] + (user.lastName?.[0] || '')).toUpperCase(); }
+        lucide.createIcons();
+    </script>
+</body>
+</html>

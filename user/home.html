@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Yareema Data Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-logo">
+            <img src="assets/images/logo.png" alt="Logo">
+            <h1>Yareema Data Hub</h1>
+        </div>
+        
+        <div class="sidebar-nav">
+            <a href="home.html" class="nav-item active">
+                <i data-lucide="home" style="width: 20px; height: 20px;"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="services.html" class="nav-item">
+                <i data-lucide="grid" style="width: 20px; height: 20px;"></i>
+                <span>Services</span>
+            </a>
+            <a href="transactions.html" class="nav-item">
+                <i data-lucide="receipt" style="width: 20px; height: 20px;"></i>
+                <span>Transactions</span>
+            </a>
+            <a href="wallet.html" class="nav-item">
+                <i data-lucide="wallet" style="width: 20px; height: 20px;"></i>
+                <span>Wallet</span>
+            </a>
+            <a href="profile.html" class="nav-item">
+                <i data-lucide="user" style="width: 20px; height: 20px;"></i>
+                <span>Profile</span>
+            </a>
+        </div>
+        
+        <div class="sidebar-footer">
+            <div class="user-profile" onclick="window.location.href='profile.html'">
+                <div class="user-avatar" id="sidebarAvatar">U</div>
+                <div class="user-info">
+                    <h3 id="sidebarName">User</h3>
+                    <p>View Profile</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div>
+                <h1 id="greeting">Good Morning</h1>
+                <p style="color: #64748b; margin-top: 4px;" id="topBarUser">Welcome back</p>
+            </div>
+            <div class="top-bar-actions">
+                <button class="icon-btn" onclick="openModal('notifications')">
+                    <i data-lucide="bell" style="width: 20px; height: 20px;"></i>
+                </button>
+                <button class="icon-btn" onclick="window.location.reload()">
+                    <i data-lucide="refresh-cw" style="width: 20px; height: 20px;"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Wallet Card -->
+        <div class="wallet-card">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div>
+                    <div class="wallet-label">Available Balance</div>
+                    <div class="wallet-balance" id="walletBalance">₦0.00</div>
+                    <div class="wallet-account" id="walletAccount">Account: Loading...</div>
+                </div>
+                <button onclick="toggleBalance()" style="background: rgba(255,255,255,0.2); border: none; padding: 8px; border-radius: 8px; cursor: pointer;">
+                    <i data-lucide="eye" id="eyeIcon" style="width: 20px; height: 20px; color: #fff;"></i>
+                </button>
+            </div>
+            <div class="wallet-actions">
+                <button class="wallet-btn" onclick="openModal('fund')">
+                    <i data-lucide="plus-circle" style="width: 20px; height: 20px;"></i>
+                    <span>Fund Wallet</span>
+                </button>
+                <button class="wallet-btn" onclick="openModal('transfer')">
+                    <i data-lucide="send" style="width: 20px; height: 20px;"></i>
+                    <span>Transfer</span>
+                </button>
+                <button class="wallet-btn" onclick="openModal('withdraw')">
+                    <i data-lucide="download" style="width: 20px; height: 20px;"></i>
+                    <span>Withdraw</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Quick Services -->
+        <div class="section-header">
+            <h2 class="section-title">Quick Services</h2>
+            <a href="services.html" class="section-link">View All →</a>
+        </div>
+        
+        <div class="services-grid">
+            <div class="service-card" onclick="openModal('data')">
+                <div class="service-icon" style="background: #eff6ff;">
+                    <i data-lucide="wifi" style="width: 28px; height: 28px; color: #2563eb;"></i>
+                </div>
+                <div class="service-name">Buy Data</div>
+            </div>
+            <div class="service-card" onclick="openModal('airtime')">
+                <div class="service-icon" style="background: #f0fdf4;">
+                    <i data-lucide="phone" style="width: 28px; height: 28px; color: #16a34a;"></i>
+                </div>
+                <div class="service-name">Buy Airtime</div>
+            </div>
+            <div class="service-card" onclick="openModal('electricity')">
+                <div class="service-icon" style="background: #fffbeb;">
+                    <i data-lucide="zap" style="width: 28px; height: 28px; color: #d97706;"></i>
+                </div>
+                <div class="service-name">Electricity</div>
+            </div>
+            <div class="service-card" onclick="openModal('tv')">
+                <div class="service-icon" style="background: #faf5ff;">
+                    <i data-lucide="tv" style="width: 28px; height: 28px; color: #9333ea;"></i>
+                </div>
+                <div class="service-name">Cable TV</div>
+            </div>
+            <div class="service-card" onclick="openModal('education')">
+                <div class="service-icon" style="background: #eef2ff;">
+                    <i data-lucide="graduation-cap" style="width: 28px; height: 28px; color: #4f46e5;"></i>
+                </div>
+                <div class="service-name">Education</div>
+            </div>
+            <div class="service-card" onclick="openModal('swap')">
+                <div class="service-icon" style="background: #fff7ed;">
+                    <i data-lucide="repeat" style="width: 28px; height: 28px; color: #ea580c;"></i>
+                </div>
+                <div class="service-name">Airtime2Cash</div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="section-header" style="margin-top: 32px;">
+            <h2 class="section-title">Recent Activity</h2>
+            <a href="transactions.html" class="section-link">View All →</a>
+        </div>
+        
+        <div class="activity-list" id="recentActivity">
+            <div style="text-align: center; padding: 48px; color: #94a3b8;">
+                Loading transactions...
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script src="modals/native-modals.js"></script>
+    <script>
+        let hideBalance = false;
+        let actualBalance = 0;
+
+        function getGreeting() {
+            const hour = new Date().getHours();
+            return hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
+        }
+
+        function toggleBalance() {
+            hideBalance = !hideBalance;
+            document.getElementById('walletBalance').textContent = hideBalance ? '₦****' : `₦${actualBalance.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+            document.getElementById('eyeIcon').setAttribute('data-lucide', hideBalance ? 'eye-off' : 'eye');
+            lucide.createIcons();
+        }
+
+        async function loadData() {
+            try {
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                const name = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'User';
+                document.getElementById('sidebarName').textContent = name;
+                document.getElementById('topBarUser').textContent = `Welcome back, ${user.firstName || 'User'}`;
+                document.getElementById('sidebarAvatar').textContent = `${user.firstName?.[0] || 'U'}${user.lastName?.[0] || ''}`.toUpperCase();
+                document.getElementById('greeting').textContent = getGreeting();
+
+                const wallet = await api.getWalletBalance();
+                actualBalance = wallet.data?.balance || wallet.balance || 0;
+                if (!hideBalance) {
+                    document.getElementById('walletBalance').textContent = `₦${actualBalance.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+                }
+                document.getElementById('walletAccount').textContent = wallet.data?.accountNumber ? `Account: ${wallet.data.accountNumber}` : 'No account number';
+
+                const txns = await api.getTransactions({ limit: 5 });
+                const transactions = txns.data?.transactions || txns.transactions || [];
+                
+                if (transactions.length > 0) {
+                    document.getElementById('recentActivity').innerHTML = transactions.map(tx => `
+                        <div class="activity-item">
+                            <div class="activity-icon" style="background: #eff6ff;">
+                                <i data-lucide="receipt" style="width: 24px; height: 24px; color: #1e3d5c;"></i>
+                            </div>
+                            <div class="activity-info">
+                                <div class="activity-title">${tx.type || 'Transaction'}</div>
+                                <div class="activity-time">${new Date(tx.createdAt).toLocaleString()}</div>
+                            </div>
+                            <div class="activity-amount">${tx.amount < 0 ? '-' : '+'}₦${Math.abs(tx.amount).toLocaleString()}</div>
+                        </div>
+                    `).join('');
+                } else {
+                    document.getElementById('recentActivity').innerHTML = '<div style="text-align: center; padding: 48px; color: #94a3b8;">No recent transactions</div>';
+                }
+
+                lucide.createIcons();
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+
+        if (!api.getToken()) {
+            window.location.href = 'index.html';
+        } else {
+            loadData();
+        }
+
+        lucide.createIcons();
+    </script>
+</body>
+</html>
