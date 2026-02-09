@@ -78,11 +78,13 @@
         .error-message {
             color: #dc2626;
             font-size: 0.875rem;
-            margin-top: 0.25rem;
+            margin-top: 0.5rem;
+            padding: 0.75rem;
+            background-color: #fee2e2;
+            border-radius: 0.5rem;
             display: none;
         }
         
-        /* Mobile-specific adjustments */
         @media (max-width: 640px) {
             .auth-container {
                 padding: 16px;
@@ -104,7 +106,6 @@
             }
         }
         
-        /* Tablet */
         @media (min-width: 641px) and (max-width: 1023px) {
             .auth-card {
                 max-width: 440px;
@@ -112,7 +113,6 @@
             }
         }
         
-        /* Desktop */
         @media (min-width: 1024px) {
             .auth-card {
                 max-width: 480px;
@@ -120,7 +120,6 @@
             }
         }
         
-        /* Small mobile devices */
         @media (max-width: 375px) {
             .auth-container {
                 padding: 12px;
@@ -147,7 +146,7 @@
                         <img src="assets/images/logo.png" 
                              alt="Yareema Data Hub Logo"
                              class="max-h-full max-w-full object-contain"
-                             onerror="this.onerror=null; this.src='assets/images/logo.png';">
+                             onerror="this.onerror=null; this.src='assets/images/logo.svg';">
                     </div>
                 </div>
                 
@@ -158,19 +157,20 @@
 
                 <!-- Login Form -->
                 <form id="login-form" class="space-y-5 sm:space-y-6">
-                    <!-- Agent ID -->
+                    <!-- Email Address -->
                     <div>
                         <label for="login-email" class="block text-sm font-medium text-slate-700 mb-2">
-                            Agent ID or Phone
+                            Email Address
                         </label>
                         <div class="relative">
-                            <i data-lucide="user" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400"></i>
+                            <i data-lucide="mail" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400"></i>
                             <input
-                                type="text"
+                                type="email"
                                 id="login-email"
                                 class="w-full pl-10 pr-4 py-3 sm:py-3.5 border border-slate-300 rounded-lg form-input focus:outline-none text-sm sm:text-base"
-                                placeholder="Enter your agent ID or phone"
+                                placeholder="agent@example.com"
                                 value=""
+                                required
                             >
                         </div>
                     </div>
@@ -193,6 +193,7 @@
                                 class="w-full pl-10 pr-12 py-3 sm:py-3.5 border border-slate-300 rounded-lg form-input focus:outline-none text-sm sm:text-base"
                                 placeholder="Enter your password"
                                 value=""
+                                required
                             >
                             <button type="button" id="toggle-login-password" class="password-toggle absolute right-3 top-1/2 transform -translate-y-1/2">
                                 <i data-lucide="eye" class="w-5 h-5"></i>
@@ -214,13 +215,17 @@
                     <!-- Sign Up Link -->
                     <p class="text-center text-slate-600 text-sm sm:text-base pt-4 sm:pt-6">
                         Not an agent? 
-                        <span class="auth-link ml-1" onclick="alert('Please contact Yareema support to become an agent.')">Contact us</span>
+                        <a href="register.html" class="auth-link ml-1">Register Here</a>
                     </p>
                 </form>
             </div>
         </div>
     </div>
 
+    <!-- Include Config & Auth Scripts -->
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/auth.js"></script>
+    
     <script>
         // Initialize Lucide icons
         lucide.createIcons();
@@ -245,62 +250,81 @@
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const email = document.getElementById('login-email').value;
+            const email = document.getElementById('login-email').value.trim();
             const password = loginPassword.value;
             
-            // Simple validation
+            // Validation
             if (!email || !password) {
-                showError('login-error', 'Please fill in all fields');
+                UI.showError('login-error', 'Please fill in all fields');
                 return;
             }
             
-            hideError('login-error');
+            // Email format validation
+            if (!email.includes('@')) {
+                UI.showError('login-error', 'Please enter a valid email address');
+                return;
+            }
+            
+            UI.hideMessage('login-error');
             
             // Show loading
-            const loginBtn = document.getElementById('login-btn');
-            const loginSpinner = document.getElementById('login-spinner');
-            loginBtn.disabled = true;
-            loginSpinner.classList.remove('hidden');
+            UI.showLoading('login-btn', 'login-spinner');
             
-            // Simulate login (replace with actual API call)
-            setTimeout(() => {
-                // Store session
-                const agentData = {
-                    id: email,
-                    name: 'Musa Ibrahim',
-                    phone: '08012345678',
-                    email: 'musa@example.com',
-                    walletBalance: 45280.50,
-                    earnings: 128450.75
-                };
+            try {
+                // Call login API
+                const result = await Auth.login(email, password);
                 
-                localStorage.setItem('agentLoggedIn', 'true');
-                localStorage.setItem('agentData', JSON.stringify(agentData));
+                // Hide loading
+                UI.hideLoading('login-btn', 'login-spinner');
                 
-                // Redirect to dashboard
-                window.location.href = 'dashboard.html';
-            }, 1000);
-        });
-
-        // Forgot password
-        document.getElementById('forgot-password').addEventListener('click', () => {
-            const email = prompt('Enter your agent ID or phone to reset password:');
-            if (email) {
-                alert(`Password reset link will be sent to your registered contact.`);
+                if (result.success) {
+                    // Redirect to dashboard
+                    window.location.href = 'dashboard.html';
+                } else {
+                    // Show error
+                    UI.showError('login-error', result.message || 'Login failed. Please try again.');
+                }
+            } catch (error) {
+                // Hide loading
+                UI.hideLoading('login-btn', 'login-spinner');
+                
+                // Show error
+                UI.showError('login-error', 'Network error. Please check your connection and try again.');
+                console.error('Login error:', error);
             }
         });
 
-        // Helper functions
-        function showError(elementId, message) {
-            const errorElement = document.getElementById(elementId);
-            errorElement.textContent = message;
-            errorElement.style.display = 'block';
-        }
-
-        function hideError(elementId) {
-            const errorElement = document.getElementById(elementId);
-            errorElement.style.display = 'none';
-        }
+        // Forgot password
+        document.getElementById('forgot-password').addEventListener('click', async () => {
+            const email = prompt('Enter your email address:');
+            if (email && email.trim()) {
+                if (!email.includes('@')) {
+                    alert('Please enter a valid email address');
+                    return;
+                }
+                
+                // Show loading toast
+                if (typeof UI !== 'undefined' && UI.showToast) {
+                    UI.showToast('Sending OTP...', 'info');
+                }
+                
+                const result = await Auth.forgotPassword(email.trim());
+                
+                if (result.success) {
+                    if (typeof UI !== 'undefined' && UI.showToast) {
+                        UI.showToast(result.message, 'success');
+                    }
+                    // Redirect to forgot password page
+                    window.location.href = 'forgot-password.html?email=' + encodeURIComponent(email.trim());
+                } else {
+                    if (typeof UI !== 'undefined' && UI.showToast) {
+                        UI.showToast(result.message, 'error');
+                    } else {
+                        alert(result.message);
+                    }
+                }
+            }
+        });
     </script>
 </body>
 </html>

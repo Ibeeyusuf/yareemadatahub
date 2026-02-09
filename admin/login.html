@@ -7,6 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.css" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -290,6 +291,9 @@
             
             try {
                 console.log('Calling API login...');
+                console.log('Email:', email);
+                console.log('API Base URL:', api.baseURL);
+                
                 const response = await api.login(email, password);
                 
                 console.log('Login response:', response);
@@ -299,29 +303,38 @@
                 const isSuccess = response.success !== false && 
                                  (response.token || response.data?.token || response.accessToken);
                 
+                console.log('Is Success:', isSuccess);
+                
                 if (isSuccess) {
-                    showSuccess('Login successful! Redirecting...');
+                    // Get user data from response
+                    const user = response.user || response.data?.user || {};
+                    const userName = user.firstName || user.name || 'Admin';
                     
-                    // Extract token from different possible locations
-                    const token = response.token || response.data?.token || response.accessToken;
-                    const user = response.user || response.data?.user || response.data || {};
+                    console.log('Login successful! User:', userName);
                     
-                    // Store in localStorage
-                    localStorage.setItem('admin_token', token);
-                    localStorage.setItem('admin_user', JSON.stringify(user));
-                    
-                    console.log('Token stored, redirecting to dashboard...');
-                    
-                    // Redirect after short delay
-                    setTimeout(() => {
-                        window.location.href = 'dashboard.html';
-                    }, 1000);
+                    // Show success alert
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Login Successful!',
+                        text: `Welcome back, ${userName}!`,
+                        timer: 1500,
+                        showConfirmButton: false,
+                        didClose: () => {
+                            console.log('Redirecting to dashboard...');
+                            window.location.href = 'dashboard.html';
+                        }
+                    });
                 } else {
+                    console.error('Login failed - no token in response');
                     showError(response.message || 'Login failed. Please check your credentials.');
                     resetButton();
                 }
             } catch (error) {
                 console.error('Login error:', error);
+                console.error('Error details:', {
+                    message: error.message,
+                    stack: error.stack
+                });
                 showError(error.message || 'Login failed. Please try again.');
                 resetButton();
             }

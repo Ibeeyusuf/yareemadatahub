@@ -1,9 +1,8 @@
 // API Configuration
 const API_CONFIG = {
-    // Update these with your actual API endpoints
-    BASE_URL: 'https://vtu-api-d3q2.onrender.com',  // Change to your API URL
+    BASE_URL: 'https://vtu-api-d3q2.onrender.com',
     
-    // Endpoints
+    // Endpoints 
     ENDPOINTS: {
         AUTH: {
             LOGIN: '/api/v1/auth/login',
@@ -40,9 +39,8 @@ const ENV = {
     isProduction: window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
 };
 
-// Development mode settings
+// Development mode logging
 if (ENV.isDevelopment) {
     console.log('Running in development mode');
-    // You can use a local API URL for development
-    // API_CONFIG.BASE_URL = 'http://localhost:3000';
+    console.log('API Base URL:', API_CONFIG.BASE_URL);
 }

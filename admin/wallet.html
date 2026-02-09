@@ -3,200 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wallet Operations - Yareema Datahub Admin</title>
+    <title>Wallet Management - Yareema Data Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="assets/css/style.css">
-    <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{primary:'#2563eb',secondary:'#7c3aed',success:'#10b981',warning:'#f59e0b',error:'#ef4444',dark:'#0f172a',light:'#f8fafc'}}}}</script>
 </head>
-<body class="text-slate-800 antialiased">
-    <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
-    <div class="flex flex-col lg:flex-row w-full">
-        <div id="sidebar-placeholder"></div>
-        <main class="flex-1 flex flex-col min-w-0 bg-slate-50">
-            <div id="header-placeholder"></div>
-            <div class="p-4 lg:p-8 flex-1 overflow-y-auto">
-                <div class="space-y-6">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div>
-                            <h2 class="text-2xl font-bold text-slate-900">Wallet Operations Center</h2>
-                            <p class="text-slate-500 text-sm mt-1">Manage user wallets, credits, debits, and ledger.</p>
+<body class="bg-gray-50">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <div id="sidebar-container"></div>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto">
+            <!-- Header -->
+            <div id="header-container"></div>
+
+            <!-- Wallet Content -->
+            <div class="p-6">
+                <!-- Loading Indicator -->
+                <div id="wallets-loader" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div class="bg-white p-6 rounded-lg shadow-xl">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                        <p class="mt-4 text-gray-700">Loading wallets...</p>
+                    </div>
+                </div>
+
+                <!-- Page Header -->
+                <div class="mb-6">
+                    <h1 class="text-3xl font-bold text-gray-900">Wallet Management</h1>
+                    <p class="text-gray-600 mt-1">Manage user wallets, balances, and transactions</p>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Total Balance</p>
+                                <h3 id="total-balance" class="text-2xl font-bold text-gray-900 mt-2">₦0.00</h3>
+                            </div>
+                            <div class="bg-green-100 p-3 rounded-full">
+                                <i data-lucide="wallet" class="w-6 h-6 text-green-600"></i>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div class="bg-gradient-to-br from-blue-600 to-blue-700 p-6 rounded-xl shadow-lg text-white">
-                            <div class="flex items-center justify-between mb-4">
-                                <h3 class="font-bold text-lg">System Balance</h3>
-                                <i data-lucide="wallet" class="w-8 h-8 opacity-50"></i>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Average Balance</p>
+                                <h3 id="average-balance" class="text-2xl font-bold text-gray-900 mt-2">₦0.00</h3>
                             </div>
-                            <p class="text-3xl font-bold mb-2">$2,458,920.50</p>
-                            <p class="text-sm text-blue-100">Total across all user wallets</p>
-                        </div>
-                        <div class="bg-gradient-to-br from-green-600 to-green-700 p-6 rounded-xl shadow-lg text-white">
-                            <div class="flex items-center justify-between mb-4">
-                                <h3 class="font-bold text-lg">Today's Inflows</h3>
-                                <i data-lucide="trending-up" class="w-8 h-8 opacity-50"></i>
+                            <div class="bg-blue-100 p-3 rounded-full">
+                                <i data-lucide="trending-up" class="w-6 h-6 text-blue-600"></i>
                             </div>
-                            <p class="text-3xl font-bold mb-2">$45,280.00</p>
-                            <p class="text-sm text-green-100">+12% from yesterday</p>
-                        </div>
-                        <div class="bg-gradient-to-br from-amber-600 to-amber-700 p-6 rounded-xl shadow-lg text-white">
-                            <div class="flex items-center justify-between mb-4">
-                                <h3 class="font-bold text-lg">Pending Operations</h3>
-                                <i data-lucide="clock" class="w-8 h-8 opacity-50"></i>
-                            </div>
-                            <p class="text-3xl font-bold mb-2">12</p>
-                            <p class="text-sm text-amber-100">Awaiting approval</p>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                            <h3 class="font-bold text-slate-900 mb-4 flex items-center gap-2">
-                                <i data-lucide="plus-circle" class="w-5 h-5 text-green-600"></i>
-                                Credit User Wallet
-                            </h3>
-                            <form onsubmit="processCreditWallet(event)" class="space-y-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700 mb-2">Search User</label>
-                                    <div class="relative">
-                                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                                        <input type="text" placeholder="Email, phone, or user ID..." class="pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 w-full" required>
-                                    </div>
-                                </div>
-                                <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                                    <p class="text-xs text-slate-500 mb-1">Current Balance</p>
-                                    <p class="text-lg font-bold text-slate-900">$1,240.50</p>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700 mb-2">Amount to Credit</label>
-                                    <div class="relative">
-                                        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">$</span>
-                                        <input type="number" step="0.01" placeholder="0.00" class="pl-8 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 w-full" required>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700 mb-2">Reason</label>
-                                    <select class="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50 w-full" required>
-                                        <option value="">Select reason...</option>
-                                        <option>Refund</option>
-                                        <option>Bonus</option>
-                                        <option>Commission</option>
-                                        <option>Correction</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700 mb-2">Reference Number</label>
-                                    <input type="text" placeholder="REF-XXXX" class="px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 w-full" required>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700 mb-2">Admin Password</label>
-                                    <input type="password" placeholder="Enter your password" class="px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 w-full" required>
-                                </div>
-                                <button type="submit" class="w-full py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2">
-                                    <i data-lucide="check" class="w-5 h-5"></i>
-                                    Process Credit
-                                </button>
-                            </form>
-                        </div>
-
-                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                            <h3 class="font-bold text-slate-900 mb-4 flex items-center gap-2">
-                                <i data-lucide="minus-circle" class="w-5 h-5 text-red-600"></i>
-                                Debit User Wallet
-                            </h3>
-                            <form onsubmit="processDebitWallet(event)" class="space-y-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700 mb-2">Search User</label>
-                                    <div class="relative">
-                                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                                        <input type="text" placeholder="Email, phone, or user ID..." class="pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 w-full" required>
-                                    </div>
-                                </div>
-                                <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                                    <p class="text-xs text-slate-500 mb-1">Current Balance</p>
-                                    <p class="text-lg font-bold text-slate-900">$1,240.50</p>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700 mb-2">Amount to Debit</label>
-                                    <div class="relative">
-                                        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">$</span>
-                                        <input type="number" step="0.01" placeholder="0.00" class="pl-8 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 w-full" required>
-                                    </div>
-                                </div>
-                                <div class="p-3 bg-red-50 border border-red-200 rounded-lg">
-                                    <p class="text-xs text-red-700 flex items-center gap-2">
-                                        <i data-lucide="alert-triangle" class="w-4 h-4"></i>
-                                        This action will deduct funds from user's wallet
-                                    </p>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700 mb-2">Reason (Required)</label>
-                                    <textarea placeholder="Explain why you're debiting this wallet..." rows="3" class="px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 w-full resize-none" required></textarea>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700 mb-2">Admin Password</label>
-                                    <input type="password" placeholder="Enter your password" class="px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 w-full" required>
-                                </div>
-                                <button type="submit" class="w-full py-3 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2">
-                                    <i data-lucide="alert-circle" class="w-5 h-5"></i>
-                                    Process Debit
-                                </button>
-                            </form>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Locked Wallets</p>
+                                <h3 id="locked-wallets-count" class="text-2xl font-bold text-gray-900 mt-2">0</h3>
+                            </div>
+                            <div class="bg-red-100 p-3 rounded-full">
+                                <i data-lucide="lock" class="w-6 h-6 text-red-600"></i>
+                            </div>
                         </div>
                     </div>
+                </div>
 
-                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
-                        <div class="p-6 border-b border-slate-200 flex items-center justify-between">
-                            <h3 class="font-bold text-slate-900">Wallet Ledger</h3>
-                            <button onclick="showToast('Exporting ledger...', 'info')" class="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-200 transition-colors">
-                                <i data-lucide="download" class="w-4 h-4"></i> Export
-                            </button>
+                <!-- Filters and Actions -->
+                <div class="bg-white rounded-lg shadow mb-6 p-4">
+                    <div class="flex flex-wrap gap-4 items-center">
+                        <div class="flex-1 min-w-[200px]">
+                            <input 
+                                type="text" 
+                                id="wallet-search" 
+                                placeholder="Search by email or phone..."
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
                         </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 font-semibold">
-                                        <th class="p-4">Date/Time</th>
-                                        <th class="p-4">User</th>
-                                        <th class="p-4">Type</th>
-                                        <th class="p-4">Amount</th>
-                                        <th class="p-4">Balance After</th>
-                                        <th class="p-4">Reference</th>
-                                        <th class="p-4">Admin</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-100 text-sm">
-                                    <tr class="hover:bg-slate-50">
-                                        <td class="p-4 text-slate-500">Dec 15, 2:45 PM</td>
-                                        <td class="p-4 font-medium text-slate-900">James Wilson</td>
-                                        <td class="p-4"><span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">Credit</span></td>
-                                        <td class="p-4 font-medium text-green-600">+$500.00</td>
-                                        <td class="p-4 text-slate-900">$1,740.50</td>
-                                        <td class="p-4 text-slate-500 font-mono text-xs">REF-8829</td>
-                                        <td class="p-4 text-slate-500">Musa M.</td>
-                                    </tr>
-                                    <tr class="hover:bg-slate-50">
-                                        <td class="p-4 text-slate-500">Dec 15, 1:20 PM</td>
-                                        <td class="p-4 font-medium text-slate-900">Elena Rodriguez</td>
-                                        <td class="p-4"><span class="px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded-full">Debit</span></td>
-                                        <td class="p-4 font-medium text-red-600">-$120.00</td>
-                                        <td class="p-4 text-slate-900">$330.00</td>
-                                        <td class="p-4 text-slate-500 font-mono text-xs">REF-8828</td>
-                                        <td class="p-4 text-slate-500">Sarah K.</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                        <select id="locked-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Wallets</option>
+                            <option value="false">Active Only</option>
+                            <option value="true">Locked Only</option>
+                        </select>
+                        <button id="refresh-wallets" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+                            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Wallets Table -->
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Balance</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Funded</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Spent</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Withdrawn</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="wallets-table-body" class="bg-white divide-y divide-gray-200">
+                                <!-- Wallets will be loaded here by wallets.js -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div id="pagination-container" class="border-t border-gray-200">
+                        <!-- Pagination will be rendered here -->
                     </div>
                 </div>
             </div>
         </main>
     </div>
+
+    <!-- Scripts -->
     <script src="assets/js/config.js"></script>
     <script src="assets/js/api-service.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/wallets.js"></script>
     <script src="assets/js/main.js"></script>
+    <script>
+        lucide.createIcons();
+        
+        // Load partials
+        fetch('partials/sidebar.html').then(r => r.text()).then(html => {
+            document.getElementById('sidebar-container').innerHTML = html;
+            lucide.createIcons();
+        });
+        fetch('partials/header.html').then(r => r.text()).then(html => {
+            document.getElementById('header-container').innerHTML = html;
+            lucide.createIcons();
+        });
+    </script>
 </body>
 </html>

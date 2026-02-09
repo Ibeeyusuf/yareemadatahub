@@ -1,4 +1,4 @@
-// Yareema Admin Panel - Charts JavaScript
+
 
 document.addEventListener('DOMContentLoaded', function() {
     initializeCharts();

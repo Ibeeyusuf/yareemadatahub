@@ -1,66 +1,529 @@
-// Services Module - Handles all business logic and data
 
-// Data Plans
-const dataPlans = {
-    mtn: [
-        { name: '500MB - 30 Days', price: 150, commission: 5 },
-        { name: '1GB - 30 Days', price: 280, commission: 5 },
-        { name: '2GB - 30 Days', price: 560, commission: 5 },
-        { name: '5GB - 30 Days', price: 1500, commission: 5 },
-        { name: '10GB - 30 Days', price: 2800, commission: 5 }
-    ],
-    airtel: [
-        { name: '500MB - 30 Days', price: 140, commission: 4.5 },
-        { name: '1GB - 30 Days', price: 270, commission: 4.5 },
-        { name: '2GB - 30 Days', price: 540, commission: 4.5 },
-        { name: '5GB - 30 Days', price: 1450, commission: 4.5 },
-        { name: '10GB - 30 Days', price: 2700, commission: 4.5 }
-    ],
-    glo: [
-        { name: '500MB - 30 Days', price: 130, commission: 4 },
-        { name: '1GB - 30 Days', price: 250, commission: 4 },
-        { name: '2GB - 30 Days', price: 500, commission: 4 },
-        { name: '5GB - 30 Days', price: 1400, commission: 4 },
-        { name: '10GB - 30 Days', price: 2600, commission: 4 }
-    ],
-    '9mobile': [
-        { name: '500MB - 30 Days', price: 135, commission: 4 },
-        { name: '1GB - 30 Days', price: 260, commission: 4 },
-        { name: '2GB - 30 Days', price: 520, commission: 4 },
-        { name: '5GB - 30 Days', price: 1420, commission: 4 },
-        { name: '10GB - 30 Days', price: 2650, commission: 4 }
-    ]
+// Agent Services API
+const AgentServices = {
+    
+    // Get all available services and plans
+    async getServices() {
+        try {
+            console.log('[Services] Fetching available services');
+            
+            const response = await API.get(API_CONFIG.ENDPOINTS.AGENT_SERVICES);
+            
+            console.log('[Services] Response:', response);
+            
+            if (response.success || response.status === 'success') {
+                return {
+                    success: true,
+                    data: response.data
+                };
+            }
+            
+            throw new Error(response.message || 'Failed to load services');
+            
+        } catch (error) {
+            console.error('[Services] Error:', error);
+            return {
+                success: false,
+                message: error.message || 'Failed to load services'
+            };
+        }
+    },
+    
+    // Get data plans from API
+    async getDataPlans(network) {
+        try {
+            console.log('[Services] Fetching data plans for:', network);
+            
+            const response = await API.get(`${API_CONFIG.ENDPOINTS.DATA_PLANS}?network=${network}`);
+            
+            console.log('[Services] Data plans response:', response);
+            
+            // Handle successful response
+            if (response.success || response.status === 'success') {
+                const plans = response.data || response.plans || [];
+                
+                if (plans.length > 0) {
+                    return {
+                        success: true,
+                        data: plans
+                    };
+                }
+            }
+            
+            console.warn('[Services] API returned no plans, using fallback');
+            return this.getFallbackDataPlans(network);
+            
+        } catch (error) {
+            console.error('[Services] Error loading data plans:', error);
+            // Use fallback plans on error
+            return this.getFallbackDataPlans(network);
+        }
+    },
+    
+    // Fallback data plans when API fails
+    getFallbackDataPlans(network) {
+        console.log('[Services] Using fallback data plans for:', network);
+        
+        const fallbackPlans = {
+            mtn: [
+                { id: 'mtn_1gb', name: '1GB - 30 Days', plan: '1GB', price: 300, amount: 300, validity: '30 days', commission: 5 },
+                { id: 'mtn_2gb', name: '2GB - 30 Days', plan: '2GB', price: 600, amount: 600, validity: '30 days', commission: 5 },
+                { id: 'mtn_3gb', name: '3GB - 30 Days', plan: '3GB', price: 900, amount: 900, validity: '30 days', commission: 5 },
+                { id: 'mtn_5gb', name: '5GB - 30 Days', plan: '5GB', price: 1500, amount: 1500, validity: '30 days', commission: 5 },
+                { id: 'mtn_10gb', name: '10GB - 30 Days', plan: '10GB', price: 3000, amount: 3000, validity: '30 days', commission: 5 }
+            ],
+            airtel: [
+                { id: 'airtel_1gb', name: '1GB - 30 Days', plan: '1GB', price: 300, amount: 300, validity: '30 days', commission: 5 },
+                { id: 'airtel_2gb', name: '2GB - 30 Days', plan: '2GB', price: 600, amount: 600, validity: '30 days', commission: 5 },
+                { id: 'airtel_5gb', name: '5GB - 30 Days', plan: '5GB', price: 1500, amount: 1500, validity: '30 days', commission: 5 },
+                { id: 'airtel_10gb', name: '10GB - 30 Days', plan: '10GB', price: 3000, amount: 3000, validity: '30 days', commission: 5 }
+            ],
+            glo: [
+                { id: 'glo_1gb', name: '1GB - 30 Days', plan: '1GB', price: 300, amount: 300, validity: '30 days', commission: 5 },
+                { id: 'glo_2gb', name: '2GB - 30 Days', plan: '2GB', price: 600, amount: 600, validity: '30 days', commission: 5 },
+                { id: 'glo_5gb', name: '5GB - 30 Days', plan: '5GB', price: 1400, amount: 1400, validity: '30 days', commission: 5 },
+                { id: 'glo_10gb', name: '10GB - 30 Days', plan: '10GB', price: 2800, amount: 2800, validity: '30 days', commission: 5 }
+            ],
+            '9mobile': [
+                { id: '9mobile_1gb', name: '1GB - 30 Days', plan: '1GB', price: 300, amount: 300, validity: '30 days', commission: 5 },
+                { id: '9mobile_2gb', name: '2GB - 30 Days', plan: '2GB', price: 600, amount: 600, validity: '30 days', commission: 5 },
+                { id: '9mobile_5gb', name: '5GB - 30 Days', plan: '5GB', price: 1500, amount: 1500, validity: '30 days', commission: 5 }
+            ]
+        };
+        
+        const plans = fallbackPlans[network.toLowerCase()] || fallbackPlans.mtn;
+        
+        return {
+            success: true,
+            data: plans,
+            fallback: true
+        };
+    },
+    
+    // Purchase Data Bundle
+    async purchaseData(formData) {
+        try {
+            console.log('[Services] Purchasing data:', formData);
+            
+            const response = await API.post(API_CONFIG.ENDPOINTS.AGENT_PURCHASE_DATA, formData);
+            
+            console.log('[Services] Purchase response:', response);
+            
+            if (response.success || response.status === 'success') {
+                return {
+                    success: true,
+                    message: response.message || 'Data purchase successful',
+                    data: response.data
+                };
+            }
+            
+            throw new Error(response.message || 'Data purchase failed');
+            
+        } catch (error) {
+            console.error('[Services] Purchase error:', error);
+            return {
+                success: false,
+                message: error.message || 'Data purchase failed. Please try again.'
+            };
+        }
+    },
+    
+    // Purchase Airtime
+    async purchaseAirtime(formData) {
+        try {
+            console.log('[Services] Purchasing airtime:', formData);
+            
+            const response = await API.post(API_CONFIG.ENDPOINTS.AGENT_PURCHASE_AIRTIME, formData);
+            
+            console.log('[Services] Purchase response:', response);
+            
+            if (response.success || response.status === 'success') {
+                return {
+                    success: true,
+                    message: response.message || 'Airtime purchase successful',
+                    data: response.data
+                };
+            }
+            
+            throw new Error(response.message || 'Airtime purchase failed');
+            
+        } catch (error) {
+            console.error('[Services] Purchase error:', error);
+            return {
+                success: false,
+                message: error.message || 'Airtime purchase failed. Please try again.'
+            };
+        }
+    },
+    
+    // Pay Bill (Electricity, Cable TV, Education, SMS)
+    async payBill(formData) {
+        try {
+            console.log('[Services] Paying bill:', formData);
+            
+            const response = await API.post(API_CONFIG.ENDPOINTS.AGENT_PAY_BILL, formData);
+            
+            console.log('[Services] Bill payment response:', response);
+            
+            if (response.success || response.status === 'success') {
+                return {
+                    success: true,
+                    message: response.message || 'Bill payment successful',
+                    data: response.data
+                };
+            }
+            
+            throw new Error(response.message || 'Bill payment failed');
+            
+        } catch (error) {
+            console.error('[Services] Bill payment error:', error);
+            return {
+                success: false,
+                message: error.message || 'Bill payment failed. Please try again.'
+            };
+        }
+    },
+    
+    // Verify Customer
+    async verifyCustomer(phoneNumber, network) {
+        try {
+            console.log('[Services] Verifying customer:', phoneNumber, network);
+            
+            const response = await API.post(API_CONFIG.ENDPOINTS.AGENT_VERIFY_CUSTOMER, {
+                phoneNumber,
+                network
+            });
+            
+            console.log('[Services] Verify response:', response);
+            
+            if (response.success || response.status === 'success') {
+                return {
+                    success: true,
+                    message: response.message || 'Customer verified',
+                    data: response.data
+                };
+            }
+            
+            throw new Error(response.message || 'Customer verification failed');
+            
+        } catch (error) {
+            console.error('[Services] Verification error:', error);
+            return {
+                success: false,
+                message: error.message || 'Customer verification failed'
+            };
+        }
+    },
+    
+    // Get Cable Plans
+    async getCablePlans(provider) {
+        try {
+            console.log('[Services] Fetching cable plans for:', provider);
+            
+            const response = await API.get(`${API_CONFIG.ENDPOINTS.CABLE_PLANS}?provider=${provider}`);
+            
+            console.log('[Services] Cable plans response:', response);
+            
+            if (response.success || response.status === 'success') {
+                const plans = response.data || response.plans || [];
+                
+                if (plans.length > 0) {
+                    return {
+                        success: true,
+                        data: plans
+                    };
+                }
+            }
+            
+            // If API returns empty or fails, use fallback plans
+            console.warn('[Services] API returned no cable plans, using fallback');
+            return this.getFallbackCablePlans(provider);
+            
+        } catch (error) {
+            console.error('[Services] Error loading cable plans:', error);
+            return this.getFallbackCablePlans(provider);
+        }
+    },
+    
+    // Fallback cable plans
+    getFallbackCablePlans(provider) {
+        console.log('[Services] Using fallback cable plans for:', provider);
+        
+        const fallbackPlans = {
+            dstv: [
+                { id: 'dstv_padi', name: 'DStv Padi', package: 'Padi', price: 2500, amount: 2500, validity: '30 days' },
+                { id: 'dstv_yanga', name: 'DStv Yanga', package: 'Yanga', price: 3500, amount: 3500, validity: '30 days' },
+                { id: 'dstv_confam', name: 'DStv Confam', package: 'Confam', price: 6200, amount: 6200, validity: '30 days' },
+                { id: 'dstv_compact', name: 'DStv Compact', package: 'Compact', price: 10500, amount: 10500, validity: '30 days' },
+                { id: 'dstv_compact_plus', name: 'DStv Compact Plus', package: 'Compact Plus', price: 16600, amount: 16600, validity: '30 days' },
+                { id: 'dstv_premium', name: 'DStv Premium', package: 'Premium', price: 24500, amount: 24500, validity: '30 days' }
+            ],
+            gotv: [
+                { id: 'gotv_smallie', name: 'GOtv Smallie', package: 'Smallie', price: 1300, amount: 1300, validity: '30 days' },
+                { id: 'gotv_jinja', name: 'GOtv Jinja', package: 'Jinja', price: 2250, amount: 2250, validity: '30 days' },
+                { id: 'gotv_jolli', name: 'GOtv Jolli', package: 'Jolli', price: 3300, amount: 3300, validity: '30 days' },
+                { id: 'gotv_max', name: 'GOtv Max', package: 'Max', price: 4850, amount: 4850, validity: '30 days' },
+                { id: 'gotv_supa', name: 'GOtv Supa', package: 'Supa', price: 6400, amount: 6400, validity: '30 days' }
+            ],
+            startimes: [
+                { id: 'startimes_nova', name: 'Startimes Nova', package: 'Nova', price: 900, amount: 900, validity: '30 days' },
+                { id: 'startimes_basic', name: 'Startimes Basic', package: 'Basic', price: 1850, amount: 1850, validity: '30 days' },
+                { id: 'startimes_smart', name: 'Startimes Smart', package: 'Smart', price: 2600, amount: 2600, validity: '30 days' },
+                { id: 'startimes_classic', name: 'Startimes Classic', package: 'Classic', price: 3200, amount: 3200, validity: '30 days' },
+                { id: 'startimes_super', name: 'Startimes Super', package: 'Super', price: 5000, amount: 5000, validity: '30 days' }
+            ]
+        };
+        
+        const plans = fallbackPlans[provider.toLowerCase()] || fallbackPlans.dstv;
+        
+        return {
+            success: true,
+            data: plans,
+            fallback: true
+        };
+    }
 };
 
-// Education Prices
-const educationPrices = {
-    waec: { price: 3500, commission: 200 },
-    neco: { price: 1000, commission: 50 },
-    jamb: { price: 4700, commission: 250 }
+// Wallet API
+const WalletAPI = {
+    
+    // Get wallet balance
+    async getBalance() {
+        try {
+            console.log('[Wallet] Fetching balance');
+            
+            const response = await API.get(API_CONFIG.ENDPOINTS.WALLET_BALANCE);
+            
+            console.log('[Wallet] Balance response:', response);
+            
+            if (response.success || response.status === 'success') {
+                return {
+                    success: true,
+                    data: response.data
+                };
+            }
+            
+            throw new Error(response.message || 'Failed to load balance');
+            
+        } catch (error) {
+            console.error('[Wallet] Balance error:', error);
+            return {
+                success: false,
+                message: error.message || 'Failed to load wallet balance'
+            };
+        }
+    },
+    
+    // Get wallet transactions
+    async getTransactions(filters = {}) {
+        try {
+            console.log('[Wallet] Fetching transactions', filters);
+            
+            // Build query string
+            const queryParams = new URLSearchParams();
+            if (filters.page) queryParams.append('page', filters.page);
+            if (filters.limit) queryParams.append('limit', filters.limit);
+            if (filters.status) queryParams.append('status', filters.status);
+            if (filters.type) queryParams.append('type', filters.type);
+            if (filters.startDate) queryParams.append('startDate', filters.startDate);
+            if (filters.endDate) queryParams.append('endDate', filters.endDate);
+            
+            const queryString = queryParams.toString();
+            const endpoint = queryString ? 
+                `${API_CONFIG.ENDPOINTS.WALLET_TRANSACTIONS}?${queryString}` : 
+                API_CONFIG.ENDPOINTS.WALLET_TRANSACTIONS;
+            
+            const response = await API.get(endpoint);
+            
+            console.log('[Wallet] Transactions response:', response);
+            
+            if (response.success || response.status === 'success') {
+                return {
+                    success: true,
+                    data: response.data
+                };
+            }
+            
+            throw new Error(response.message || 'Failed to load transactions');
+            
+        } catch (error) {
+            console.error('[Wallet] Transactions error:', error);
+            return {
+                success: false,
+                message: error.message || 'Failed to load transactions'
+            };
+        }
+    },
+    
+    // Fund wallet
+    async fundWallet(amount) {
+        try {
+            console.log('[Wallet] Funding wallet:', amount);
+            
+            const response = await API.post(API_CONFIG.ENDPOINTS.WALLET_FUND, {
+                amount
+            });
+            
+            console.log('[Wallet] Fund response:', response);
+            
+            if (response.success || response.status === 'success') {
+                return {
+                    success: true,
+                    message: response.message || 'Wallet funding initiated',
+                    data: response.data
+                };
+            }
+            
+            throw new Error(response.message || 'Wallet funding failed');
+            
+        } catch (error) {
+            console.error('[Wallet] Fund error:', error);
+            return {
+                success: false,
+                message: error.message || 'Wallet funding failed'
+            };
+        }
+    },
+    
+    // Withdraw from wallet
+    async withdraw(formData) {
+        try {
+            console.log('[Wallet] Withdrawing:', formData);
+            
+            const response = await API.post(API_CONFIG.ENDPOINTS.WALLET_WITHDRAW, formData);
+            
+            console.log('[Wallet] Withdraw response:', response);
+            
+            if (response.success || response.status === 'success') {
+                return {
+                    success: true,
+                    message: response.message || 'Withdrawal request submitted',
+                    data: response.data
+                };
+            }
+            
+            throw new Error(response.message || 'Withdrawal failed');
+            
+        } catch (error) {
+            console.error('[Wallet] Withdraw error:', error);
+            return {
+                success: false,
+                message: error.message || 'Withdrawal failed'
+            };
+        }
+    }
 };
 
-// Update Data Plans dropdown
-function updateDataPlans() {
-    const network = document.getElementById('dataNetwork')?.value;
-    const planSelect = document.getElementById('dataPlan');
+// Update wallet balance on page
+async function updateWalletBalance() {
+    const walletElements = document.querySelectorAll('[data-wallet-balance]');
     
-    if (!planSelect) return;
+    if (walletElements.length === 0) return;
     
-    planSelect.innerHTML = '<option value="">Select data plan...</option>';
-    
-    if (network && dataPlans[network]) {
-        dataPlans[network].forEach((plan, index) => {
-            const option = document.createElement('option');
-            option.value = index;
-            option.textContent = `${plan.name} - ₦${plan.price} (${plan.commission}% commission)`;
-            option.dataset.price = plan.price;
-            option.dataset.commission = plan.commission;
-            planSelect.appendChild(option);
-        });
+    try {
+        const result = await WalletAPI.getBalance();
+        
+        if (result.success && result.data) {
+            const balance = result.data.balance || result.data.availableBalance || 0;
+            walletElements.forEach(el => {
+                el.textContent = UI.formatCurrency(balance);
+            });
+        }
+    } catch (error) {
+        console.error('[Wallet] Update balance error:', error);
     }
 }
 
-// Calculate Commission
+// Load data plans from API
+async function loadDataPlans(network) {
+    const planSelect = document.getElementById('dataPlan');
+    if (!planSelect) return;
+    
+    // Show loading
+    planSelect.innerHTML = '<option value="">Loading plans...</option>';
+    planSelect.disabled = true;
+    
+    try {
+        const result = await AgentServices.getDataPlans(network);
+        
+        if (result.success && result.data) {
+            planSelect.innerHTML = '<option value="">Select data plan...</option>';
+            
+            result.data.forEach((plan, index) => {
+                const option = document.createElement('option');
+                option.value = plan.id || index;
+                option.textContent = `${plan.name || plan.plan} - ${UI.formatCurrency(plan.price || plan.amount)}`;
+                option.dataset.price = plan.price || plan.amount;
+                option.dataset.plan = plan.name || plan.plan;
+                option.dataset.planId = plan.id;
+                option.dataset.commission = plan.commission || 0;
+                planSelect.appendChild(option);
+            });
+        } else {
+            planSelect.innerHTML = '<option value="">Failed to load plans</option>';
+            UI.showToast(result.message, 'error');
+        }
+    } catch (error) {
+        planSelect.innerHTML = '<option value="">Error loading plans</option>';
+        UI.showToast('Failed to load data plans', 'error');
+    } finally {
+        planSelect.disabled = false;
+    }
+}
+
+// Load cable plans from API
+async function loadCablePlans(provider) {
+    const planSelect = document.getElementById('cablePlan');
+    if (!planSelect) return;
+    
+    // Show loading
+    planSelect.innerHTML = '<option value="">Loading plans...</option>';
+    planSelect.disabled = true;
+    
+    try {
+        const result = await AgentServices.getCablePlans(provider);
+        
+        if (result.success && result.data) {
+            planSelect.innerHTML = '<option value="">Select cable plan...</option>';
+            
+            result.data.forEach((plan, index) => {
+                const option = document.createElement('option');
+                option.value = plan.id || index;
+                option.textContent = `${plan.name || plan.package} - ${UI.formatCurrency(plan.price || plan.amount)}`;
+                option.dataset.price = plan.price || plan.amount;
+                option.dataset.plan = plan.name || plan.package;
+                option.dataset.planId = plan.id;
+                planSelect.appendChild(option);
+            });
+        } else {
+            planSelect.innerHTML = '<option value="">Failed to load plans</option>';
+            UI.showToast(result.message, 'error');
+        }
+    } catch (error) {
+        planSelect.innerHTML = '<option value="">Error loading plans</option>';
+        UI.showToast('Failed to load cable plans', 'error');
+    } finally {
+        planSelect.disabled = false;
+    }
+}
+
+// Update data plans dropdown
+function updateDataPlans() {
+    const network = document.getElementById('dataNetwork')?.value;
+    if (network) {
+        loadDataPlans(network);
+    }
+}
+
+// Update cable plans dropdown
+function updateCablePlans() {
+    const provider = document.getElementById('cableProvider')?.value;
+    if (provider) {
+        loadCablePlans(provider);
+    }
+}
+
+// Calculate Commission (works with both hardcoded and API data)
 function calculateCommission(type) {
     if (type === 'data') {
         const planSelect = document.getElementById('dataPlan');
@@ -68,7 +531,7 @@ function calculateCommission(type) {
         
         if (selectedOption && selectedOption.dataset.price) {
             const price = parseFloat(selectedOption.dataset.price);
-            const commissionRate = parseFloat(selectedOption.dataset.commission);
+            const commissionRate = parseFloat(selectedOption.dataset.commission || 0);
             const commission = (price * commissionRate / 100).toFixed(2);
             
             const amountEl = document.getElementById('dataAmount');
@@ -76,8 +539,8 @@ function calculateCommission(type) {
             const rateEl = document.getElementById('dataRate');
             const preview = document.getElementById('dataCommissionPreview');
             
-            if (amountEl) amountEl.textContent = `₦${price}`;
-            if (commissionEl) commissionEl.textContent = `₦${commission}`;
+            if (amountEl) amountEl.textContent = UI.formatCurrency(price);
+            if (commissionEl) commissionEl.textContent = UI.formatCurrency(commission);
             if (rateEl) rateEl.textContent = `${commissionRate}%`;
             if (preview) preview.classList.remove('hidden');
         }
@@ -96,340 +559,40 @@ function calculateCommission(type) {
             const rateEl = document.getElementById('airtimeRate');
             const preview = document.getElementById('airtimeCommissionPreview');
             
-            if (amountEl) amountEl.textContent = `₦${amount}`;
-            if (commissionEl) commissionEl.textContent = `₦${commission}`;
+            if (amountEl) amountEl.textContent = UI.formatCurrency(amount);
+            if (commissionEl) commissionEl.textContent = UI.formatCurrency(commission);
             if (rateEl) rateEl.textContent = `${commissionRate}%`;
             if (preview) preview.classList.remove('hidden');
         }
     }
 }
 
-// Calculate Education Cost
-function calculateEducationCost() {
-    const qtyInput = document.getElementById('educationQty');
-    const qty = parseInt(qtyInput?.value) || 1;
-    const prices = educationPrices[window.currentEducationType];
-    
-    if (prices) {
-        const totalCost = prices.price * qty;
-        const totalCommission = prices.commission * qty;
+// Transaction status checker
+async function checkTransactionStatus(reference) {
+    try {
+        const response = await API.get(`${API_CONFIG.ENDPOINTS.TRANSACTION_STATUS}/${reference}`);
         
-        const costEl = document.getElementById('educationCost');
-        const commissionEl = document.getElementById('educationCommission');
+        if (response.success || response.status === 'success') {
+            return {
+                success: true,
+                data: response.data
+            };
+        }
         
-        if (costEl) costEl.textContent = `₦${totalCost.toLocaleString()}`;
-        if (commissionEl) commissionEl.textContent = `₦${totalCommission.toLocaleString()}`;
+        throw new Error(response.message || 'Failed to check status');
+    } catch (error) {
+        console.error('[Transaction] Status check error:', error);
+        return {
+            success: false,
+            message: error.message
+        };
     }
 }
 
-// Update SMS Count
-function updateSMSCount() {
-    const messageInput = document.getElementById('smsMessage');
-    const message = messageInput?.value || '';
-    const charCount = message.length;
-    const smsCount = Math.ceil(charCount / 160) || 0;
-    
-    const charCountEl = document.getElementById('charCount');
-    const smsCountEl = document.getElementById('smsCount');
-    const smsCostEl = document.getElementById('smsCost');
-    
-    if (charCountEl) charCountEl.textContent = charCount;
-    if (smsCountEl) smsCountEl.textContent = smsCount;
-    if (smsCostEl) smsCostEl.textContent = `₦${smsCount * 4}`;
-}
-
-// Form Handlers with Loading States
-function handleDataPurchase(e) {
-    e.preventDefault();
-    const form = e.target;
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    
-    // Show loading
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i data-lucide="loader" class="w-5 h-5 animate-spin inline mr-2"></i>Processing...';
-    lucide.createIcons();
-    
-    // Simulate API call
-    setTimeout(() => {
-        showToast('Data purchase successful! Commission credited to your earnings.', 'success');
-        form.reset();
-        const preview = document.getElementById('dataCommissionPreview');
-        if (preview) preview.classList.add('hidden');
-        
-        // Reset button
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-        lucide.createIcons();
-        
-        // Update wallet balance (demo)
-        updateWalletBalance(75);
-    }, 1500);
-}
-
-function handleAirtimePurchase(e) {
-    e.preventDefault();
-    const form = e.target;
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i data-lucide="loader" class="w-5 h-5 animate-spin inline mr-2"></i>Processing...';
-    lucide.createIcons();
-    
-    setTimeout(() => {
-        showToast('Airtime purchase successful! Commission credited to your earnings.', 'success');
-        form.reset();
-        const preview = document.getElementById('airtimeCommissionPreview');
-        if (preview) preview.classList.add('hidden');
-        
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-        lucide.createIcons();
-        
-        updateWalletBalance(15);
-    }, 1500);
-}
-
-function handleBillPayment(e, type) {
-    e.preventDefault();
-    const form = e.target;
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i data-lucide="loader" class="w-5 h-5 animate-spin inline mr-2"></i>Processing...';
-    lucide.createIcons();
-    
-    setTimeout(() => {
-        showToast(`${type === 'electricity' ? 'Electricity' : 'TV'} bill payment successful!`, 'success');
-        form.reset();
-        
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-        lucide.createIcons();
-        
-        updateWalletBalance(100);
-    }, 1500);
-}
-
-function handleEducationPurchase(e) {
-    e.preventDefault();
-    const form = e.target;
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i data-lucide="loader" class="w-5 h-5 animate-spin inline mr-2"></i>Processing...';
-    lucide.createIcons();
-    
-    setTimeout(() => {
-        showToast('Education PIN purchased successfully! Check your email for PIN details.', 'success');
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-        lucide.createIcons();
-        closeModal('educationModal');
-        
-        updateWalletBalance(200);
-    }, 1500);
-}
-
-function handleBulkSMS(e) {
-    e.preventDefault();
-    const form = e.target;
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i data-lucide="loader" class="w-5 h-5 animate-spin inline mr-2"></i>Sending...';
-    lucide.createIcons();
-    
-    setTimeout(() => {
-        showToast('Bulk SMS sent successfully to all recipients!', 'success');
-        form.reset();
-        updateSMSCount();
-        
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-        lucide.createIcons();
-    }, 2000);
-}
-
-function handleFundWallet(e) {
-    e.preventDefault();
-    const form = e.target;
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    
-    const amount = form.querySelector('input[type="number"]').value;
-    
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i data-lucide="loader" class="w-5 h-5 animate-spin inline mr-2"></i>Processing...';
-    lucide.createIcons();
-    
-    showToast('Redirecting to payment gateway...', 'info');
-    
-    setTimeout(() => {
-        showToast(`Payment successful! ₦${parseFloat(amount).toLocaleString()} added to wallet.`, 'success');
-        form.reset();
-        
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-        lucide.createIcons();
-        
-        updateWalletBalance(parseFloat(amount));
-    }, 2500);
-}
-
-function handleWithdrawal(e) {
-    e.preventDefault();
-    const form = e.target;
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i data-lucide="loader" class="w-5 h-5 animate-spin inline mr-2"></i>Submitting...';
-    lucide.createIcons();
-    
-    setTimeout(() => {
-        showToast('Withdrawal request submitted successfully! Funds will be transferred within 24 hours.', 'success');
-        form.reset();
-        
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-        lucide.createIcons();
-    }, 1500);
-}
-
-function handleWithdrawalSubmit(e) {
-    e.preventDefault();
-    const form = e.target;
-    const submitBtn = form.querySelector('button[type="submit"]');
-    
-    submitBtn.disabled = true;
-    
-    setTimeout(() => {
-        showToast('Withdrawal request submitted! Funds will be transferred within 24 hours.', 'success');
-        submitBtn.disabled = false;
-        closeModal('withdrawModal');
-    }, 1000);
-}
-
-function handleAddCustomer(e) {
-    e.preventDefault();
-    const form = e.target;
-    const submitBtn = form.querySelector('button[type="submit"]');
-    
-    submitBtn.disabled = true;
-    
-    setTimeout(() => {
-        showToast('Customer added successfully to your database!', 'success');
-        submitBtn.disabled = false;
-        closeModal('addCustomerModal');
-        form.reset();
-    }, 1000);
-}
-
-function handleProfileUpdate(e) {
-    e.preventDefault();
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i data-lucide="loader" class="w-5 h-5 animate-spin inline mr-2"></i>Updating...';
-    lucide.createIcons();
-    
-    setTimeout(() => {
-        showToast('Profile updated successfully!', 'success');
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-        lucide.createIcons();
-    }, 1000);
-}
-
-function handleBankUpdate(e) {
-    e.preventDefault();
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i data-lucide="loader" class="w-5 h-5 animate-spin inline mr-2"></i>Updating...';
-    lucide.createIcons();
-    
-    setTimeout(() => {
-        showToast('Bank details updated successfully!', 'success');
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-        lucide.createIcons();
-    }, 1000);
-}
-
-function handleChangePIN(e) {
-    e.preventDefault();
-    const form = e.target;
-    const submitBtn = form.querySelector('button[type="submit"]');
-    
-    // Validate PINs match
-    const newPIN = form.querySelectorAll('input[type="password"]')[1].value;
-    const confirmPIN = form.querySelectorAll('input[type="password"]')[2].value;
-    
-    if (newPIN !== confirmPIN) {
-        showToast('PINs do not match!', 'error');
-        return;
+// Initialize wallet balance on page load
+document.addEventListener('DOMContentLoaded', () => {
+    // Update wallet balance if elements exist
+    if (document.querySelectorAll('[data-wallet-balance]').length > 0) {
+        updateWalletBalance();
     }
-    
-    submitBtn.disabled = true;
-    
-    setTimeout(() => {
-        showToast('Transaction PIN changed successfully!', 'success');
-        submitBtn.disabled = false;
-        closeModal('changePINModal');
-        form.reset();
-    }, 1000);
-}
-
-function handleChangePassword(e) {
-    e.preventDefault();
-    const form = e.target;
-    const submitBtn = form.querySelector('button[type="submit"]');
-    
-    // Validate passwords match
-    const newPass = form.querySelectorAll('input[type="password"]')[1].value;
-    const confirmPass = form.querySelectorAll('input[type="password"]')[2].value;
-    
-    if (newPass !== confirmPass) {
-        showToast('Passwords do not match!', 'error');
-        return;
-    }
-    
-    submitBtn.disabled = true;
-    
-    setTimeout(() => {
-        showToast('Password changed successfully!', 'success');
-        submitBtn.disabled = false;
-        closeModal('changePasswordModal');
-        form.reset();
-    }, 1000);
-}
-
-function generateReport(type) {
-    showToast(`Generating ${type} report...`, 'info');
-    setTimeout(() => {
-        showToast(`${type.charAt(0).toUpperCase() + type.slice(1)} report generated successfully! Check your downloads.`, 'success');
-    }, 2000);
-}
-
-// Helper function to update wallet balance
-function updateWalletBalance(commission) {
-    const walletElements = document.querySelectorAll('#walletBalance');
-    walletElements.forEach(el => {
-        const currentBalance = parseFloat(el.textContent.replace(/,/g, ''));
-        const newBalance = currentBalance + commission;
-        el.textContent = newBalance.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    });
-    
-    // Update localStorage
-    const agentData = JSON.parse(localStorage.getItem('agentData') || '{}');
-    agentData.walletBalance = parseFloat(document.querySelector('#walletBalance').textContent.replace(/,/g, ''));
-    localStorage.setItem('agentData', JSON.stringify(agentData));
-}
+});

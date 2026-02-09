@@ -17,65 +17,232 @@
         <main class="flex-1 flex flex-col min-w-0 bg-slate-50">
             <div id="headerContainer"></div>
             <div class="p-4 lg:p-8 flex-1 overflow-y-auto space-y-6">
+                
+                <!-- Wallet Balance Card -->
+                <div class="bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl shadow-lg p-8 text-white">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-blue-200 text-sm mb-1">Available Balance</p>
+                            <h2 id="wallet-balance" class="text-4xl font-bold" data-wallet-balance>₦0.00</h2>
+                        </div>
+                        <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+                            <i data-lucide="wallet" class="w-8 h-8"></i>
+                        </div>
+                    </div>
+                    <button onclick="refreshBalance()" class="text-sm bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors">
+                        <i data-lucide="refresh-cw" class="w-4 h-4 inline mr-1"></i>
+                        Refresh Balance
+                    </button>
+                </div>
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Fund Wallet -->
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                         <h3 class="font-bold text-slate-900 mb-6 flex items-center gap-2">
                             <i data-lucide="plus-circle" class="w-5 h-5 text-green-600"></i>
                             <span>Fund Wallet</span>
                         </h3>
-                        <form onsubmit="handleFundWallet(event)" class="space-y-4">
+                        <form id="fund-form" class="space-y-4">
                             <div>
                                 <label class="block text-sm font-semibold text-slate-700 mb-2">Amount</label>
-                                <input type="number" placeholder="Enter amount" min="1000" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
+                                <input id="fund-amount" type="number" placeholder="Enter amount" min="100" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
+                                <p class="text-xs text-slate-500 mt-1">Minimum: ₦100</p>
                             </div>
-                            <div>
-                                <label class="block text-sm font-semibold text-slate-700 mb-2">Payment Method</label>
-                                <select class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
-                                    <option value="">Choose method...</option>
-                                    <option value="card">Debit/Credit Card</option>
-                                    <option value="transfer">Bank Transfer</option>
-                                    <option value="ussd">USSD</option>
-                                </select>
-                            </div>
-                            <button type="submit" class="w-full py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700">Continue to Payment</button>
+                            <div id="fund-error" class="error-message"></div>
+                            <button type="submit" id="fund-btn" class="w-full py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 flex items-center justify-center">
+                                <span>Fund Wallet</span>
+                                <div id="fund-spinner" class="hidden ml-2">
+                                    <i data-lucide="loader" class="w-5 h-5 animate-spin"></i>
+                                </div>
+                            </button>
                         </form>
                     </div>
+
+                    <!-- Withdraw -->
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                         <h3 class="font-bold text-slate-900 mb-6 flex items-center gap-2">
                             <i data-lucide="download" class="w-5 h-5 text-blue-600"></i>
-                            <span>Withdraw Earnings</span>
+                            <span>Withdraw to Bank</span>
                         </h3>
-                        <div class="p-4 bg-green-50 border border-green-200 rounded-xl mb-4">
-                            <p class="text-xs text-slate-600 mb-1">Available for Withdrawal</p>
-                            <p class="text-2xl font-bold text-green-600">₦24,680.00</p>
-                        </div>
-                        <form onsubmit="handleWithdrawal(event)" class="space-y-4">
+                        <form id="withdraw-form" class="space-y-4">
                             <div>
                                 <label class="block text-sm font-semibold text-slate-700 mb-2">Amount</label>
-                                <input type="number" placeholder="Enter amount" min="1000" max="24680" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
+                                <input id="withdraw-amount" type="number" placeholder="Enter amount" min="1000" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
+                                <p class="text-xs text-slate-500 mt-1">Minimum: ₦1,000</p>
                             </div>
-                            <div>
-                                <label class="block text-sm font-semibold text-slate-700 mb-2">Bank Account</label>
-                                <select class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
-                                    <option value="">Select account...</option>
-                                    <option value="1">GTBank - 0123456789</option>
-                                </select>
-                            </div>
-                            <button type="submit" class="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700">Request Withdrawal</button>
+                            <div id="withdraw-error" class="error-message"></div>
+                            <button type="submit" id="withdraw-btn" class="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 flex items-center justify-center">
+                                <span>Withdraw</span>
+                                <div id="withdraw-spinner" class="hidden ml-2">
+                                    <i data-lucide="loader" class="w-5 h-5 animate-spin"></i>
+                                </div>
+                            </button>
                         </form>
+                    </div>
+                </div>
+
+                <!-- Recent Transactions -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-slate-900">Recent Transactions</h3>
+                        <button onclick="loadTransactions()" class="text-sm text-blue-600 hover:text-blue-700">
+                            <i data-lucide="refresh-cw" class="w-4 h-4 inline mr-1"></i>
+                            Refresh
+                        </button>
+                    </div>
+                    <div id="transactions-list" class="space-y-3">
+                        <div class="text-center py-8 text-slate-500">
+                            <i data-lucide="loader" class="w-8 h-8 mx-auto mb-2 animate-spin text-slate-400"></i>
+                            <p>Loading transactions...</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </main>
     </div>
     <div id="modalsContainer"></div>
+    
+    <script src="assets/js/config.js"></script>
     <script src="assets/js/auth.js"></script>
-    <script src="assets/js/main.js"></script>
     <script src="assets/js/services.js"></script>
+    <script src="assets/js/payment.js"></script>
+    <script src="assets/js/main.js"></script>
     <script>
+        lucide.createIcons();
+        
+        // Protect page
+        Auth.protectPage();
+        
+        // Load partials
         fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();});
         fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('wallet');lucide.createIcons();});
         fetch('partials/modals.html').then(r=>r.text()).then(d=>{document.getElementById('modalsContainer').innerHTML=d;lucide.createIcons();});
+        
+        // Load wallet data
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadWalletData();
+        });
+        
+        async function loadWalletData() {
+            await refreshBalance();
+            await loadTransactions();
+        }
+        
+        async function refreshBalance() {
+            const result = await WalletAPI.getBalance();
+            if (result.success && result.data) {
+                const balance = result.data.balance || result.data.availableBalance || 0;
+                document.getElementById('wallet-balance').textContent = UI.formatCurrency(balance);
+            }
+        }
+        
+        async function loadTransactions() {
+            const container = document.getElementById('transactions-list');
+            container.innerHTML = '<div class="text-center py-8 text-slate-500"><i data-lucide="loader" class="w-8 h-8 mx-auto mb-2 animate-spin text-slate-400"></i><p>Loading transactions...</p></div>';
+            lucide.createIcons();
+            
+            const result = await WalletAPI.getTransactions({ limit: 10 });
+            
+            if (result.success && result.data) {
+                const transactions = result.data.transactions || result.data;
+                
+                if (!transactions || transactions.length === 0) {
+                    container.innerHTML = '<div class="text-center py-8 text-slate-500"><i data-lucide="inbox" class="w-12 h-12 mx-auto mb-3 text-slate-400"></i><p>No transactions yet</p></div>';
+                } else {
+                    container.innerHTML = transactions.map(txn => `
+                        <div class="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:bg-slate-50">
+                            <div>
+                                <p class="font-semibold text-slate-900">${txn.description || txn.type}</p>
+                                <p class="text-xs text-slate-500">${UI.formatDate(txn.createdAt || txn.date)}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-bold ${txn.type === 'credit' ? 'text-green-600' : 'text-red-600'}">
+                                    ${txn.type === 'credit' ? '+' : '-'}${UI.formatCurrency(txn.amount)}
+                                </p>
+                                <span class="text-xs px-2 py-1 rounded ${getStatusClass(txn.status)}">${txn.status}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } else {
+                container.innerHTML = '<div class="text-center py-8 text-red-500"><i data-lucide="alert-circle" class="w-12 h-12 mx-auto mb-3"></i><p>Failed to load transactions</p></div>';
+            }
+            
+            lucide.createIcons();
+        }
+        
+        function getStatusClass(status) {
+            const classes = {
+                'success': 'bg-green-100 text-green-700',
+                'completed': 'bg-green-100 text-green-700',
+                'pending': 'bg-yellow-100 text-yellow-700',
+                'failed': 'bg-red-100 text-red-700'
+            };
+            return classes[status?.toLowerCase()] || 'bg-slate-100 text-slate-700';
+        }
+        
+        // Fund wallet form
+        document.getElementById('fund-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const amount = parseFloat(document.getElementById('fund-amount').value);
+            
+            if (amount < 100) {
+                UI.showError('fund-error', 'Minimum funding amount is ₦100');
+                return;
+            }
+            
+            UI.hideMessage('fund-error');
+            UI.showLoading('fund-btn', 'fund-spinner');
+            
+            try {
+                // Use Remita payment for wallet funding
+                const result = await RemitaPayment.fundWallet(amount);
+                
+                UI.hideLoading('fund-btn', 'fund-spinner');
+                
+                if (result.success) {
+                    UI.showToast('Wallet funded successfully!', 'success');
+                    document.getElementById('fund-form').reset();
+                    await refreshBalance();
+                    await loadTransactions();
+                } else {
+                    UI.showError('fund-error', result.message);
+                }
+            } catch (error) {
+                console.error('Fund wallet error:', error);
+                UI.hideLoading('fund-btn', 'fund-spinner');
+                UI.showError('fund-error', error.message || 'Payment failed');
+            }
+        });
+        
+        // Withdraw form
+        document.getElementById('withdraw-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const amount = parseFloat(document.getElementById('withdraw-amount').value);
+            
+            if (amount < 1000) {
+                UI.showError('withdraw-error', 'Minimum withdrawal amount is ₦1,000');
+                return;
+            }
+            
+            UI.hideMessage('withdraw-error');
+            UI.showLoading('withdraw-btn', 'withdraw-spinner');
+            
+            const result = await WalletAPI.withdraw({ amount });
+            
+            UI.hideLoading('withdraw-btn', 'withdraw-spinner');
+            
+            if (result.success) {
+                UI.showToast(result.message || 'Withdrawal request submitted', 'success');
+                document.getElementById('withdraw-form').reset();
+                await refreshBalance();
+                await loadTransactions();
+            } else {
+                UI.showError('withdraw-error', result.message);
+            }
+        });
     </script>
 </body>
 </html>

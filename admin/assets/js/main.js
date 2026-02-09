@@ -1,4 +1,3 @@
-// Yareema Admin Panel - Main JavaScript - FULLY INTEGRATED
 
 // Helper to extract data from response (handles different structures)
 function extractData(response) {
@@ -793,21 +792,26 @@ window.onclick = function(event) {
     }
 }
 
-// Initialize page
+// Initialize page (disabled for pages with their own initialization)
 function initializePage() {
     const currentPage = window.location.pathname.split('/').pop();
     
+    // Skip initialization for pages that have their own JS files
+    // dashboard.html uses dashboard.js
+    // users.html uses users.js
+    // transactions.html uses transactions.js
+    
     switch(currentPage) {
         case 'dashboard.html':
-            loadDashboardStats();
+            // Skip - handled by dashboard.js
             break;
         case 'users.html':
-            loadUsers();
+            // Skip - handled by users.js
             break;
         case 'transactions.html':
-            loadTransactions();
+            // Skip - handled by transactions.js
             break;
-        case 'financial.html':
+        case 'pricing.html':
             loadNetworkPricing('mtn');
             break;
     }

@@ -3,14 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transactions - Yareema Datahub Admin</title>
+    <title>Transactions - Yareema Data Hub Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/style.css">
     <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{primary:'#2563eb',secondary:'#7c3aed',success:'#10b981',warning:'#f59e0b',error:'#ef4444',dark:'#0f172a',light:'#f8fafc'}}}}</script>
 </head>
 <body class="text-slate-800 antialiased">
+    <!-- Loading Overlay -->
+    <div id="transactions-loader" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg p-6 flex items-center gap-3">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <span class="text-lg font-medium">Loading transactions...</span>
+        </div>
+    </div>
+
     <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
     <div class="flex flex-col lg:flex-row w-full">
         <div id="sidebar-placeholder"></div>
@@ -18,94 +27,107 @@
             <div id="header-placeholder"></div>
             <div class="p-4 lg:p-8 flex-1 overflow-y-auto">
                 <div class="space-y-6">
+                    <!-- Header -->
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
-                            <h2 class="text-2xl font-bold text-slate-900">Transaction Management</h2>
-                            <p class="text-slate-500 text-sm mt-1">Monitor, manage, and process all transactions.</p>
+                            <h2 class="text-2xl font-bold text-slate-900">Transaction History</h2>
+                            <p class="text-slate-500 text-sm mt-1">View and manage all platform transactions</p>
                         </div>
-                        <div class="flex items-center gap-3">
-                            <button onclick="showToast('Exporting transactions...', 'info')" class="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200">
-                                <i data-lucide="download" class="w-4 h-4"></i> Export
-                            </button>
+                        <button id="refresh-transactions" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+                            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                            Refresh
+                        </button>
+                    </div>
+
+                    <!-- Statistics Cards -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <p class="text-xs font-medium text-slate-500 uppercase">Total Amount</p>
+                            <h3 id="total-amount" class="text-2xl font-bold text-slate-900 mt-1">₦0.00</h3>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <p class="text-xs font-medium text-slate-500 uppercase">Total Fee</p>
+                            <h3 id="total-fee" class="text-2xl font-bold text-slate-900 mt-1">₦0.00</h3>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <p class="text-xs font-medium text-slate-500 uppercase">Total Transactions</p>
+                            <h3 id="total-transactions-count" class="text-2xl font-bold text-slate-900 mt-1">0</h3>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <p class="text-xs font-medium text-slate-500 uppercase">Success Rate</p>
+                            <h3 id="success-rate" class="text-2xl font-bold text-slate-900 mt-1">0.00%</h3>
                         </div>
                     </div>
-                    <div class="flex gap-2 overflow-x-auto pb-2">
-                        <button onclick="switchTransactionTab('all')" class="txn-tab active px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg whitespace-nowrap">All Transactions</button>
-                        <button onclick="switchTransactionTab('failed')" class="txn-tab px-4 py-2 text-sm font-medium bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 whitespace-nowrap">Failed</button>
-                        <button onclick="switchTransactionTab('pending')" class="txn-tab px-4 py-2 text-sm font-medium bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 whitespace-nowrap">Pending</button>
-                        <button onclick="switchTransactionTab('refund')" class="txn-tab px-4 py-2 text-sm font-medium bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 whitespace-nowrap">Refund Queue</button>
-                    </div>
-                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
-                        <div class="p-4 border-b border-slate-200 flex flex-wrap gap-4 items-center">
-                            <div class="relative flex-1 min-w-[200px]">
-                                <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                                <input type="text" placeholder="Search by ID, user, reference..." class="pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 w-full">
+
+                    <!-- Filters -->
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Search</label>
+                                <input type="text" id="transaction-search" placeholder="Search reference..." 
+                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
                             </div>
-                            <select class="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50">
-                                <option>All Services</option><option>Data</option><option>Airtime</option><option>Bills</option>
-                            </select>
-                            <input type="date" class="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Status</label>
+                                <select id="status-filter" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                                    <option value="">All Status</option>
+                                    <option value="success">Success</option>
+                                    <option value="failed">Failed</option>
+                                    <option value="pending">Pending</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Service Type</label>
+                                <select id="service-filter" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                                    <option value="">All Services</option>
+                                    <option value="data_recharge">Data Recharge</option>
+                                    <option value="airtime_recharge">Airtime Recharge</option>
+                                    <option value="cable_tv">Cable TV</option>
+                                    <option value="electricity">Electricity</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Start Date</label>
+                                <input type="date" id="start-date" 
+                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                            </div>
                         </div>
+                    </div>
+
+                    <!-- Transactions Table -->
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                         <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 font-semibold">
-                                        <th class="p-4 w-10"><input type="checkbox" class="rounded border-slate-300"></th>
-                                        <th class="p-4">Transaction ID</th>
-                                        <th class="p-4">User</th>
-                                        <th class="p-4">Service</th>
-                                        <th class="p-4">Amount</th>
-                                        <th class="p-4">Status</th>
-                                        <th class="p-4">Date</th>
-                                        <th class="p-4 text-right">Actions</th>
+                            <table class="w-full">
+                                <thead class="bg-slate-50 border-b border-slate-200">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Reference</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">User</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Service</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Amount</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Fee</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-slate-100 text-sm">
-                                    <tr class="hover:bg-slate-50">
-                                        <td class="p-4"><input type="checkbox" class="rounded border-slate-300"></td>
-                                        <td class="p-4 font-mono text-xs text-slate-900">TRX-9982</td>
-                                        <td class="p-4">
-                                            <div>
-                                                <p class="font-medium text-slate-900">James Wilson</p>
-                                                <p class="text-xs text-slate-500">james.w@example.com</p>
-                                            </div>
-                                        </td>
-                                        <td class="p-4 text-slate-600">MTN Data 5GB</td>
-                                        <td class="p-4 font-medium text-slate-900">$12.50</td>
-                                        <td class="p-4"><span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">Success</span></td>
-                                        <td class="p-4 text-slate-500">Dec 15, 2:45 PM</td>
-                                        <td class="p-4 text-right">
-                                            <button onclick="openModal('transactionDetailModal')" class="text-slate-400 hover:text-primary p-1"><i data-lucide="eye" class="w-5 h-5"></i></button>
-                                        </td>
-                                    </tr>
+                                <tbody id="transactions-table-body" class="bg-white divide-y divide-slate-200">
+                                    <!-- Data loaded via JavaScript -->
                                 </tbody>
                             </table>
                         </div>
-                        <div class="p-4 border-t border-slate-200 flex items-center justify-between">
-                            <p class="text-sm text-slate-500">Showing <span class="font-medium text-slate-900">1-3</span> of <span class="font-medium text-slate-900">8,542</span> transactions</p>
-                            <div class="flex gap-2">
-                                <button class="px-3 py-1 border border-slate-200 rounded text-sm text-slate-500 hover:bg-slate-50 disabled:opacity-50" disabled>Previous</button>
-                                <button class="px-3 py-1 border border-slate-200 rounded text-sm text-slate-500 hover:bg-slate-50">Next</button>
-                            </div>
-                        </div>
+
+                        <!-- Pagination -->
+                        <div id="pagination-container" class="border-t border-slate-200"></div>
                     </div>
                 </div>
             </div>
         </main>
     </div>
-    <div id="modals-placeholder"></div>
+
     <script src="assets/js/config.js"></script>
     <script src="assets/js/api-service.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/transactions.js"></script>
     <script src="assets/js/main.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', async function() {
-            const modalsEl = document.getElementById('modals-placeholder');
-            if (modalsEl) {
-                const response = await fetch('partials/modals.html');
-                modalsEl.innerHTML = await response.text();
-                lucide.createIcons();
-            }
-        });
-    </script>
 </body>
 </html>

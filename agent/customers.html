@@ -8,7 +8,10 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/style.css">
-    <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{yareema:{primary:'#1E3D5C',secondary:'#16304a',dark:'#0f1f2e',light:'#e8edf2',success:'#10b981',warning:'#f59e0b',danger:'#ef4444'}}}}}</script>
+    <script>
+        // Protect page
+        Auth.protectPage();
+        tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{yareema:{primary:'#1E3D5C',secondary:'#16304a',dark:'#0f1f2e',light:'#e8edf2',success:'#10b981',warning:'#f59e0b',danger:'#ef4444'}}}}}</script>
 </head>
 <body class="text-slate-800 antialiased">
     <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
@@ -89,10 +92,14 @@
         </main>
     </div>
     <div id="modalsContainer"></div>
+    <script src="assets/js/config.js"></script>
     <script src="assets/js/auth.js"></script>
     <script src="assets/js/main.js"></script>
     <script src="assets/js/services.js"></script>
     <script>
+        // Protect page
+        Auth.protectPage();
+        
         fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();});
         fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('customers');lucide.createIcons();});
         fetch('partials/modals.html').then(r=>r.text()).then(d=>{document.getElementById('modalsContainer').innerHTML=d;lucide.createIcons();});

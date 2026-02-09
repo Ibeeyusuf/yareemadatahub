@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yareema Data Hub - Agent Registration</title>
+    <link href="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            min-height: 100vh;
+        }
+        
+        .auth-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            width: 100%;
+        }
+        
+        .auth-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            margin: auto;
+            max-width: 700px;
+        }
+        
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            border-color: #1E3D5C;
+            box-shadow: 0 0 0 3px rgba(30, 61, 92, 0.1);
+        }
+        
+        .btn-primary {
+            background-color: #1E3D5C;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            background-color: #16304a;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(30, 61, 92, 0.3);
+        }
+        
+        .password-toggle {
+            cursor: pointer;
+            color: #64748b;
+            transition: color 0.2s ease;
+        }
+        
+        .password-toggle:hover {
+            color: #1E3D5C;
+        }
+        
+        .auth-link {
+            color: #1E3D5C;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .auth-link:hover {
+            color: #16304a;
+            text-decoration: underline;
+        }
+        
+        .error-message {
+            color: #dc2626;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            padding: 0.75rem;
+            background-color: #fee2e2;
+            border-radius: 0.5rem;
+            display: none;
+        }
+        
+        .success-message {
+            color: #10b981;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            padding: 0.75rem;
+            background-color: #d1fae5;
+            border-radius: 0.5rem;
+            display: none;
+        }
+        
+        .step-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+        
+        .step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+        }
+        
+        .step-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e2e8f0;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            justify-center;
+            margin: 0 auto 0.5rem;
+            font-weight: 600;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .step.active .step-number {
+            background: #1E3D5C;
+            color: white;
+        }
+        
+        .step.completed .step-number {
+            background: #10b981;
+            color: white;
+        }
+        
+        .step-line {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            width: 100%;
+            height: 2px;
+            background: #e2e8f0;
+            z-index: 1;
+        }
+        
+        .step:last-child .step-line {
+            display: none;
+        }
+        
+        .step.completed .step-line {
+            background: #10b981;
+        }
+        
+        @media (max-width: 640px) {
+            .auth-container {
+                padding: 16px;
+            }
+            
+            .auth-card {
+                border-radius: 12px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            }
+            
+            .logo-container {
+                height: 80px !important;
+                width: 80px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="w-full">
+            <div class="auth-card p-6 sm:p-8">
+                <!-- Logo -->
+                <div class="flex justify-center mb-4 sm:mb-6">
+                    <div class="logo-container h-24 w-24 sm:h-32 sm:w-32 flex items-center justify-center">
+                        <img src="assets/images/logo.png" 
+                             alt="Yareema Data Hub Logo"
+                             class="max-h-full max-w-full object-contain"
+                             onerror="this.onerror=null; this.src='assets/images/logo.svg';">
+                    </div>
+                </div>
+                
+                <div class="text-center mb-6 sm:mb-8">  
+                    <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Become an Agent</h2>
+                    <p class="text-slate-600 text-sm sm:text-base">Join thousands of agents earning daily commissions</p>
+                </div>
+
+                <!-- Step Indicator -->
+                <div class="step-indicator mb-8">
+                    <div class="step active" id="step1">
+                        <div class="step-number">1</div>
+                        <p class="text-xs font-medium text-slate-600">Personal Info</p>
+                        <div class="step-line"></div>
+                    </div>
+                    <div class="step" id="step2">
+                        <div class="step-number">2</div>
+                        <p class="text-xs font-medium text-slate-600">Business Info</p>
+                        <div class="step-line"></div>
+                    </div>
+                    <div class="step" id="step3">
+                        <div class="step-number">3</div>
+                        <p class="text-xs font-medium text-slate-600">Security</p>
+                    </div>
+                </div>
+
+                <!-- Registration Form -->
+                <form id="registration-form" class="space-y-5 sm:space-y-6">
+                    
+                    <!-- Step 1: Personal Information -->
+                    <div id="step1-content" class="step-content">
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="first-name" class="block text-sm font-medium text-slate-700 mb-2">
+                                        First Name <span class="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        id="first-name"
+                                        class="w-full px-4 py-3 border border-slate-300 rounded-lg form-input focus:outline-none text-sm"
+                                        placeholder="John"
+                                        required
+                                    >
+                                </div>
+                                <div>
+                                    <label for="last-name" class="block text-sm font-medium text-slate-700 mb-2">
+                                        Last Name <span class="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        id="last-name"
+                                        class="w-full px-4 py-3 border border-slate-300 rounded-lg form-input focus:outline-none text-sm"
+                                        placeholder="Doe"
+                                        required
+                                    >
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="email" class="block text-sm font-medium text-slate-700 mb-2">
+                                    Email Address <span class="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="email"
+                                    id="email"
+                                    class="w-full px-4 py-3 border border-slate-300 rounded-lg form-input focus:outline-none text-sm"
+                                    placeholder="john.doe@example.com"
+                                    required
+                                >
+                            </div>
+
+                            <div>
+                                <label for="phone" class="block text-sm font-medium text-slate-700 mb-2">
+                                    Phone Number <span class="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="tel"
+                                    id="phone"
+                                    class="w-full px-4 py-3 border border-slate-300 rounded-lg form-input focus:outline-none text-sm"
+                                    placeholder="08012345678"
+                                    maxlength="11"
+                                    required
+                                >
+                                <p class="text-xs text-slate-500 mt-1">Nigerian phone number (11 digits)</p>
+                            </div>
+                        </div>
+
+                        <button type="button" onclick="nextStep(2)" class="w-full py-3.5 sm:py-4 bg-primary text-white font-semibold rounded-lg btn-primary text-sm sm:text-base mt-6">
+                            Continue to Business Info
+                        </button>
+                    </div>
+
+                    <!-- Step 2: Business Information -->
+                    <div id="step2-content" class="step-content hidden">
+                        <div class="space-y-4">
+                            <div>
+                                <label for="business-name" class="block text-sm font-medium text-slate-700 mb-2">
+                                    Business Name <span class="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    id="business-name"
+                                    class="w-full px-4 py-3 border border-slate-300 rounded-lg form-input focus:outline-none text-sm"
+                                    placeholder="John's Data Hub"
+                                    required
+                                >
+                            </div>
+
+                            <div>
+                                <label for="business-address" class="block text-sm font-medium text-slate-700 mb-2">
+                                    Business Address <span class="text-red-500">*</span>
+                                </label>
+                                <textarea
+                                    id="business-address"
+                                    rows="3"
+                                    class="w-full px-4 py-3 border border-slate-300 rounded-lg form-textarea focus:outline-none text-sm resize-none"
+                                    placeholder="123 Business Street, Lagos State"
+                                    required
+                                ></textarea>
+                            </div>
+
+                            <div>
+                                <label for="bank-name" class="block text-sm font-medium text-slate-700 mb-2">
+                                    Bank Name <span class="text-red-500">*</span>
+                                </label>
+                                <select
+                                    id="bank-name"
+                                    class="w-full px-4 py-3 border border-slate-300 rounded-lg form-select focus:outline-none text-sm"
+                                    required
+                                >
+                                    <option value="">Select Bank</option>
+                                    <option value="Access Bank">Access Bank</option>
+                                    <option value="GTBank">GTBank</option>
+                                    <option value="UBA">UBA</option>
+                                    <option value="Zenith Bank">Zenith Bank</option>
+                                    <option value="First Bank">First Bank</option>
+                                    <option value="Fidelity Bank">Fidelity Bank</option>
+                                    <option value="Union Bank">Union Bank</option>
+                                    <option value="Wema Bank">Wema Bank</option>
+                                    <option value="Sterling Bank">Sterling Bank</option>
+                                    <option value="Stanbic IBTC">Stanbic IBTC</option>
+                                    <option value="Polaris Bank">Polaris Bank</option>
+                                    <option value="Ecobank">Ecobank</option>
+                                    <option value="Keystone Bank">Keystone Bank</option>
+                                    <option value="FCMB">FCMB</option>
+                                    <option value="Unity Bank">Unity Bank</option>
+                                    <option value="Jaiz Bank">Jaiz Bank</option>
+                                    <option value="Kuda Bank">Kuda Bank</option>
+                                    <option value="Opay">Opay</option>
+                                    <option value="Palmpay">Palmpay</option>
+                                    <option value="Moniepoint">Moniepoint</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="account-number" class="block text-sm font-medium text-slate-700 mb-2">
+                                    Account Number <span class="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="tel"
+                                    id="account-number"
+                                    class="w-full px-4 py-3 border border-slate-300 rounded-lg form-input focus:outline-none text-sm"
+                                    placeholder="1234567890"
+                                    maxlength="10"
+                                    required
+                                >
+                                <p class="text-xs text-slate-500 mt-1">10-digit account number</p>
+                            </div>
+
+                            <div>
+                                <label for="account-name" class="block text-sm font-medium text-slate-700 mb-2">
+                                    Account Name <span class="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    id="account-name"
+                                    class="w-full px-4 py-3 border border-slate-300 rounded-lg form-input focus:outline-none text-sm"
+                                    placeholder="John Doe"
+                                    required
+                                >
+                                <p class="text-xs text-slate-500 mt-1">Name on bank account</p>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3 mt-6">
+                            <button type="button" onclick="prevStep(1)" class="flex-1 py-3.5 bg-slate-100 text-slate-700 font-semibold rounded-lg hover:bg-slate-200 transition-colors text-sm sm:text-base">
+                                Back
+                            </button>
+                            <button type="button" onclick="nextStep(3)" class="flex-1 py-3.5 bg-primary text-white font-semibold rounded-lg btn-primary text-sm sm:text-base">
+                                Continue to Security
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Security -->
+                    <div id="step3-content" class="step-content hidden">
+                        <div class="space-y-4">
+                            <div>
+                                <label for="reg-password" class="block text-sm font-medium text-slate-700 mb-2">
+                                    Password <span class="text-red-500">*</span>
+                                </label>
+                                <div class="relative">
+                                    <input
+                                        type="password"
+                                        id="reg-password"
+                                        class="w-full px-4 py-3 pr-12 border border-slate-300 rounded-lg form-input focus:outline-none text-sm"
+                                        placeholder="Enter password"
+                                        required
+                                    >
+                                    <button type="button" onclick="togglePassword('reg-password', 'toggle-reg-password')" class="password-toggle absolute right-3 top-1/2 transform -translate-y-1/2">
+                                        <i data-lucide="eye" id="toggle-reg-password" class="w-5 h-5"></i>
+                                    </button>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-1">Minimum 8 characters, include uppercase, lowercase, number and special character</p>
+                            </div>
+
+                            <div>
+                                <label for="confirm-password" class="block text-sm font-medium text-slate-700 mb-2">
+                                    Confirm Password <span class="text-red-500">*</span>
+                                </label>
+                                <div class="relative">
+                                    <input
+                                        type="password"
+                                        id="confirm-password"
+                                        class="w-full px-4 py-3 pr-12 border border-slate-300 rounded-lg form-input focus:outline-none text-sm"
+                                        placeholder="Re-enter your password"
+                                        required
+                                    >
+                                    <button type="button" onclick="togglePassword('confirm-password', 'toggle-confirm-password')" class="password-toggle absolute right-3 top-1/2 transform -translate-y-1/2">
+                                        <i data-lucide="eye" id="toggle-confirm-password" class="w-5 h-5"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="flex items-start gap-3 p-4 bg-slate-50 rounded-lg">
+                                <input
+                                    type="checkbox"
+                                    id="terms"
+                                    class="mt-1 rounded border-slate-300 text-primary focus:ring-primary"
+                                    required
+                                >
+                                <label for="terms" class="text-sm text-slate-600">
+                                    I agree to the <a href="#" class="auth-link">Terms and Conditions</a> and <a href="#" class="auth-link">Privacy Policy</a>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Error Message -->
+                        <div id="registration-error" class="error-message"></div>
+
+                        <div class="flex gap-3 mt-6">
+                            <button type="button" onclick="prevStep(2)" class="flex-1 py-3.5 bg-slate-100 text-slate-700 font-semibold rounded-lg hover:bg-slate-200 transition-colors text-sm sm:text-base">
+                                Back
+                            </button>
+                            <button type="submit" id="submit-btn" class="flex-1 py-3.5 bg-primary text-white font-semibold rounded-lg btn-primary flex items-center justify-center text-sm sm:text-base">
+                                <span>Complete Registration</span>
+                                <div id="submit-spinner" class="hidden ml-2">
+                                    <i data-lucide="loader" class="w-5 h-5 animate-spin"></i>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Sign In Link -->
+                    <p class="text-center text-slate-600 text-sm sm:text-base pt-4 sm:pt-6">
+                        Already have an account? 
+                        <a href="index.html" class="auth-link ml-1">Sign In</a>
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        let currentStep = 1;
+
+        function nextStep(step) {
+            // Validate current step before proceeding
+            if (!validateStep(currentStep)) {
+                return;
+            }
+
+            // Hide current step
+            document.getElementById(`step${currentStep}-content`).classList.add('hidden');
+            document.getElementById(`step${currentStep}`).classList.remove('active');
+            document.getElementById(`step${currentStep}`).classList.add('completed');
+
+            // Show next step
+            currentStep = step;
+            document.getElementById(`step${currentStep}-content`).classList.remove('hidden');
+            document.getElementById(`step${currentStep}`).classList.add('active');
+
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function prevStep(step) {
+            // Hide current step
+            document.getElementById(`step${currentStep}-content`).classList.add('hidden');
+            document.getElementById(`step${currentStep}`).classList.remove('active');
+
+            // Show previous step
+            currentStep = step;
+            document.getElementById(`step${currentStep}-content`).classList.remove('hidden');
+            document.getElementById(`step${currentStep}`).classList.add('active');
+            document.getElementById(`step${currentStep}`).classList.remove('completed');
+
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function validateStep(step) {
+            const stepContent = document.getElementById(`step${step}-content`);
+            const inputs = stepContent.querySelectorAll('input[required], select[required], textarea[required]');
+            
+            for (let input of inputs) {
+                if (!input.value.trim()) {
+                    showError('registration-error', 'Please fill in all required fields');
+                    input.focus();
+                    return false;
+                }
+            }
+            
+            // Additional validation for step 1
+            if (step === 1) {
+                const phone = document.getElementById('phone').value.trim();
+                const email = document.getElementById('email').value.trim();
+                
+                if (phone.length !== 11 || !phone.startsWith('0')) {
+                    showError('registration-error', 'Phone number must be 11 digits starting with 0');
+                    return false;
+                }
+                
+                if (!email.includes('@')) {
+                    showError('registration-error', 'Please enter a valid email address');
+                    return false;
+                }
+            }
+            
+            // Additional validation for step 2
+            if (step === 2) {
+                const accountNumber = document.getElementById('account-number').value.trim();
+                if (accountNumber.length !== 10 || isNaN(accountNumber)) {
+                    showError('registration-error', 'Account number must be exactly 10 digits');
+                    return false;
+                }
+            }
+
+            hideError('registration-error');
+            return true;
+        }
+
+        function togglePassword(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.setAttribute('data-lucide', 'eye-off');
+            } else {
+                input.type = 'password';
+                icon.setAttribute('data-lucide', 'eye');
+            }
+            lucide.createIcons();
+        }
+
+        // Helper functions
+        function showError(elementId, message) {
+            const errorElement = document.getElementById(elementId);
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+            errorElement.classList.add('error-message');
+            errorElement.classList.remove('success-message');
+        }
+
+        function hideError(elementId) {
+            const errorElement = document.getElementById(elementId);
+            errorElement.style.display = 'none';
+        }
+    </script>
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/register.js"></script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">Service - Yareema Agent Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script>
+        tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{yareema:{primary:'#1E3D5C',secondary:'#16304a',dark:'#0f1f2e',light:'#e8edf2',success:'#10b981',warning:'#f59e0b',danger:'#ef4444'}}}}}</script>
+</head>
+<body class="text-slate-800 antialiased">
+    <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+    <div class="flex flex-col lg:flex-row w-full min-h-screen">
+        <div id="sidebarContainer"></div>
+        <main class="flex-1 flex flex-col min-w-0 bg-slate-50">
+            <div id="headerContainer"></div>
+            <div class="p-4 lg:p-8 flex-1 overflow-y-auto">
+                
+                <!-- Loading State -->
+                <div id="loading-state" class="bg-white p-8 rounded-xl shadow-sm border border-slate-200 text-center">
+                    <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-yareema-primary mb-4"></div>
+                    <p class="text-slate-600">Loading service...</p>
+                </div>
+
+                <!-- Error State -->
+                <div id="error-state" class="hidden bg-white p-8 rounded-xl shadow-sm border border-red-200">
+                    <div class="text-center">
+                        <i data-lucide="alert-circle" class="w-12 h-12 text-red-600 mx-auto mb-4"></i>
+                        <h3 class="text-lg font-bold text-slate-900 mb-2">Service Not Available</h3>
+                        <p class="text-slate-600 mb-4" id="error-message">Failed to load service</p>
+                        <a href="dashboard.html" class="inline-flex items-center gap-2 px-6 py-3 bg-yareema-primary text-white rounded-lg hover:bg-yareema-secondary">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                            Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Service Content -->
+                <div id="service-content" class="hidden">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <h3 id="service-title" class="font-bold text-slate-900 mb-6">Service</h3>
+                        <form id="service-form" class="space-y-6">
+                            <!-- Dynamic form fields will be injected here -->
+                            <div id="form-fields"></div>
+                            
+                            <!-- Commission Preview -->
+                            <div id="commission-preview" class="hidden p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
+                                <div class="grid grid-cols-3 gap-4 text-center">
+                                    <div>
+                                        <p class="text-xs text-slate-600 mb-1">Amount</p>
+                                        <p class="text-2xl font-bold text-slate-900" id="preview-amount">₦0</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-slate-600 mb-1">Your Commission</p>
+                                        <p class="text-2xl font-bold text-green-600" id="preview-commission">₦0</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-slate-600 mb-1">Commission Rate</p>
+                                        <p class="text-2xl font-bold text-blue-600" id="preview-rate">0%</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold rounded-xl hover:shadow-lg transition-all text-lg">
+                                Complete Purchase
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+    <div id="modalsContainer"></div>
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/services.js"></script>
+    <script src="assets/js/payment.js"></script>
+    <script src="assets/js/service-handler.js"></script>
+    <script>
+        // Protect page
+        Auth.protectPage();
+        
+        // Load partials
+        fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();});
+        fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;lucide.createIcons();});
+        fetch('partials/modals.html').then(r=>r.text()).then(d=>{document.getElementById('modalsContainer').innerHTML=d;lucide.createIcons();});
+        
+        // Initialize service page
+        document.addEventListener('DOMContentLoaded', () => {
+            ServiceHandler.init();
+        });
+    </script>
+</body>
+</html>

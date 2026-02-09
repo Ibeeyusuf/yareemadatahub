@@ -90,13 +90,27 @@
         </main>
     </div>
     <div id="modalsContainer"></div>
+    <script src="assets/js/config.js"></script>
     <script src="assets/js/auth.js"></script>
     <script src="assets/js/main.js"></script>
     <script src="assets/js/services.js"></script>
     <script>
+        // Protect page
+        Auth.protectPage();
+        
         fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();});
         fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('settings');lucide.createIcons();});
         fetch('partials/modals.html').then(r=>r.text()).then(d=>{document.getElementById('modalsContainer').innerHTML=d;lucide.createIcons();});
+        
+        // Load profile data and populate form
+        document.addEventListener('DOMContentLoaded', async () => {
+            const result = await AgentProfile.getProfileData();
+            if (result.success && result.data) {
+                const { agent } = result.data;
+                // Populate form fields if they exist
+                // You can add code here to populate the settings form
+            }
+        });
     </script>
 </body>
 </html>
