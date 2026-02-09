@@ -7,6 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.css" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -409,35 +410,39 @@
         </div>
     </div>
 
+    <!-- Load Auth Infrastructure -->
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/api-service.js"></script>
+    <script src="assets/js/auth-guard.js"></script>
+    
     <script>
         // Initialize Lucide icons
         lucide.createIcons();
         
-        // ========== SIMPLE MODAL CONTROLS ==========
+        // Redirect if already authenticated
+        AuthGuard.redirectIfAuthenticated('index.html');
+        
+        // ========== MODAL CONTROLS ==========
         const termsModal = document.getElementById('termsModal');
         const viewTermsBtn = document.getElementById('view-terms-btn');
         const closeTermsBtn = document.getElementById('close-terms');
         const agreeTermsBtn = document.getElementById('agree-terms-btn');
         const agreeTermsCheckbox = document.getElementById('agree-terms');
         
-        // Show modal when Terms link is clicked
         viewTermsBtn.addEventListener('click', function() {
             termsModal.classList.add('show');
         });
         
-        // Close modal when X is clicked
         closeTermsBtn.addEventListener('click', function() {
             termsModal.classList.remove('show');
         });
         
-        // Close modal when clicking outside
         termsModal.addEventListener('click', function(e) {
             if (e.target === termsModal) {
                 termsModal.classList.remove('show');
             }
         });
         
-        // Agree button in modal
         agreeTermsBtn.addEventListener('click', function() {
             agreeTermsCheckbox.checked = true;
             termsModal.classList.remove('show');
@@ -457,7 +462,6 @@
             lucide.createIcons();
         }
 
-        // Setup password toggles
         document.getElementById('toggle-password').addEventListener('click', () => {
             const password = document.getElementById('password');
             const toggleButton = document.getElementById('toggle-password');
@@ -489,17 +493,17 @@
             errorElement.style.display = 'none';
         }
 
-        // ========== FORM SUBMISSION ==========
+        // ========== FORM SUBMISSION WITH REAL API ==========
         document.getElementById('signup-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const fullName = document.getElementById('full-name').value;
-            const email = document.getElementById('email').value;
-            const phone = document.getElementById('phone').value;
+            const fullName = document.getElementById('full-name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const phone = document.getElementById('phone').value.trim();
             const passwordValue = document.getElementById('password').value;
             const confirmPasswordValue = document.getElementById('confirm-password').value;
             
-            // Reset errors
+            // Reset all errors
             hideError('name-error');
             hideError('email-error');
             hideError('phone-error');
@@ -510,7 +514,7 @@
             
             let hasError = false;
             
-            // Validation
+            // Client-side validation
             if (!fullName) {
                 showError('name-error', 'Please enter your full name');
                 hasError = true;
@@ -519,16 +523,16 @@
             if (!email) {
                 showError('email-error', 'Please enter your email');
                 hasError = true;
-            } else if (!email.includes('@')) {
-                showError('email-error', 'Please enter a valid email');
+            } else if (!email.includes('@') || !email.includes('.')) {
+                showError('email-error', 'Please enter a valid email address');
                 hasError = true;
             }
             
             if (!phone) {
                 showError('phone-error', 'Please enter your phone number');
                 hasError = true;
-            } else if (phone.length !== 11) {
-                showError('phone-error', 'Phone number must be 11 digits');
+            } else if (phone.length < 10) {
+                showError('phone-error', 'Phone number must be at least 10 digits');
                 hasError = true;
             }
             
@@ -549,37 +553,63 @@
             }
             
             if (!agreeTermsCheckbox.checked) {
-                showError('terms-error', 'Please agree to terms and conditions');
+                showError('terms-error', 'Please agree to the terms and conditions');
                 hasError = true;
             }
             
             if (hasError) return;
             
-            // Simulate signup process
+            // Prepare registration data
+            const nameParts = fullName.split(' ');
+            const firstName = nameParts[0];
+            const lastName = nameParts.slice(1).join(' ') || firstName;
+            
+            const userData = {
+                firstName,
+                lastName,
+                email,
+                phoneNumber: phone,
+                password: passwordValue
+            };
+            
             const signupBtn = document.getElementById('signup-btn');
             const originalText = signupBtn.textContent;
             signupBtn.disabled = true;
             signupBtn.textContent = 'Creating Account...';
             
-            // Simulate API call
-            setTimeout(() => {
-                alert('Account created successfully! Welcome to Yareema Data Hub.');
+            try {
+                // Call real API
+                const response = await api.register(userData);
                 
-                // Reset form
-                document.getElementById('signup-form').reset();
-                agreeTermsCheckbox.checked = false;
-                updateSignupButton();
-                
-                // Reset button
+                if (response.success !== false) {
+                    // Show success alert
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Registration Successful!',
+                        text: 'Your account has been created. Please login to continue.',
+                        timer: 2000,
+                        showConfirmButton: false,
+                        didClose: () => {
+                            // Registration successful - redirect to login
+                            sessionStorage.setItem('registration_success', 'true');
+                            sessionStorage.setItem('registered_email', email);
+                            window.location.href = 'login.html';
+                        }
+                    });
+                } else {
+                    showError('signup-error', response.message || 'Registration failed. Please try again.');
+                    signupBtn.disabled = false;
+                    signupBtn.textContent = originalText;
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                showError('signup-error', error.message || 'Registration failed. Please try again.');
                 signupBtn.disabled = false;
                 signupBtn.textContent = originalText;
-                
-                // Redirect to login
-                window.location.href = 'login.html';
-            }, 2000);
+            }
         });
 
-        // Initialize
+        // Initialize button state
         updateSignupButton();
     </script>
 </body>

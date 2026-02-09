@@ -7,6 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.css" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -169,7 +170,7 @@
                                 id="login-email"
                                 class="w-full pl-10 pr-4 py-3 sm:py-3.5 border border-slate-300 rounded-lg form-input focus:outline-none text-sm sm:text-base"
                                 placeholder="Enter your email or phone number"
-                                value="user@example.com"
+                                
                             >
                         </div>
                     </div>
@@ -191,7 +192,7 @@
                                 id="login-password"
                                 class="w-full pl-10 pr-12 py-3 sm:py-3.5 border border-slate-300 rounded-lg form-input focus:outline-none text-sm sm:text-base"
                                 placeholder="Enter your password"
-                                value="password123"
+                                
                             >
                             <button type="button" id="toggle-login-password" class="password-toggle absolute right-3 top-1/2 transform -translate-y-1/2">
                                 <i data-lucide="eye" class="w-5 h-5"></i>
@@ -218,11 +219,18 @@
                 </form>
             </div>
         </div>
-    </div>
 
+    <!-- Load Auth Infrastructure -->
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/api-service.js"></script>
+    <script src="assets/js/auth-guard.js"></script>
+    
     <script>
         // Initialize Lucide icons
         lucide.createIcons();
+
+        // Redirect if already authenticated
+        AuthGuard.redirectIfAuthenticated('index.html');
 
         // Password visibility toggle
         const toggleLoginPassword = document.getElementById('toggle-login-password');
@@ -240,14 +248,14 @@
             lucide.createIcons();
         });
 
-        // Login form submission
+        // Login form submission with REAL API
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const email = document.getElementById('login-email').value;
+            const email = document.getElementById('login-email').value.trim();
             const password = loginPassword.value;
             
-            // Simple validation
+            // Validation
             if (!email || !password) {
                 showError('login-error', 'Please fill in all fields');
                 return;
@@ -255,29 +263,60 @@
             
             hideError('login-error');
             
-            // Simulate login process
             const loginBtn = document.getElementById('login-btn');
             const loginSpinner = document.getElementById('login-spinner');
-            loginBtn.disabled = true;
-            loginSpinner.classList.remove('hidden');
+            const loginBtnText = loginBtn.querySelector('span');
+            const originalText = loginBtnText.textContent;
             
-            // Simulate API call
-            setTimeout(() => {
-                alert('Login successful! Welcome to Yareema Data Hub.');
-                loginBtn.disabled = false;
-                loginSpinner.classList.add('hidden');
+            // Show loading state
+            loginBtn.disabled = true;
+            loginBtnText.textContent = 'Logging in...';
+            loginSpinner.classList.remove('hidden');
+            lucide.createIcons();
+            
+            try {
+                // Call real API
+                const response = await api.login(email, password, false);
                 
-                // Redirect to dashboard/home page
-                // window.location.href = 'index.html';
-            }, 1500);
+                if (response.success !== false) {
+                    // Show success alert
+                    const userName = response.user?.firstName || response.user?.name || 'User';
+                    
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Login Successful!',
+                        text: `Welcome back, ${userName}!`,
+                        timer: 1500,
+                        showConfirmButton: false,
+                        didClose: () => {
+                            // Successful login - redirect
+                            const redirectUrl = sessionStorage.getItem('redirect_after_login') || 'index.html';
+                            sessionStorage.removeItem('redirect_after_login');
+                            sessionStorage.removeItem('registration_success');
+                            sessionStorage.removeItem('registered_email');
+                            window.location.href = redirectUrl;
+                        }
+                    });
+                } else {
+                    showError('login-error', response.message || 'Login failed. Please check your credentials.');
+                    resetButton();
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showError('login-error', error.message || 'Login failed. Please try again.');
+                resetButton();
+            }
+            
+            function resetButton() {
+                loginBtn.disabled = false;
+                loginBtnText.textContent = originalText;
+                loginSpinner.classList.add('hidden');
+            }
         });
 
-        // Forgot password
+        // Forgot password - redirect to forgot password page
         document.getElementById('forgot-password').addEventListener('click', () => {
-            const email = prompt('Enter your email to reset password:');
-            if (email) {
-                alert(`Password reset link has been sent to ${email}`);
-            }
+            window.location.href = 'forgot-password.html';
         });
 
         // Helper functions
@@ -291,16 +330,6 @@
             const errorElement = document.getElementById(elementId);
             errorElement.style.display = 'none';
         }
-        
-        // Debug: Check if centered on load
-        window.addEventListener('load', function() {
-            console.log('Page loaded - checking centering');
-            const container = document.querySelector('.auth-container');
-            const card = document.querySelector('.auth-card');
-            console.log('Container height:', container.clientHeight);
-            console.log('Card height:', card.clientHeight);
-            console.log('Window height:', window.innerHeight);
-        });
     </script>
 </body>
 </html>
