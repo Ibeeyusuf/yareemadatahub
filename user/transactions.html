@@ -58,7 +58,7 @@
                 lucide.createIcons();
             } catch (e) { document.getElementById('txnsList').innerHTML = '<div style="text-align: center; padding: 48px; color: #ef4444;">Error loading</div>'; }
         }
-        if (!api.getToken()) window.location.href = 'index.html'; else loadTxns();
+        if (!api.getToken()) window.location.href = '../login.html'; else loadTxns();
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         if (user.firstName) { document.getElementById('sidebarName').textContent = user.firstName; document.getElementById('sidebarAvatar').textContent = (user.firstName[0] + (user.lastName?.[0] || '')).toUpperCase(); }
         lucide.createIcons();

@@ -162,7 +162,7 @@
                 cancelButtonColor: '#64748b'
             }).then(r => { if (r.isConfirmed) api.logout(); });
         }
-        if (!api.getToken()) window.location.href = 'index.html'; else load();
+        if (!api.getToken()) window.location.href = '../login.html'; else load();
         lucide.createIcons();
     </script>
 </body>
