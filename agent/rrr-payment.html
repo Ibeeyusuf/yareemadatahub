@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pay Remita RRR - Yareema Agent Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script>
+        tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{yareema:{primary:'#1E3D5C',secondary:'#16304a',dark:'#0f1f2e',light:'#e8edf2',success:'#10b981',warning:'#f59e0b',danger:'#ef4444'}}}}}</script>
+</head>
+<body class="text-slate-800 antialiased">
+    <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+    <div class="flex flex-col lg:flex-row w-full min-h-screen">
+        <div id="sidebarContainer"></div>
+        <main class="flex-1 flex flex-col min-w-0 bg-slate-50">
+            <div id="headerContainer"></div>
+            <div class="p-4 lg:p-8 flex-1 overflow-y-auto">
+                
+                <!-- STATE 1: Enter RRR (Default State) -->
+                <div id="enter-rrr-state" class="bg-white p-6 lg:p-8 rounded-xl shadow-sm border border-slate-200">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-2">Pay Remita RRR</h2>
+                        <p class="text-slate-600 text-sm">Enter your Remita Retrieval Reference to validate and proceed with payment</p>
+                    </div>
+                    
+                    <form id="rrr-form" class="space-y-6">
+                        <div>
+                            <label for="rrr-input" class="block text-sm font-semibold text-slate-700 mb-2">Enter RRR</label>
+                            <input 
+                                type="text" 
+                                id="rrr-input" 
+                                placeholder="e.g., 123456789012" 
+                                pattern="[0-9]{12}" 
+                                maxlength="12"
+                                required 
+                                class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent transition-all"
+                            >
+                            <p class="text-xs text-slate-500 mt-2">Enter your 12-digit Remita Retrieval Reference</p>
+                            <div id="rrr-error" class="hidden mt-2">
+                                <p class="text-xs text-red-600 flex items-center gap-1">
+                                    <i data-lucide="alert-circle" class="w-3 h-3"></i>
+                                    <span id="rrr-error-message"></span>
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <button 
+                            type="submit" 
+                            id="validate-btn"
+                            disabled
+                            class="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold rounded-xl hover:shadow-lg transition-all text-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
+                        >
+                            Validate RRR
+                        </button>
+                    </form>
+                </div>
+
+                <!-- STATE 2: Invoice Preview (Hidden by default) -->
+                <div id="invoice-preview-state" class="hidden">
+                    <div class="bg-white p-6 lg:p-8 rounded-xl shadow-sm border border-slate-200 mb-4">
+                        <div class="flex items-center justify-between mb-6">
+                            <h2 class="text-2xl font-bold text-slate-900">RRR Invoice Details</h2>
+                            <span class="px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">Validated</span>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <!-- Invoice Details Grid -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="p-4 bg-slate-50 rounded-lg">
+                                    <p class="text-xs text-slate-500 mb-1">Payer Name</p>
+                                    <p id="invoice-payer-name" class="text-sm font-semibold text-slate-900"></p>
+                                </div>
+                                
+                                <div class="p-4 bg-slate-50 rounded-lg">
+                                    <p class="text-xs text-slate-500 mb-1">RRR Number</p>
+                                    <p id="invoice-rrr-number" class="text-sm font-semibold text-slate-900"></p>
+                                </div>
+                                
+                                <div class="p-4 bg-slate-50 rounded-lg">
+                                    <p class="text-xs text-slate-500 mb-1">Agency Name</p>
+                                    <p id="invoice-agency-name" class="text-sm font-semibold text-slate-900"></p>
+                                </div>
+                                
+                                <div class="p-4 bg-slate-50 rounded-lg">
+                                    <p class="text-xs text-slate-500 mb-1">Description</p>
+                                    <p id="invoice-description" class="text-sm font-semibold text-slate-900"></p>
+                                </div>
+                            </div>
+                            
+                            <!-- Payment Summary -->
+                            <div class="border-t-2 border-slate-200 pt-4 mt-4">
+                                <div class="space-y-3">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm text-slate-600">Amount</span>
+                                        <span id="invoice-amount" class="text-lg font-bold text-slate-900"></span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm text-slate-600">Service Charge</span>
+                                        <span id="invoice-charges" class="text-lg font-bold text-slate-900"></span>
+                                    </div>
+                                    <div class="flex justify-between items-center pt-3 border-t-2 border-slate-200">
+                                        <span class="text-base font-semibold text-slate-900">Total Payable</span>
+                                        <span id="invoice-total" class="text-2xl font-bold text-yareema-primary"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                            <button 
+                                type="button" 
+                                id="cancel-btn"
+                                class="w-full py-4 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-all text-lg"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                type="button" 
+                                id="pay-now-btn"
+                                class="w-full py-4 bg-gradient-to-r from-green-600 to-green-700 text-white font-bold rounded-xl hover:shadow-lg transition-all text-lg"
+                            >
+                                Pay Now
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STATE 3: Payment Status UI -->
+                <!-- Processing State -->
+                <div id="processing-state" class="hidden">
+                    <div class="bg-white p-8 rounded-xl shadow-sm border border-slate-200 text-center">
+                        <div class="inline-block animate-spin rounded-full h-16 w-16 border-b-4 border-yareema-primary mb-4"></div>
+                        <h3 class="text-xl font-bold text-slate-900 mb-2">Processing Payment</h3>
+                        <p class="text-slate-600">Please wait while we process your RRR payment...</p>
+                    </div>
+                </div>
+
+                <!-- Payment Success State -->
+                <div id="success-state" class="hidden">
+                    <div class="bg-white p-8 rounded-xl shadow-sm border border-green-200">
+                        <div class="text-center">
+                            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i data-lucide="check-circle" class="w-10 h-10 text-green-600"></i>
+                            </div>
+                            <h3 class="text-2xl font-bold text-slate-900 mb-2">Payment Successful!</h3>
+                            <p class="text-slate-600 mb-6">Your RRR payment has been processed successfully</p>
+                            
+                            <!-- Transaction Details -->
+                            <div class="bg-slate-50 p-6 rounded-lg mb-6 text-left max-w-md mx-auto">
+                                <div class="space-y-3">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm text-slate-600">Transaction Reference</span>
+                                        <span id="success-ref" class="text-sm font-semibold text-slate-900"></span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm text-slate-600">RRR Number</span>
+                                        <span id="success-rrr" class="text-sm font-semibold text-slate-900"></span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm text-slate-600">Amount Paid</span>
+                                        <span id="success-amount" class="text-lg font-bold text-green-600"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                                <button 
+                                    onclick="location.reload()" 
+                                    class="px-6 py-3 bg-yareema-primary text-white rounded-lg hover:bg-yareema-secondary font-semibold transition-colors"
+                                >
+                                    Make Another Payment
+                                </button>
+                                <a 
+                                    href="dashboard.html" 
+                                    class="px-6 py-3 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-semibold transition-colors inline-flex items-center justify-center"
+                                >
+                                    Back to Dashboard
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Failed State -->
+                <div id="failed-state" class="hidden">
+                    <div class="bg-white p-8 rounded-xl shadow-sm border border-red-200">
+                        <div class="text-center">
+                            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i data-lucide="x-circle" class="w-10 h-10 text-red-600"></i>
+                            </div>
+                            <h3 class="text-2xl font-bold text-slate-900 mb-2">Payment Failed</h3>
+                            <p class="text-slate-600 mb-2" id="failed-message">Unable to process your RRR payment</p>
+                            <p class="text-sm text-slate-500 mb-6" id="failed-details"></p>
+                            
+                            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                                <button 
+                                    onclick="location.reload()" 
+                                    class="px-6 py-3 bg-yareema-primary text-white rounded-lg hover:bg-yareema-secondary font-semibold transition-colors"
+                                >
+                                    Try Again
+                                </button>
+                                <a 
+                                    href="dashboard.html" 
+                                    class="px-6 py-3 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-semibold transition-colors inline-flex items-center justify-center"
+                                >
+                                    Back to Dashboard
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Cancelled State -->
+                <div id="cancelled-state" class="hidden">
+                    <div class="bg-white p-8 rounded-xl shadow-sm border border-slate-200">
+                        <div class="text-center">
+                            <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i data-lucide="ban" class="w-10 h-10 text-slate-600"></i>
+                            </div>
+                            <h3 class="text-2xl font-bold text-slate-900 mb-2">Payment Cancelled</h3>
+                            <p class="text-slate-600 mb-6">You have cancelled the RRR payment</p>
+                            
+                            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                                <button 
+                                    onclick="location.reload()" 
+                                    class="px-6 py-3 bg-yareema-primary text-white rounded-lg hover:bg-yareema-secondary font-semibold transition-colors"
+                                >
+                                    Make a Payment
+                                </button>
+                                <a 
+                                    href="dashboard.html" 
+                                    class="px-6 py-3 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-semibold transition-colors inline-flex items-center justify-center"
+                                >
+                                    Back to Dashboard
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+    <div id="modalsContainer"></div>
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script>
+        // Protect page
+        Auth.protectPage();
+        
+        // Load partials
+        fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();});
+        fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;lucide.createIcons();});
+        fetch('partials/modals.html').then(r=>r.text()).then(d=>{document.getElementById('modalsContainer').innerHTML=d;lucide.createIcons();});
+        
+        // RRR Payment Handler
+        const RRRPaymentHandler = {
+            currentInvoiceData: null,
+            
+            init() {
+                this.setupEventListeners();
+                lucide.createIcons();
+            },
+            
+            setupEventListeners() {
+                // RRR input validation
+                const rrrInput = document.getElementById('rrr-input');
+                const validateBtn = document.getElementById('validate-btn');
+                
+                rrrInput.addEventListener('input', (e) => {
+                    // Only allow numbers
+                    e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                    
+                    // Enable/disable button based on input length
+                    validateBtn.disabled = e.target.value.length !== 12;
+                    
+                    // Clear error on input
+                    this.hideError();
+                });
+                
+                // Form submission
+                document.getElementById('rrr-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.validateRRR();
+                });
+                
+                // Cancel button
+                document.getElementById('cancel-btn')?.addEventListener('click', () => {
+                    this.showCancelled();
+                });
+                
+                // Pay now button
+                document.getElementById('pay-now-btn')?.addEventListener('click', () => {
+                    this.processPayment();
+                });
+            },
+            
+            async validateRRR() {
+                const rrrInput = document.getElementById('rrr-input');
+                const rrr = rrrInput.value.trim();
+                
+                if (rrr.length !== 12) {
+                    this.showError('Please enter a valid 12-digit RRR');
+                    return;
+                }
+                
+                // Disable button and show loading
+                const validateBtn = document.getElementById('validate-btn');
+                const originalText = validateBtn.textContent;
+                validateBtn.disabled = true;
+                validateBtn.innerHTML = '<span class="inline-block animate-spin mr-2">⏳</span> Validating...';
+                
+                try {
+                    // API call would go here
+                    // const result = await API.validateRRR(rrr);
+                    
+                    // For now, this is just UI structure waiting for backend
+                    // When backend is ready, uncomment and implement:
+                    /*
+                    const result = await fetch(`${API_BASE_URL}/rrr/validate`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${Auth.getToken()}`
+                        },
+                        body: JSON.stringify({ rrr })
+                    }).then(r => r.json());
+                    
+                    if (result.success) {
+                        this.currentInvoiceData = result.data;
+                        this.showInvoice(result.data);
+                    } else {
+                        this.showError(result.message || 'Failed to validate RRR');
+                    }
+                    */
+                    
+                    // Placeholder: Show error for now since no backend
+                    this.showError('error.');
+                    
+                } catch (error) {
+                    console.error('[RRR] Validation error:', error);
+                    this.showError('Network error. Please check your connection and try again.');
+                } finally {
+                    // Restore button
+                    validateBtn.disabled = false;
+                    validateBtn.textContent = originalText;
+                }
+            },
+            
+            showInvoice(data) {
+                // Populate invoice fields
+                document.getElementById('invoice-payer-name').textContent = data.payerName || '';
+                document.getElementById('invoice-rrr-number').textContent = data.rrr || '';
+                document.getElementById('invoice-agency-name').textContent = data.agencyName || '';
+                document.getElementById('invoice-description').textContent = data.description || '';
+                document.getElementById('invoice-amount').textContent = data.amount ? `₦${parseFloat(data.amount).toLocaleString('en-NG', {minimumFractionDigits: 2})}` : '';
+                document.getElementById('invoice-charges').textContent = data.charges ? `₦${parseFloat(data.charges).toLocaleString('en-NG', {minimumFractionDigits: 2})}` : '';
+                document.getElementById('invoice-total').textContent = data.totalPayable ? `₦${parseFloat(data.totalPayable).toLocaleString('en-NG', {minimumFractionDigits: 2})}` : '';
+                
+                // Hide enter RRR state, show invoice
+                document.getElementById('enter-rrr-state').classList.add('hidden');
+                document.getElementById('invoice-preview-state').classList.remove('hidden');
+                
+                lucide.createIcons();
+            },
+            
+            async processPayment() {
+                if (!this.currentInvoiceData) {
+                    this.showError('No invoice data available');
+                    return;
+                }
+                
+                // Show processing state
+                this.hideAllStates();
+                document.getElementById('processing-state').classList.remove('hidden');
+                
+                try {
+                    // API call would go here
+                    // const result = await API.payRRR(this.currentInvoiceData);
+                    
+                    // For now, this is just UI structure waiting for backend
+                    // When backend is ready, uncomment and implement:
+                    /*
+                    const result = await fetch(`${API_BASE_URL}/rrr/pay`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${Auth.getToken()}`
+                        },
+                        body: JSON.stringify({
+                            rrr: this.currentInvoiceData.rrr,
+                            amount: this.currentInvoiceData.totalPayable
+                        })
+                    }).then(r => r.json());
+                    
+                    if (result.success) {
+                        this.showSuccess(result.data);
+                        
+                        // Refresh wallet balance
+                        if (typeof updateWalletBalance === 'function') {
+                            await updateWalletBalance();
+                        }
+                    } else {
+                        this.showFailed(result.message || 'Payment failed');
+                    }
+                    */
+                    
+                } catch (error) {
+                    console.error('[RRR] Payment error:', error);
+                    this.showFailed('Network error occurred during payment');
+                }
+            },
+            
+            showSuccess(data) {
+                document.getElementById('success-ref').textContent = data?.reference || '';
+                document.getElementById('success-rrr').textContent = data?.rrr || '';
+                document.getElementById('success-amount').textContent = data?.amount ? `₦${parseFloat(data.amount).toLocaleString('en-NG', {minimumFractionDigits: 2})}` : '';
+                
+                this.hideAllStates();
+                document.getElementById('success-state').classList.remove('hidden');
+                lucide.createIcons();
+            },
+            
+            showFailed(message, details = '') {
+                document.getElementById('failed-message').textContent = message;
+                document.getElementById('failed-details').textContent = details;
+                
+                this.hideAllStates();
+                document.getElementById('failed-state').classList.remove('hidden');
+                lucide.createIcons();
+            },
+            
+            showCancelled() {
+                this.hideAllStates();
+                document.getElementById('cancelled-state').classList.remove('hidden');
+                lucide.createIcons();
+            },
+            
+            hideAllStates() {
+                document.getElementById('enter-rrr-state').classList.add('hidden');
+                document.getElementById('invoice-preview-state').classList.add('hidden');
+                document.getElementById('processing-state').classList.add('hidden');
+                document.getElementById('success-state').classList.add('hidden');
+                document.getElementById('failed-state').classList.add('hidden');
+                document.getElementById('cancelled-state').classList.add('hidden');
+            },
+            
+            showError(message) {
+                document.getElementById('rrr-error-message').textContent = message;
+                document.getElementById('rrr-error').classList.remove('hidden');
+                lucide.createIcons();
+            },
+            
+            hideError() {
+                document.getElementById('rrr-error').classList.add('hidden');
+            }
+        };
+        
+        // Initialize on DOM ready
+        document.addEventListener('DOMContentLoaded', () => {
+            RRRPaymentHandler.init();
+        });
+    </script>
+</body>
+</html>

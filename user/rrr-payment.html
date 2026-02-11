@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RRR Payment - Yareema Data Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-logo">
+            <img src="assets/images/logo.png" alt="Logo">
+            <h1>Yareema Data Hub</h1>
+        </div>
+        
+        <div class="sidebar-nav">
+            <a href="home.html" class="nav-item">
+                <i data-lucide="home" style="width: 20px; height: 20px;"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="services.html" class="nav-item active">
+                <i data-lucide="grid" style="width: 20px; height: 20px;"></i>
+                <span>Services</span>
+            </a>
+            <a href="transactions.html" class="nav-item">
+                <i data-lucide="receipt" style="width: 20px; height: 20px;"></i>
+                <span>Transactions</span>
+            </a>
+            <a href="wallet.html" class="nav-item">
+                <i data-lucide="wallet" style="width: 20px; height: 20px;"></i>
+                <span>Wallet</span>
+            </a>
+            <a href="profile.html" class="nav-item">
+                <i data-lucide="user" style="width: 20px; height: 20px;"></i>
+                <span>Profile</span>
+            </a>
+        </div>
+        
+        <div class="sidebar-footer">
+            <div class="user-profile" onclick="window.location.href='profile.html'">
+                <div class="user-avatar" id="sidebarAvatar">U</div>
+                <div class="user-info">
+                    <h3 id="sidebarName">User</h3>
+                    <p>View Profile</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div>
+                <h1>Pay Remita RRR</h1>
+                <p style="color: #64748b; margin-top: 4px;">Enter your Remita Retrieval Reference to continue</p>
+            </div>
+            <div class="top-bar-actions">
+                <button class="icon-btn" onclick="window.location.href='services.html'">
+                    <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- STATE 1: Enter RRR (Default) -->
+        <div id="enterRRRState" style="display: block;">
+            <div style="background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 600px;">
+                <div class="form-group">
+                    <label>Remita Retrieval Reference (RRR)</label>
+                    <input 
+                        type="text" 
+                        id="rrrInput" 
+                        placeholder="Enter RRR number" 
+                        class="form-input"
+                        maxlength="12"
+                        oninput="validateRRRInput(this)"
+                    >
+                    <small style="color: #64748b; font-size: 13px; display: block; margin-top: 8px;">
+                        Enter the 12-digit Remita Retrieval Reference number
+                    </small>
+                </div>
+                
+                <button 
+                    id="validateRRRBtn" 
+                    onclick="validateRRR()" 
+                    class="btn-primary" 
+                    style="width: 100%;"
+                    disabled
+                >
+                    Validate RRR
+                </button>
+            </div>
+        </div>
+
+        <!-- STATE 2: Invoice Preview (Hidden by default) -->
+        <div id="invoicePreviewState" style="display: none;">
+            <div style="background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 600px;">
+                <div style="border-bottom: 1px solid #e2e8f0; padding-bottom: 16px; margin-bottom: 24px;">
+                    <h2 style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">Invoice Details</h2>
+                    <p style="font-size: 14px; color: #64748b;">Please review the payment details below</p>
+                </div>
+
+                <!-- Invoice Details Grid -->
+                <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;">
+                    <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9;">
+                        <span style="color: #64748b; font-size: 14px;">Payer Name</span>
+                        <span id="invoicePayerName" style="color: #0f172a; font-weight: 600; font-size: 14px;">-</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9;">
+                        <span style="color: #64748b; font-size: 14px;">RRR Number</span>
+                        <span id="invoiceRRR" style="color: #0f172a; font-weight: 600; font-size: 14px;">-</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9;">
+                        <span style="color: #64748b; font-size: 14px;">Agency</span>
+                        <span id="invoiceAgency" style="color: #0f172a; font-weight: 600; font-size: 14px;">-</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9;">
+                        <span style="color: #64748b; font-size: 14px;">Description</span>
+                        <span id="invoiceDescription" style="color: #0f172a; font-weight: 600; font-size: 14px;">-</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9;">
+                        <span style="color: #64748b; font-size: 14px;">Amount</span>
+                        <span id="invoiceAmount" style="color: #0f172a; font-weight: 600; font-size: 14px;">₦0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9;">
+                        <span style="color: #64748b; font-size: 14px;">Charges</span>
+                        <span id="invoiceCharges" style="color: #0f172a; font-weight: 600; font-size: 14px;">₦0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 16px 0; background: #f8fafc; margin: 0 -12px; padding-left: 12px; padding-right: 12px; border-radius: 8px;">
+                        <span style="color: #0f172a; font-size: 16px; font-weight: 700;">Total Payable</span>
+                        <span id="invoiceTotal" style="color: #1e3d5c; font-weight: 700; font-size: 18px;">₦0.00</span>
+                    </div>
+                </div>
+
+                <!-- Transaction PIN Input -->
+                <div class="form-group" style="margin-bottom: 24px;">
+                    <label>Transaction PIN</label>
+                    <input 
+                        type="password" 
+                        id="transactionPin" 
+                        placeholder="Enter 4-digit PIN" 
+                        maxlength="4" 
+                        class="form-input"
+                        oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                    >
+                    <small style="color: #64748b; font-size: 13px; display: block; margin-top: 8px;">
+                        Enter your 4-digit transaction PIN to authorize this payment
+                    </small>
+                </div>
+
+                <!-- Action Buttons -->
+                <div style="display: flex; gap: 12px;">
+                    <button 
+                        onclick="cancelPayment()" 
+                        class="btn-secondary" 
+                        style="flex: 1;"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        onclick="processPayment()" 
+                        class="btn-primary" 
+                        style="flex: 1;"
+                    >
+                        Pay Now
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STATE 3: Processing State (Hidden by default) -->
+        <div id="processingState" style="display: none;">
+            <div style="background: #fff; border-radius: 12px; padding: 48px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 600px; text-align: center;">
+                <div class="spinner" style="margin-bottom: 24px;"></div>
+                <h2 style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">Processing Payment</h2>
+                <p style="font-size: 14px; color: #64748b;">Please wait while we process your payment...</p>
+            </div>
+        </div>
+
+        <!-- STATE 3: Success State (Hidden by default) -->
+        <div id="successState" style="display: none;">
+            <div style="background: #fff; border-radius: 12px; padding: 48px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 600px; text-align: center;">
+                <div style="width: 80px; height: 80px; margin: 0 auto 24px; border-radius: 50%; background: #dcfce7; display: flex; align-items: center; justify-content: center;">
+                    <i data-lucide="check-circle" style="width: 48px; height: 48px; color: #16a34a;"></i>
+                </div>
+                <h2 style="font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 12px;">Payment Successful!</h2>
+                <p id="successMessage" style="font-size: 15px; color: #64748b; margin-bottom: 32px;">
+                    Your RRR payment has been processed successfully.
+                </p>
+                <div style="display: flex; gap: 12px; justify-content: center;">
+                    <button onclick="window.location.href='transactions.html'" class="btn-secondary">
+                        View Transactions
+                    </button>
+                    <button onclick="resetForm()" class="btn-primary">
+                        Make Another Payment
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STATE 3: Failed State (Hidden by default) -->
+        <div id="failedState" style="display: none;">
+            <div style="background: #fff; border-radius: 12px; padding: 48px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 600px; text-align: center;">
+                <div style="width: 80px; height: 80px; margin: 0 auto 24px; border-radius: 50%; background: #fee2e2; display: flex; align-items: center; justify-content: center;">
+                    <i data-lucide="x-circle" style="width: 48px; height: 48px; color: #dc2626;"></i>
+                </div>
+                <h2 style="font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 12px;">Payment Failed</h2>
+                <p id="errorMessage" style="font-size: 15px; color: #64748b; margin-bottom: 32px;">
+                    We couldn't process your payment. Please try again.
+                </p>
+                <div style="display: flex; gap: 12px; justify-content: center;">
+                    <button onclick="window.location.href='services.html'" class="btn-secondary">
+                        Back to Services
+                    </button>
+                    <button onclick="resetForm()" class="btn-primary">
+                        Try Again
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STATE 3: Cancelled State (Hidden by default) -->
+        <div id="cancelledState" style="display: none;">
+            <div style="background: #fff; border-radius: 12px; padding: 48px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 600px; text-align: center;">
+                <div style="width: 80px; height: 80px; margin: 0 auto 24px; border-radius: 50%; background: #fef3c7; display: flex; align-items: center; justify-content: center;">
+                    <i data-lucide="alert-circle" style="width: 48px; height: 48px; color: #d97706;"></i>
+                </div>
+                <h2 style="font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 12px;">Payment Cancelled</h2>
+                <p style="font-size: 15px; color: #64748b; margin-bottom: 32px;">
+                    You have cancelled the payment process.
+                </p>
+                <div style="display: flex; gap: 12px; justify-content: center;">
+                    <button onclick="window.location.href='services.html'" class="btn-secondary">
+                        Back to Services
+                    </button>
+                    <button onclick="resetForm()" class="btn-primary">
+                        Start Over
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script>
+        // Authentication check
+        if (!api.getToken()) {
+            window.location.href = '../login.html';
+        }
+
+        // Load user info
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (user.firstName) {
+            document.getElementById('sidebarName').textContent = user.firstName;
+            document.getElementById('sidebarAvatar').textContent = (user.firstName[0] + (user.lastName?.[0] || '')).toUpperCase();
+        }
+
+        // State management
+        let currentRRR = '';
+        let invoiceData = null;
+
+        // Validate RRR input (numbers only)
+        function validateRRRInput(input) {
+            input.value = input.value.replace(/[^0-9]/g, '');
+            const btn = document.getElementById('validateRRRBtn');
+            btn.disabled = input.value.length < 12;
+        }
+
+        // Validate RRR - Show loading then transition to invoice
+        async function validateRRR() {
+            const rrr = document.getElementById('rrrInput').value.trim();
+            
+            if (rrr.length !== 12) {
+                showErrorAlert('Please enter a valid 12-digit RRR');
+                return;
+            }
+
+            currentRRR = rrr;
+
+            try {
+                // Show processing state
+                setState('processing');
+
+                // TODO: Replace with actual API call
+                // const response = await api.validateRRR(rrr);
+                // invoiceData = response.data;
+                
+                // For now, just simulate the state transition structure
+                // Backend will populate invoiceData when ready
+                
+                // When backend is ready, populate invoice fields:
+                // document.getElementById('invoicePayerName').textContent = invoiceData.payerName;
+                // document.getElementById('invoiceRRR').textContent = invoiceData.rrr;
+                // document.getElementById('invoiceAgency').textContent = invoiceData.agency;
+                // document.getElementById('invoiceDescription').textContent = invoiceData.description;
+                // document.getElementById('invoiceAmount').textContent = `₦${invoiceData.amount.toLocaleString()}`;
+                // document.getElementById('invoiceCharges').textContent = `₦${invoiceData.charges.toLocaleString()}`;
+                // document.getElementById('invoiceTotal').textContent = `₦${invoiceData.total.toLocaleString()}`;
+
+                // Then show invoice preview
+                // setState('invoicePreview');
+
+                // For now, show error since backend not ready
+                throw new Error('RRR validation endpoint not yet configured. Please contact support.');
+
+            } catch (error) {
+                setState('failed');
+                document.getElementById('errorMessage').textContent = error.message || 'Failed to validate RRR. Please try again.';
+            }
+        }
+
+        // Process payment
+        async function processPayment() {
+            const pin = document.getElementById('transactionPin').value;
+
+            if (!pin || pin.length !== 4) {
+                showErrorAlert('Please enter your 4-digit transaction PIN');
+                return;
+            }
+
+            try {
+                // Show processing state
+                setState('processing');
+
+                // TODO: Replace with actual API call
+                // const response = await api.processRRRPayment({
+                //     rrr: currentRRR,
+                //     pin: pin,
+                //     amount: invoiceData.total
+                // });
+
+                // For now, just simulate the state structure
+                // When backend is ready:
+                // setState('success');
+                // document.getElementById('successMessage').textContent = response.message || 'Your RRR payment has been processed successfully.';
+
+                // For now, show error since backend not ready
+                throw new Error('Payment processing endpoint not yet configured. Please contact support.');
+
+            } catch (error) {
+                setState('failed');
+                document.getElementById('errorMessage').textContent = error.message || 'Payment failed. Please try again.';
+            }
+        }
+
+        // Cancel payment
+        function cancelPayment() {
+            setState('cancelled');
+        }
+
+        // Reset form to initial state
+        function resetForm() {
+            document.getElementById('rrrInput').value = '';
+            document.getElementById('transactionPin').value = '';
+            document.getElementById('validateRRRBtn').disabled = true;
+            currentRRR = '';
+            invoiceData = null;
+            setState('enterRRR');
+        }
+
+        // State management helper
+        function setState(state) {
+            // Hide all states
+            document.getElementById('enterRRRState').style.display = 'none';
+            document.getElementById('invoicePreviewState').style.display = 'none';
+            document.getElementById('processingState').style.display = 'none';
+            document.getElementById('successState').style.display = 'none';
+            document.getElementById('failedState').style.display = 'none';
+            document.getElementById('cancelledState').style.display = 'none';
+
+            // Show requested state
+            switch(state) {
+                case 'enterRRR':
+                    document.getElementById('enterRRRState').style.display = 'block';
+                    break;
+                case 'invoicePreview':
+                    document.getElementById('invoicePreviewState').style.display = 'block';
+                    break;
+                case 'processing':
+                    document.getElementById('processingState').style.display = 'block';
+                    break;
+                case 'success':
+                    document.getElementById('successState').style.display = 'block';
+                    break;
+                case 'failed':
+                    document.getElementById('failedState').style.display = 'block';
+                    break;
+                case 'cancelled':
+                    document.getElementById('cancelledState').style.display = 'block';
+                    break;
+            }
+
+            // Reinitialize icons after state change
+            lucide.createIcons();
+        }
+
+        // Simple error alert (using existing pattern)
+        function showErrorAlert(message) {
+            alert(message);
+        }
+
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>

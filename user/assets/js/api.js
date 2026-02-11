@@ -243,6 +243,22 @@ class YareemaUserAPI {
         });
     }
 
+    // ==================== RRR PAYMENT (REMITA) ====================
+    
+    async validateRRR(rrr) {
+        return await this.request('/api/v1/remita/validate', {
+            method: 'POST',
+            body: { rrr }
+        });
+    }
+
+    async processRRRPayment(rrr, transactionPin) {
+        return await this.request('/api/v1/remita/payment', {
+            method: 'POST',
+            body: { rrr, transactionPin }
+        });
+    }
+
     // ==================== TRANSACTION ====================
     
     async getTransactionStatus(reference) {
