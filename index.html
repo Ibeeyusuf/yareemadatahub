@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yareema Data Hub - Premium Telecom Services</title>
+    <link href="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#1E3D5C',
+                        'primary-dark': '#16304a',
+                        'primary-light': '#2a5278',
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        
+        .service-card {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            backdrop-filter: blur(10px);
+        }
+        
+        .service-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px -12px rgba(30, 61, 92, 0.15);
+            border-color: rgba(30, 61, 92, 0.3);
+        }
+        
+        .stat-card {
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: scale(1.05);
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 50%, #dbeafe 100%);
+        }
+        
+        .feature-card {
+            transition: all 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .btn-primary {
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(30, 61, 92, 0.25);
+        }
+        
+        .btn-primary:hover {
+            box-shadow: 0 8px 30px rgba(30, 61, 92, 0.35);
+            transform: translateY(-2px);
+        }
+        
+        .section-heading {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .section-heading::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 4px;
+            background: linear-gradient(90deg, #1E3D5C, #3b82f6);
+            border-radius: 2px;
+        }
+        
+        .hero-gradient {
+            background: linear-gradient(135deg, rgba(30, 61, 92, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%);
+        }
+        
+        .icon-wrapper {
+            transition: all 0.3s ease;
+        }
+        
+        .service-card:hover .icon-wrapper {
+            transform: scale(1.1) rotate(5deg);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 antialiased">
+    
+    <!-- Website Header -->
+    <header class="bg-white/95 backdrop-blur-md border-b border-slate-200/60 sticky top-0 z-50 shadow-sm w-full">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <img src="logo.png" alt="Yareema Data Hub Logo" class="w-14 h-14 object-contain">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 tracking-tight">Yareema Data Hub</h2>
+                    <p class="text-xs text-slate-500 font-medium">Seamless Payments & Services</p>
+                </div>
+            </div>
+            
+            <nav class="hidden md:flex items-center gap-8">
+                <a href="#home" class="text-sm font-semibold text-primary hover:text-primary-dark transition-colors">Home</a>
+                <a href="#services" class="text-sm font-medium text-slate-600 hover:text-primary transition-colors">Services</a>
+                <a href="#features" class="text-sm font-medium text-slate-600 hover:text-primary transition-colors">Features</a>
+                <a href="#about" class="text-sm font-medium text-slate-600 hover:text-primary transition-colors">About</a>
+                <a href="#contact" class="text-sm font-medium text-slate-600 hover:text-primary transition-colors">Contact</a>
+            </nav>
+            
+            <div class="md:hidden">
+                <button id="mobile-menu-button" class="text-slate-700 hover:text-primary transition-colors p-2">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <div class="hidden md:flex items-center gap-3">
+                <a href="login.html" class="px-5 py-2.5 text-sm font-semibold text-slate-700 hover:text-primary transition-colors">Login</a>
+                <a href="signup.html" class="px-6 py-2.5 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary-dark transition-all shadow-md hover:shadow-lg">Sign Up</a>
+            </div>
+        </div>
+        
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden bg-white border-t border-slate-200 w-full">
+            <div class="max-w-7xl mx-auto px-4 py-4">
+                <div class="flex flex-col space-y-1">
+                    <a href="#home" class="text-sm font-semibold text-primary py-3 px-3 rounded-lg hover:bg-slate-50">Home</a>
+                    <a href="#services" class="text-sm font-medium text-slate-600 py-3 px-3 rounded-lg hover:bg-slate-50">Services</a>
+                    <a href="#features" class="text-sm font-medium text-slate-600 py-3 px-3 rounded-lg hover:bg-slate-50">Features</a>
+                    <a href="#about" class="text-sm font-medium text-slate-600 py-3 px-3 rounded-lg hover:bg-slate-50">About</a>
+                    <a href="#contact" class="text-sm font-medium text-slate-600 py-3 px-3 rounded-lg hover:bg-slate-50">Contact</a>
+                    <div class="pt-4 mt-2 border-t border-slate-200 flex flex-col gap-2">
+                        <a href="login.html" class="w-full py-3 px-4 text-center text-sm font-semibold text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50">Login</a>
+                        <a href="signup.html" class="w-full py-3 px-4 text-center bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary-dark">Sign Up</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section id="home" class="py-20 md:py-28 w-full hero-gradient relative overflow-hidden">
+        <!-- Decorative elements -->
+        <div class="absolute inset-0 overflow-hidden pointer-events-none">
+            <div class="absolute -top-24 -right-24 w-96 h-96 bg-blue-100 rounded-full opacity-20 blur-3xl"></div>
+            <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-indigo-100 rounded-full opacity-20 blur-3xl"></div>
+        </div>
+        
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+            <div class="text-center">
+                <div class="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-100 rounded-full text-sm font-medium text-blue-700 mb-8">
+                    <i data-lucide="zap" class="w-4 h-4"></i>
+                    <span>Trusted by 24,567+ Nigerians</span>
+                </div>
+                
+                <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-slate-900 mb-6 leading-tight tracking-tight">
+                    Fast, Secure & Reliable<br class="hidden sm:block"/>
+                    <span class="bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">Telecom Services</span>
+                </h1>
+                
+                <p class="text-lg md:text-xl text-slate-600 mb-10 max-w-3xl mx-auto px-4 leading-relaxed font-medium">
+                    Buy data, airtime, pay bills and more with instant delivery. Experience seamless transactions with Nigeria's most trusted platform.
+                </p>
+                
+                <div class="flex flex-col sm:flex-row justify-center gap-4 px-4 mb-16">
+                    <a href="signup.html" class="btn-primary px-8 py-4 bg-primary text-white rounded-xl text-lg font-semibold hover:bg-primary-dark transition-all inline-flex items-center justify-center gap-2">
+                        Get Started
+                        <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                    </a>
+                    <button class="px-8 py-4 bg-white text-slate-700 rounded-xl text-lg font-semibold hover:bg-slate-50 transition-all border-2 border-slate-200 inline-flex items-center justify-center gap-2">
+                        <i data-lucide="play-circle" class="w-5 h-5"></i>
+                        Learn More
+                    </button>
+                </div>
+                
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto px-4">
+                    <div class="stat-card text-center p-6 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-100">
+                        <div class="inline-flex items-center justify-center w-12 h-12 bg-blue-50 rounded-xl mb-3">
+                            <i data-lucide="users" class="w-6 h-6 text-blue-600"></i>
+                        </div>
+                        <h3 class="text-3xl sm:text-4xl font-bold text-primary mb-1">24,567+</h3>
+                        <p class="text-sm font-medium text-slate-600">Active Users</p>
+                    </div>
+                    <div class="stat-card text-center p-6 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-100">
+                        <div class="inline-flex items-center justify-center w-12 h-12 bg-green-50 rounded-xl mb-3">
+                            <i data-lucide="check-circle-2" class="w-6 h-6 text-green-600"></i>
+                        </div>
+                        <h3 class="text-3xl sm:text-4xl font-bold text-green-600 mb-1">99.8%</h3>
+                        <p class="text-sm font-medium text-slate-600">Success Rate</p>
+                    </div>
+                    <div class="stat-card text-center p-6 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-100">
+                        <div class="inline-flex items-center justify-center w-12 h-12 bg-amber-50 rounded-xl mb-3">
+                            <i data-lucide="clock" class="w-6 h-6 text-amber-600"></i>
+                        </div>
+                        <h3 class="text-3xl sm:text-4xl font-bold text-amber-600 mb-1">24/7</h3>
+                        <p class="text-sm font-medium text-slate-600">Customer Support</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services Section -->
+    <section id="services" class="py-20 md:py-24 w-full bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="section-heading text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-6">Our Services</h2>
+                <p class="text-lg text-slate-600 max-w-2xl mx-auto">Everything you need for seamless telecom, bills payment, and utility services in one comprehensive platform</p>
+            </div>
+            
+            <!-- Telecom Services -->
+            <div class="mb-16">
+                <div class="flex items-center gap-3 mb-8">
+                    <div class="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
+                        <i data-lucide="phone" class="w-5 h-5 text-blue-600"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-900">Telecom Services</h3>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-5">
+                    <div class="service-card bg-gradient-to-br from-white to-blue-50/30 p-6 rounded-2xl text-center group">
+                        <div class="icon-wrapper w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                            <i data-lucide="wifi" class="w-8 h-8 text-blue-600"></i>
+                        </div>
+                        <h4 class="font-bold text-slate-900 mb-2 text-lg">Data Bundles</h4>
+                        <p class="text-sm text-slate-600">All networks available</p>
+                    </div>
+                    <div class="service-card bg-gradient-to-br from-white to-green-50/30 p-6 rounded-2xl text-center group">
+                        <div class="icon-wrapper w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                            <i data-lucide="phone" class="w-8 h-8 text-green-600"></i>
+                        </div>
+                        <h4 class="font-bold text-slate-900 mb-2 text-lg">Airtime</h4>
+                        <p class="text-sm text-slate-600">Instant recharge</p>
+                    </div>
+                    <div class="service-card bg-gradient-to-br from-white to-orange-50/30 p-6 rounded-2xl text-center group">
+                        <div class="icon-wrapper w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                            <i data-lucide="refresh-cw" class="w-8 h-8 text-orange-600"></i>
+                        </div>
+                        <h4 class="font-bold text-slate-900 mb-2 text-lg">Airtime Swap</h4>
+                        <p class="text-sm text-slate-600">Convert to cash</p>
+                    </div>
+                    <div class="service-card bg-gradient-to-br from-white to-red-50/30 p-6 rounded-2xl text-center group">
+                        <div class="icon-wrapper w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                            <i data-lucide="key" class="w-8 h-8 text-red-600"></i>
+                        </div>
+                        <h4 class="font-bold text-slate-900 mb-2 text-lg">Recharge PINs</h4>
+                        <p class="text-sm text-slate-600">Print & sell</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bills & Utilities -->
+            <div class="mb-16">
+                <div class="flex items-center gap-3 mb-8">
+                    <div class="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center">
+                        <i data-lucide="receipt" class="w-5 h-5 text-purple-600"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-900">Bills & Utilities</h3>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-5">
+                    <div class="service-card bg-gradient-to-br from-white to-amber-50/30 p-6 rounded-2xl text-center group">
+                        <div class="icon-wrapper w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                            <i data-lucide="zap" class="w-8 h-8 text-amber-600"></i>
+                        </div>
+                        <h4 class="font-bold text-slate-900 mb-2 text-lg">Electricity</h4>
+                        <p class="text-sm text-slate-600">All DISCOs supported</p>
+                    </div>
+                    <div class="service-card bg-gradient-to-br from-white to-purple-50/30 p-6 rounded-2xl text-center group">
+                        <div class="icon-wrapper w-16 h-16 bg-purple-100 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                            <i data-lucide="tv" class="w-8 h-8 text-purple-600"></i>
+                        </div>
+                        <h4 class="font-bold text-slate-900 mb-2 text-lg">Cable TV</h4>
+                        <p class="text-sm text-slate-600">DSTV, GOTV & more</p>
+                    </div>
+                    <div class="service-card bg-gradient-to-br from-white to-teal-50/30 p-6 rounded-2xl text-center group">
+                        <div class="icon-wrapper w-16 h-16 bg-teal-100 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                            <i data-lucide="file-text" class="w-8 h-8 text-teal-600"></i>
+                        </div>
+                        <h4 class="font-bold text-slate-900 mb-2 text-lg">RRR Payment</h4>
+                        <p class="text-sm text-slate-600">Remita services</p>
+                    </div>
+                    <div class="service-card bg-gradient-to-br from-white to-sky-50/30 p-6 rounded-2xl text-center group">
+                        <div class="icon-wrapper w-16 h-16 bg-sky-100 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                            <i data-lucide="globe" class="w-8 h-8 text-sky-600"></i>
+                        </div>
+                        <h4 class="font-bold text-slate-900 mb-2 text-lg">Internet</h4>
+                        <p class="text-sm text-slate-600">ISP subscriptions</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Education & Payment Services -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <!-- Education Services -->
+                <div>
+                    <div class="flex items-center gap-3 mb-8">
+                        <div class="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center">
+                            <i data-lucide="graduation-cap" class="w-5 h-5 text-indigo-600"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900">Education</h3>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="service-card bg-gradient-to-br from-white to-indigo-50/30 p-5 rounded-xl text-center group">
+                            <div class="icon-wrapper w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center mb-3 mx-auto">
+                                <i data-lucide="award" class="w-6 h-6 text-indigo-600"></i>
+                            </div>
+                            <h4 class="font-bold text-slate-900 mb-1">WAEC</h4>
+                            <p class="text-xs text-slate-600">Result checker</p>
+                        </div>
+                        <div class="service-card bg-gradient-to-br from-white to-green-50/30 p-5 rounded-xl text-center group">
+                            <div class="icon-wrapper w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mb-3 mx-auto">
+                                <i data-lucide="book-open" class="w-6 h-6 text-green-600"></i>
+                            </div>
+                            <h4 class="font-bold text-slate-900 mb-1">NECO</h4>
+                            <p class="text-xs text-slate-600">Result checker</p>
+                        </div>
+                        <div class="service-card bg-gradient-to-br from-white to-blue-50/30 p-5 rounded-xl text-center group">
+                            <div class="icon-wrapper w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-3 mx-auto">
+                                <i data-lucide="file-text" class="w-6 h-6 text-blue-600"></i>
+                            </div>
+                            <h4 class="font-bold text-slate-900 mb-1">JAMB</h4>
+                            <p class="text-xs text-slate-600">Pins & forms</p>
+                        </div>
+                        <div class="service-card bg-gradient-to-br from-white to-orange-50/30 p-5 rounded-xl text-center group">
+                            <div class="icon-wrapper w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-3 mx-auto">
+                                <i data-lucide="bookmark-check" class="w-6 h-6 text-orange-600"></i>
+                            </div>
+                            <h4 class="font-bold text-slate-900 mb-1">NABTEB</h4>
+                            <p class="text-xs text-slate-600">Result checker</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Payment Services -->
+                <div>
+                    <div class="flex items-center gap-3 mb-8">
+                        <div class="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
+                            <i data-lucide="credit-card" class="w-5 h-5 text-blue-600"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900">Payments</h3>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="service-card bg-gradient-to-br from-white to-blue-50/30 p-5 rounded-xl text-center group">
+                            <div class="icon-wrapper w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-3 mx-auto">
+                                <i data-lucide="wallet" class="w-6 h-6 text-blue-600"></i>
+                            </div>
+                            <h4 class="font-bold text-slate-900 mb-1">Fund Wallet</h4>
+                            <p class="text-xs text-slate-600">Instant funding</p>
+                        </div>
+                        <div class="service-card bg-gradient-to-br from-white to-green-50/30 p-5 rounded-xl text-center group">
+                            <div class="icon-wrapper w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mb-3 mx-auto">
+                                <i data-lucide="send" class="w-6 h-6 text-green-600"></i>
+                            </div>
+                            <h4 class="font-bold text-slate-900 mb-1">Transfer</h4>
+                            <p class="text-xs text-slate-600">Send money</p>
+                        </div>
+                        <div class="service-card bg-gradient-to-br from-white to-red-50/30 p-5 rounded-xl text-center group">
+                            <div class="icon-wrapper w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mb-3 mx-auto">
+                                <i data-lucide="arrow-up-right" class="w-6 h-6 text-red-600"></i>
+                            </div>
+                            <h4 class="font-bold text-slate-900 mb-1">Withdraw</h4>
+                            <p class="text-xs text-slate-600">Cash out</p>
+                        </div>
+                        <div class="service-card bg-gradient-to-br from-white to-cyan-50/30 p-5 rounded-xl text-center group">
+                            <div class="icon-wrapper w-12 h-12 bg-cyan-100 rounded-xl flex items-center justify-center mb-3 mx-auto">
+                                <i data-lucide="message-square" class="w-6 h-6 text-cyan-600"></i>
+                            </div>
+                            <h4 class="font-bold text-slate-900 mb-1">Bulk SMS</h4>
+                            <p class="text-xs text-slate-600">Mass messaging</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20 md:py-24 w-full gradient-bg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="section-heading text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-6">Why Choose Us?</h2>
+                <p class="text-lg text-slate-600 max-w-2xl mx-auto">We provide exceptional service with cutting-edge technology and unwavering commitment to your satisfaction</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="feature-card text-center bg-white p-8 rounded-2xl shadow-md border border-slate-100">
+                    <div class="w-20 h-20 bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                        <i data-lucide="rocket" class="w-10 h-10 text-blue-600"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-900 mb-3">Instant Delivery</h3>
+                    <p class="text-slate-600 leading-relaxed">All transactions are processed instantly with our automated delivery system. No delays, no waiting.</p>
+                </div>
+                <div class="feature-card text-center bg-white p-8 rounded-2xl shadow-md border border-slate-100">
+                    <div class="w-20 h-20 bg-gradient-to-br from-green-50 to-green-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                        <i data-lucide="shield-check" class="w-10 h-10 text-green-600"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-900 mb-3">100% Secure</h3>
+                    <p class="text-slate-600 leading-relaxed">Your data and transactions are protected with enterprise-grade, bank-level security encryption.</p>
+                </div>
+                <div class="feature-card text-center bg-white p-8 rounded-2xl shadow-md border border-slate-100">
+                    <div class="w-20 h-20 bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                        <i data-lucide="headphones" class="w-10 h-10 text-amber-600"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-900 mb-3">24/7 Support</h3>
+                    <p class="text-slate-600 leading-relaxed">Our dedicated support team is always available to assist you with any questions or concerns.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-20 md:py-28 w-full bg-gradient-to-br from-primary to-primary-light relative overflow-hidden">
+        <!-- Decorative elements -->
+        <div class="absolute inset-0 overflow-hidden pointer-events-none">
+            <div class="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
+            <div class="absolute bottom-0 left-0 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl"></div>
+        </div>
+        
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+            <div class="text-center">
+                <h2 class="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-5">Ready to Get Started?</h2>
+                <p class="text-xl text-white/90 mb-10 max-w-2xl mx-auto">Join thousands of satisfied customers and experience the future of digital payments today</p>
+                <a href="signup.html" class="inline-flex items-center gap-3 px-10 py-5 bg-white text-primary rounded-xl text-lg font-bold hover:bg-slate-50 transition-all shadow-2xl hover:shadow-3xl hover:scale-105">
+                    Create Free Account
+                    <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                </a>
+                <p class="mt-6 text-white/80 text-sm">No credit card required • Get started in minutes</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="contact" class="bg-slate-900 text-white py-16 w-full">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+                <div>
+                    <div class="flex items-center gap-3 mb-5">
+                        <img src="logo.png" alt="Yareema Data Hub Logo" class="w-14 h-14 object-contain">
+                        <div>
+                            <h3 class="text-lg font-bold">Yareema Data Hub</h3>
+                            <p class="text-xs text-slate-400">& SERVICES LIMITED</p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-slate-400 leading-relaxed mb-4">Your trusted partner for telecom and utility services in Nigeria.</p>
+                    <div class="inline-flex items-center gap-2 px-3 py-2 bg-green-500/10 border border-green-500/20 rounded-lg">
+                        <i data-lucide="shield" class="w-4 h-4 text-green-400"></i>
+                        <span class="text-xs font-semibold text-green-400">CAC Registered</span>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="font-bold text-lg mb-5">Services</h4>
+                    <ul class="space-y-3 text-sm text-slate-400">
+                        <li><a href="#services" class="hover:text-white transition-colors hover:translate-x-1 inline-block">Data Bundles</a></li>
+                        <li><a href="#services" class="hover:text-white transition-colors hover:translate-x-1 inline-block">Airtime Recharge</a></li>
+                        <li><a href="#services" class="hover:text-white transition-colors hover:translate-x-1 inline-block">Electricity Bills</a></li>
+                        <li><a href="#services" class="hover:text-white transition-colors hover:translate-x-1 inline-block">Cable TV</a></li>
+                        <li><a href="#services" class="hover:text-white transition-colors hover:translate-x-1 inline-block">Education PINs</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold text-lg mb-5">Company</h4>
+                    <ul class="space-y-3 text-sm text-slate-400">
+                        <li><a href="#about" class="hover:text-white transition-colors hover:translate-x-1 inline-block">About Us</a></li>
+                        <li><a href="#contact" class="hover:text-white transition-colors hover:translate-x-1 inline-block">Contact</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors hover:translate-x-1 inline-block">Terms of Service</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors hover:translate-x-1 inline-block">Privacy Policy</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors hover:translate-x-1 inline-block">FAQ</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold text-lg mb-5">Get in Touch</h4>
+                    <ul class="space-y-4 text-sm text-slate-400">
+                        <li class="flex items-start gap-3">
+                            <i data-lucide="phone" class="w-5 h-5 text-primary mt-0.5 flex-shrink-0"></i>
+                            <div>
+                                <p class="text-white font-medium">08021580029</p>
+                                <p class="text-xs">Mon-Sat 8AM-8PM</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i data-lucide="mail" class="w-5 h-5 text-primary mt-0.5 flex-shrink-0"></i>
+                            <div>
+                                <p class="text-white font-medium break-all">support@yareemadatahub.com</p>
+                                <p class="text-xs">We reply within 24hrs</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="mt-12 pt-8 border-t border-slate-800">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                    <p class="text-sm text-slate-400">&copy; 2026 Yareema Data Hub & Services Limited. All rights reserved.</p>
+                    <div class="flex gap-4">
+                        <a href="#" class="w-10 h-10 bg-slate-800 hover:bg-primary rounded-lg flex items-center justify-center transition-colors">
+                            <i data-lucide="facebook" class="w-5 h-5"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-slate-800 hover:bg-primary rounded-lg flex items-center justify-center transition-colors">
+                            <i data-lucide="twitter" class="w-5 h-5"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-slate-800 hover:bg-primary rounded-lg flex items-center justify-center transition-colors">
+                            <i data-lucide="instagram" class="w-5 h-5"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+        
+        // Mobile menu toggle
+        document.getElementById('mobile-menu-button')?.addEventListener('click', function() {
+            const menu = document.getElementById('mobile-menu');
+            const icon = this.querySelector('i');
+            
+            if (menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden');
+                icon.setAttribute('data-lucide', 'x');
+            } else {
+                menu.classList.add('hidden');
+                icon.setAttribute('data-lucide', 'menu');
+            }
+            lucide.createIcons();
+        });
+        
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                    // Close mobile menu if open
+                    document.getElementById('mobile-menu')?.classList.add('hidden');
+                }
+            });
+        });
+        
+        // Add scroll effect to header
+        let lastScroll = 0;
+        window.addEventListener('scroll', function() {
+            const header = document.querySelector('header');
+            const currentScroll = window.pageYOffset;
+            
+            if (currentScroll > 10) {
+                header.classList.add('shadow-md');
+            } else {
+                header.classList.remove('shadow-md');
+            }
+            
+            lastScroll = currentScroll;
+        });
+        
+        // Add animation on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+        
+        const observer = new IntersectionObserver(function(entries) {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+        
+        // Observe service cards
+        document.querySelectorAll('.service-card, .feature-card').forEach(card => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(card);
+        });
+    </script>
+</body>
+</html>
