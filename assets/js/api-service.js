@@ -296,6 +296,6 @@ const api = new UserAPI();
 
 // Log initialization in development
 if (ENV.isDevelopment) {
-    console.log('✅ UserAPI initialized');
-    console.log('🔐 Token present:', !!api.token);
+    console.log('UserAPI initialized');
+    console.log('Token present:', !!api.token);
 }

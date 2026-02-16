@@ -290,7 +290,7 @@
                         showConfirmButton: false,
                         didClose: () => {
                             // Successful login - redirect
-                            const redirectUrl = sessionStorage.getItem('redirect_after_login') || 'user/home.html';
+                            const redirectUrl = sessionStorage.getItem('redirect_after_login') || './user/home.html';
                             sessionStorage.removeItem('redirect_after_login');
                             sessionStorage.removeItem('registration_success');
                             sessionStorage.removeItem('registered_email');

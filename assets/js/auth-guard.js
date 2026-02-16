@@ -46,10 +46,10 @@ const AuthGuard = {
             
             sessionStorage.setItem('redirect_after_login', intendedDestination);
             
-            console.log('🚫 Access denied - redirecting to login');
+            console.log('Access denied - redirecting to login');
             window.location.href = 'login.html';
         } else {
-            console.log('✅ Access granted - user authenticated');
+            console.log('Access granted - user authenticated');
         }
     },
 
@@ -64,10 +64,10 @@ const AuthGuard = {
             
             if (redirect) {
                 sessionStorage.removeItem('redirect_after_login');
-                console.log('↪️ Redirecting to intended destination:', redirect);
+                console.log('Redirecting to intended destination:', redirect);
                 window.location.href = redirect;
             } else {
-                console.log('↪️ Already authenticated - redirecting to:', defaultPage);
+                console.log('Already authenticated - redirecting to:', defaultPage);
                 window.location.href = defaultPage;
             }
         }
@@ -80,7 +80,7 @@ const AuthGuard = {
         localStorage.removeItem('user_token');
         sessionStorage.removeItem('user_token');
         localStorage.removeItem('user_data');
-        console.log('🔓 Auth data cleared');
+        console.log('Auth data cleared');
     },
 
     /**
@@ -109,11 +109,11 @@ const AuthGuard = {
 
 // Auto-initialize logging in development
 if (ENV?.isDevelopment) {
-    console.log('🛡️ AuthGuard initialized');
-    console.log('🔐 Authentication status:', AuthGuard.isAuthenticated() ? 'Logged in' : 'Not logged in');
+    console.log('AuthGuard initialized');
+    console.log('Authentication status:', AuthGuard.isAuthenticated() ? 'Logged in' : 'Not logged in');
     
     const user = AuthGuard.getUserData();
     if (user) {
-        console.log('👤 Current user:', user.email || user.phone || 'Unknown');
+        console.log('Current user:', user.email || user.phone || 'Unknown');
     }
 }
