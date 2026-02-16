@@ -1,23 +1,23 @@
-// COMPLETE Yareema Data Hub User API Service
-// All User-facing endpoints from Postman collection
 
 class YareemaUserAPI {
     constructor() {
         this.baseURL = API_CONFIG.BASE_URL;
-        this.token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        this.token = localStorage.getItem('user_token') || sessionStorage.getItem('user_token');
     }
 
     getToken() { return this.token; }
     
     setToken(token) {
-        localStorage.setItem('token', token);
-        sessionStorage.setItem('token', token);
+        localStorage.setItem('user_token', token);
+        sessionStorage.setItem('user_token', token);
         this.token = token;
     }
 
     clearToken() {
-        localStorage.clear();
-        sessionStorage.clear();
+        localStorage.removeItem('user_token');
+        sessionStorage.removeItem('user_token');
+        localStorage.removeItem('user_data');
+        localStorage.removeItem('user');
         this.token = null;
     }
 
@@ -66,7 +66,9 @@ class YareemaUserAPI {
         const token = response.token || response.data?.token;
         if (token) {
             this.setToken(token);
-            localStorage.setItem('user', JSON.stringify(response.user || response.data?.user || {}));
+            const userData = response.user || response.data?.user || {};
+            localStorage.setItem('user', JSON.stringify(userData));
+            localStorage.setItem('user_data', JSON.stringify(userData));
         }
         return response;
     }
