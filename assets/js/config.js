@@ -41,6 +41,6 @@ const ENV = {
 
 // Development mode logging
 if (ENV.isDevelopment) {
-    console.log('🔧 Running in development mode');
-    console.log('📡 API Base URL:', API_CONFIG.BASE_URL);
+    console.log('Running in development mode');
+    console.log('API Base URL:', API_CONFIG.BASE_URL);
 }

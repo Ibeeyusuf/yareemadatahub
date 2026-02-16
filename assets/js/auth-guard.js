@@ -57,7 +57,7 @@ const AuthGuard = {
      * Redirect authenticated users away from auth pages
      * Call this on login/signup pages
      */
-    redirectIfAuthenticated(defaultPage = 'index.html') {
+    redirectIfAuthenticated(defaultPage = 'user/home.html') {
         if (this.isAuthenticated()) {
             // Check for stored redirect destination
             const redirect = sessionStorage.getItem('redirect_after_login');
