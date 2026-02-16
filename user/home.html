@@ -217,10 +217,27 @@
             }
         }
 
-        if (!api.getToken()) {
-            window.location.href = '../login.html';
+        // CRITICAL: Check authentication with proper timing
+        function checkAuth() {
+            const token = localStorage.getItem('user_token') || sessionStorage.getItem('user_token');
+            console.log('AUTH CHECK - Token:', token ? 'EXISTS' : 'NOT FOUND');
+            console.log('Current Page:', window.location.href);
+            
+            if (!token) {
+                console.log('No token found - redirecting to login');
+                // Use absolute path from root
+                window.location.href = '/login.html';
+            } else {
+                console.log('Token found - loading dashboard');
+                loadData();
+            }
+        }
+
+        // Wait for DOM to be fully loaded before checking auth
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', checkAuth);
         } else {
-            loadData();
+            checkAuth();
         }
 
         lucide.createIcons();

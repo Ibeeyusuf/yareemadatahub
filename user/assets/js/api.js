@@ -42,7 +42,7 @@ class YareemaUserAPI {
             if (!response.ok) {
                 if (response.status === 401 && !window.location.pathname.includes('index.html')) {
                     this.clearToken();
-                    window.location.href = '../login.html';
+                    window.location.href = '/login.html';
                 }
                 throw new Error(data.message || 'Request failed');
             }
@@ -277,7 +277,7 @@ class YareemaUserAPI {
     
     async logout() {
         this.clearToken();
-        window.location.href = '../login.html';
+        window.location.href = '/login.html';
     }
 }
 

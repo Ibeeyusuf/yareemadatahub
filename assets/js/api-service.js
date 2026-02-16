@@ -57,7 +57,7 @@ class UserAPI {
         }
 
         try {
-            console.log('🌐 API Request:', url, config.method);
+            console.log('API Request:', url, config.method);
             
             const response = await fetch(url, config);
             
@@ -66,11 +66,11 @@ class UserAPI {
             try {
                 data = await response.json();
             } catch (e) {
-                console.error('❌ Failed to parse JSON response:', e);
+                console.error('Failed to parse JSON response:', e);
                 throw new Error('Invalid response format from server');
             }
 
-            console.log('📡 API Response:', response.status, data);
+            console.log('API Response:', response.status, data);
 
             // Handle 401 Unauthorized - session expired
             if (response.status === 401) {
@@ -82,7 +82,7 @@ class UserAPI {
                     !currentPage.includes('verify-otp.html') &&
                     !currentPage.includes('forgot-password.html') &&
                     !currentPage.includes('reset-password.html')) {
-                    window.location.href = 'login.html';
+                    window.location.href = '/login.html';
                 }
                 throw new Error('Session expired. Please login again.');
             }
@@ -241,7 +241,7 @@ class UserAPI {
      */
     logout() {
         this.clearToken();
-        window.location.href = 'login.html';
+        window.location.href = '/login.html';
     }
 
     // ==================== USER PROFILE METHODS ====================

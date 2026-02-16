@@ -47,7 +47,7 @@ const AuthGuard = {
             sessionStorage.setItem('redirect_after_login', intendedDestination);
             
             console.log('Access denied - redirecting to login');
-            window.location.href = 'login.html';
+            window.location.href = '/login.html';
         } else {
             console.log('Access granted - user authenticated');
         }
@@ -57,7 +57,7 @@ const AuthGuard = {
      * Redirect authenticated users away from auth pages
      * Call this on login/signup pages
      */
-    redirectIfAuthenticated(defaultPage = 'user/home.html') {
+    redirectIfAuthenticated(defaultPage = '/user/home.html') {
         if (this.isAuthenticated()) {
             // Check for stored redirect destination
             const redirect = sessionStorage.getItem('redirect_after_login');
@@ -87,7 +87,7 @@ const AuthGuard = {
      * Handle logout
      * @param {string} redirectUrl - Where to redirect after logout
      */
-    logout(redirectUrl = 'login.html') {
+    logout(redirectUrl = '/login.html') {
         this.clearAuth();
         window.location.href = redirectUrl;
     },

@@ -278,9 +278,15 @@
                 // Call real API
                 const response = await api.login(email, password, false);
                 
+                console.log('LOGIN API Response:', response);
+                
                 if (response.success !== false) {
                     // Show success alert
                     const userName = response.user?.firstName || response.user?.name || 'User';
+                    
+                    // Verify token was saved
+                    const savedToken = localStorage.getItem('user_token') || sessionStorage.getItem('user_token');
+                    console.log('Token verification after login:', savedToken ? 'SAVED' : 'NOT SAVED');
                     
                     Swal.fire({
                         icon: 'success',
@@ -289,11 +295,15 @@
                         timer: 1500,
                         showConfirmButton: false,
                         didClose: () => {
-                            // Successful login - redirect
-                            const redirectUrl = sessionStorage.getItem('redirect_after_login') || 'user/home.html';
+                            // Successful login - redirect with absolute path
+                            const redirectUrl = sessionStorage.getItem('redirect_after_login') || '/user/home.html';
                             sessionStorage.removeItem('redirect_after_login');
                             sessionStorage.removeItem('registration_success');
                             sessionStorage.removeItem('registered_email');
+                            
+                            console.log('Login successful - redirecting to:', redirectUrl);
+                            console.log('Token saved as user_token');
+                            
                             window.location.href = redirectUrl;
                         }
                     });
