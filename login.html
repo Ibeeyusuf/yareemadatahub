@@ -230,7 +230,7 @@
         lucide.createIcons();
 
         // Redirect if already authenticated
-        AuthGuard.redirectIfAuthenticated('user/home.html');
+        AuthGuard.redirectIfAuthenticated('user/index.html');
 
         // Password visibility toggle
         const toggleLoginPassword = document.getElementById('toggle-login-password');
@@ -296,7 +296,7 @@
                         showConfirmButton: false,
                         didClose: () => {
                             // Successful login - redirect with absolute path
-                            const redirectUrl = sessionStorage.getItem('redirect_after_login') || '/user/home.html';
+                            const redirectUrl = sessionStorage.getItem('redirect_after_login') || '/user/index.html';
                             sessionStorage.removeItem('redirect_after_login');
                             sessionStorage.removeItem('registration_success');
                             sessionStorage.removeItem('registered_email');
