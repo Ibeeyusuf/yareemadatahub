@@ -19,7 +19,7 @@
         </div>
         
         <div class="sidebar-nav">
-            <a href="home.html" class="nav-item active">
+            <a href="index.html" class="nav-item active">
                 <i data-lucide="home" style="width: 20px; height: 20px;"></i>
                 <span>Dashboard</span>
             </a>
@@ -28,7 +28,7 @@
                 <span>Services</span>
             </a>
             <a href="transactions.html" class="nav-item">
-                <i data-lucide="receipt" style="width: 20px; height: 20px;"></i>
+                <i data-lucide="banknote" class="w-5 h-5"></i>
                 <span>Transactions</span>
             </a>
             <a href="wallet.html" class="nav-item">
@@ -73,14 +73,20 @@
         <!-- Wallet Card -->
         <div class="wallet-card">
             <div style="display: flex; justify-content: space-between; align-items: start;">
-                <div>
+                <div style="flex: 1;">
                     <div class="wallet-label">Available Balance</div>
                     <div class="wallet-balance" id="walletBalance">₦0.00</div>
                     <div class="wallet-account" id="walletAccount">Account: Loading...</div>
                 </div>
-                <button onclick="toggleBalance()" style="background: rgba(255,255,255,0.2); border: none; padding: 8px; border-radius: 8px; cursor: pointer;">
-                    <i data-lucide="eye" id="eyeIcon" style="width: 20px; height: 20px; color: #fff;"></i>
-                </button>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="showAccountDetails()" title="View Account Details" style="background: rgba(255,255,255,0.2); border: none; padding: 8px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                        <i data-lucide="credit-card" style="width: 20px; height: 20px; color: #fff;"></i>
+                        <span style="color: #fff; font-size: 13px; font-weight: 500;">Account</span>
+                    </button>
+                    <button onclick="toggleBalance()" title="Toggle Balance Visibility" style="background: rgba(255,255,255,0.2); border: none; padding: 8px; border-radius: 8px; cursor: pointer;">
+                        <i data-lucide="eye" id="eyeIcon" style="width: 20px; height: 20px; color: #fff;"></i>
+                    </button>
+                </div>
             </div>
             <div class="wallet-actions">
                 <button class="wallet-btn" onclick="openModal('fund')">
@@ -217,16 +223,34 @@
             }
         }
 
+        function showAccountDetails() {
+            // Trigger the fund modal which shows account details
+            openModal('fund');
+        }
+
         // CRITICAL: Check authentication with proper timing
         function checkAuth() {
-            const token = localStorage.getItem('user_token') || sessionStorage.getItem('user_token');
+            // Check all possible token locations
+            const tokenLS = localStorage.getItem('user_token');
+            const tokenSS = sessionStorage.getItem('user_token');
+            const oldTokenLS = localStorage.getItem('token');
+            const oldTokenSS = sessionStorage.getItem('token');
+            
+            console.log('=== TOKEN DEBUG ===');
+            console.log('localStorage.user_token:', tokenLS);
+            console.log('sessionStorage.user_token:', tokenSS);
+            console.log('localStorage.token:', oldTokenLS);
+            console.log('sessionStorage.token:', oldTokenSS);
+            console.log('==================');
+            
+            const token = tokenLS || tokenSS;
             console.log('AUTH CHECK - Token:', token ? 'EXISTS' : 'NOT FOUND');
             console.log('Current Page:', window.location.href);
             
             if (!token) {
                 console.log('No token found - redirecting to login');
-                // Use absolute path from root
-                window.location.href = '/login.html';
+                // Use relative path that works everywhere
+                window.location.href = '../login.html';
             } else {
                 console.log('Token found - loading dashboard');
                 loadData();

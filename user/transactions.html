@@ -24,7 +24,7 @@
                 <i data-lucide="grid" style="width: 20px; height: 20px;"></i><span>Services</span>
             </a>
             <a href="transactions.html" class="nav-item active">
-                <i data-lucide="receipt" style="width: 20px; height: 20px;"></i><span>Transactions</span>
+                <i data-lucide="banknote" class="w-5 h-5"></i><span>Transactions</span>
             </a>
             <a href="wallet.html" class="nav-item">
                 <i data-lucide="wallet" style="width: 20px; height: 20px;"></i><span>Wallet</span>
@@ -54,7 +54,7 @@
             try {
                 const r = await api.getTransactions();
                 const txns = r.data?.transactions || r.transactions || [];
-                document.getElementById('txnsList').innerHTML = txns.length ? txns.map(t => `<div class="activity-item"><div class="activity-icon" style="background: #eff6ff;"><i data-lucide="receipt" style="width: 24px; height: 24px; color: #1e3d5c;"></i></div><div class="activity-info"><div class="activity-title">${t.type}</div><div class="activity-time">${new Date(t.createdAt).toLocaleString()}</div></div><div class="activity-amount">${t.amount < 0 ? '-' : '+'}₦${Math.abs(t.amount).toLocaleString()}</div></div>`).join('') : '<div style="text-align: center; padding: 48px; color: #94a3b8;">No transactions yet</div>';
+                document.getElementById('txnsList').innerHTML = txns.length ? txns.map(t => `<div class="activity-item"><div class="activity-icon" style="background: #eff6ff;"><i data-lucide="banknote" class="w-5 h-5"></i></div><div class="activity-info"><div class="activity-title">${t.type}</div><div class="activity-time">${new Date(t.createdAt).toLocaleString()}</div></div><div class="activity-amount">${t.amount < 0 ? '-' : '+'}₦${Math.abs(t.amount).toLocaleString()}</div></div>`).join('') : '<div style="text-align: center; padding: 48px; color: #94a3b8;">No transactions yet</div>';
                 lucide.createIcons();
             } catch (e) { document.getElementById('txnsList').innerHTML = '<div style="text-align: center; padding: 48px; color: #ef4444;">Error loading</div>'; }
         }

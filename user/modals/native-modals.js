@@ -112,7 +112,7 @@ function openModal(type) {
     if (modalMap[type]) {
         modalMap[type]();
     } else {
-        showError('This feature is coming soon!');
+        showError('Service not available. Please try again later.');
     }
 }
 
@@ -588,15 +588,403 @@ async function submitAirtimeSwap() {
     }
 }
 
-// Simple placeholders for coming soon features
-function showSMSModal() { showError('Bulk SMS service coming soon!'); }
-function showRemitaModal() { showError('Remita payment coming soon!'); }
-function showAlphaModal() { showError('Alpha service coming soon!'); }
+// SMS, Remita, Alpha services
+function showSMSModal() { 
+    showModal('Bulk SMS', `
+        <form id="smsForm" style="padding: 24px;">
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Sender ID</label>
+                <input type="text" id="smsSender" placeholder="e.g., YareemaData" maxlength="11" required
+                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px;">
+                <p style="color: #64748b; font-size: 12px; margin-top: 4px;">Max 11 characters</p>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Phone Numbers</label>
+                <textarea id="smsPhones" placeholder="Enter phone numbers separated by commas&#10;e.g., 08012345678, 08087654321" rows="4" required
+                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px; resize: vertical;"></textarea>
+                <p style="color: #64748b; font-size: 12px; margin-top: 4px;">Separate multiple numbers with commas</p>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Message</label>
+                <textarea id="smsMessage" placeholder="Type your message here..." rows="5" maxlength="160" required
+                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px; resize: vertical;"></textarea>
+                <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+                    <p style="color: #64748b; font-size: 12px;">Max 160 characters per page</p>
+                    <p id="smsCharCount" style="color: #64748b; font-size: 12px;">0/160</p>
+                </div>
+            </div>
+
+            <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="color: #64748b; font-size: 14px;">Recipients:</span>
+                    <span id="smsRecipientCount" style="color: #1e3d5c; font-weight: 600;">0</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="color: #64748b; font-size: 14px;">Pages:</span>
+                    <span id="smsPageCount" style="color: #1e3d5c; font-weight: 600;">1</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: #64748b; font-size: 14px;">Estimated Cost:</span>
+                    <span id="smsCost" style="color: #1e3d5c; font-weight: 600;">₦0.00</span>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Transaction PIN</label>
+                <input type="password" id="smsPin" placeholder="Enter 4-digit PIN" maxlength="4" pattern="[0-9]{4}" required
+                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px;">
+            </div>
+        </form>
+    `, `
+        <button type="button" onclick="closeModal()" style="padding: 12px 24px; background: #f1f5f9; border: none; border-radius: 8px; cursor: pointer; margin-right: 8px;">Cancel</button>
+        <button type="submit" form="smsForm" class="btn-primary" style="padding: 12px 24px;">Send SMS</button>
+    `);
+
+    // Add character counter
+    document.getElementById('smsMessage').addEventListener('input', function() {
+        const length = this.value.length;
+        document.getElementById('smsCharCount').textContent = length + '/160';
+        const pages = Math.ceil(length / 160) || 1;
+        document.getElementById('smsPageCount').textContent = pages;
+        calculateSMSCost();
+    });
+
+    // Add recipient counter
+    document.getElementById('smsPhones').addEventListener('input', calculateSMSCost);
+
+    document.getElementById('smsForm').addEventListener('submit', handleSMSSend);
+}
+
+function calculateSMSCost() {
+    const phonesText = document.getElementById('smsPhones').value;
+    const message = document.getElementById('smsMessage').value;
+    
+    const phones = phonesText.split(',').map(p => p.trim()).filter(p => p.length > 0);
+    const recipientCount = phones.length;
+    const pages = Math.ceil(message.length / 160) || 1;
+    const costPerPage = 4; // ₦4 per page
+    const totalCost = recipientCount * pages * costPerPage;
+
+    document.getElementById('smsRecipientCount').textContent = recipientCount;
+    document.getElementById('smsPageCount').textContent = pages;
+    document.getElementById('smsCost').textContent = '₦' + totalCost.toFixed(2);
+}
+
+async function handleSMSSend(e) {
+    e.preventDefault();
+    
+    const sender = document.getElementById('smsSender').value;
+    const phonesText = document.getElementById('smsPhones').value;
+    const message = document.getElementById('smsMessage').value;
+    const pin = document.getElementById('smsPin').value;
+
+    const phones = phonesText.split(',').map(p => p.trim()).filter(p => p.length > 0);
+
+    if (phones.length === 0) {
+        showError('Please enter at least one phone number');
+        return;
+    }
+
+    if (message.length === 0) {
+        showError('Please enter a message');
+        return;
+    }
+
+    if (pin.length !== 4) {
+        showError('Transaction PIN must be 4 digits');
+        return;
+    }
+
+    showLoading('Sending SMS...');
+
+    try {
+        // This would call api.sendBulkSMS() when backend implements it
+        const response = await api.request('/api/v1/sms/send', {
+            method: 'POST',
+            body: {
+                sender: sender,
+                recipients: phones,
+                message: message,
+                transactionPin: pin
+            }
+        });
+
+        closeModal();
+        showSuccess(response.message || 'SMS sent successfully!');
+    } catch (error) {
+        closeModal();
+        showError(error.message || 'Failed to send SMS. Please try again.');
+    }
+}
+
+function showRemitaModal() { 
+    window.location.href = 'rrr-payment.html';
+}
+
+function showAlphaModal() { 
+    showError('This service is currently unavailable. Please contact support.'); 
+}
 
 // WALLET MODALS
-function showFundModal() { showError('Fund wallet feature coming soon!'); }
-function showTransferModal() { showError('Transfer feature coming soon!'); }
-function showWithdrawModal() { showError('Withdrawal feature coming soon!'); }
+function showFundModal() {
+    showModal('Fund Wallet', `
+        <div style="padding: 24px;">
+            <div style="margin-bottom: 24px;">
+                <p style="color: #64748b; margin-bottom: 16px;">Transfer funds to your wallet account:</p>
+                
+                <div style="background: #f8fafc; padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <span style="color: #64748b; font-size: 14px;">Account Number</span>
+                        <button onclick="copyToClipboard(document.getElementById('fundAccountNumber').textContent)" style="background: #1e3d5c; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;">Copy</button>
+                    </div>
+                    <div id="fundAccountNumber" style="font-size: 24px; font-weight: 600; color: #1e3d5c; letter-spacing: 2px;">Loading...</div>
+                </div>
+
+                <div style="background: #f8fafc; padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                    <div style="margin-bottom: 8px;">
+                        <span style="color: #64748b; font-size: 14px;">Bank Name</span>
+                    </div>
+                    <div id="fundBankName" style="font-size: 16px; font-weight: 600; color: #1e3d5c;">Loading...</div>
+                </div>
+
+                <div style="background: #f8fafc; padding: 16px; border-radius: 12px;">
+                    <div style="margin-bottom: 8px;">
+                        <span style="color: #64748b; font-size: 14px;">Account Name</span>
+                    </div>
+                    <div id="fundAccountName" style="font-size: 16px; font-weight: 600; color: #1e3d5c;">Loading...</div>
+                </div>
+
+                <div style="background: #fef3c7; padding: 12px; border-radius: 8px; margin-top: 16px; border-left: 4px solid #f59e0b;">
+                    <p style="color: #92400e; font-size: 13px; margin: 0;">Funds reflect automatically within 5 minutes</p>
+                </div>
+            </div>
+        </div>
+    `, `<button onclick="closeModal()" class="btn-primary" style="width: 100%;">Close</button>`);
+
+    // Load wallet details
+    loadWalletDetails();
+}
+
+async function loadWalletDetails() {
+    try {
+        const wallet = await api.getWalletBalance();
+        const accountNumber = wallet.data?.accountNumber || wallet.accountNumber || 'N/A';
+        const bankName = wallet.data?.bankName || wallet.bankName || 'N/A';
+        const accountName = wallet.data?.accountName || wallet.accountName || 'N/A';
+
+        document.getElementById('fundAccountNumber').textContent = accountNumber;
+        document.getElementById('fundBankName').textContent = bankName;
+        document.getElementById('fundAccountName').textContent = accountName;
+    } catch (error) {
+        console.error('Error loading wallet details:', error);
+        document.getElementById('fundAccountNumber').textContent = 'Error loading';
+        document.getElementById('fundBankName').textContent = 'Error loading';
+        document.getElementById('fundAccountName').textContent = 'Error loading';
+    }
+}
+
+function showTransferModal() {
+    showModal('Transfer Funds', `
+        <form id="transferForm" style="padding: 24px;">
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Recipient Email or Phone</label>
+                <input type="text" id="transferRecipient" placeholder="Enter email or phone number" required
+                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px;">
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Amount</label>
+                <input type="number" id="transferAmount" placeholder="0.00" min="100" required
+                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px;">
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Transaction PIN</label>
+                <input type="password" id="transferPin" placeholder="Enter 4-digit PIN" maxlength="4" pattern="[0-9]{4}" required
+                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px;">
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Narration (Optional)</label>
+                <input type="text" id="transferNarration" placeholder="What's this for?"
+                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px;">
+            </div>
+        </form>
+    `, `
+        <button type="button" onclick="closeModal()" style="padding: 12px 24px; background: #f1f5f9; border: none; border-radius: 8px; cursor: pointer; margin-right: 8px;">Cancel</button>
+        <button type="submit" form="transferForm" class="btn-primary" style="padding: 12px 24px;">Transfer</button>
+    `);
+
+    document.getElementById('transferForm').addEventListener('submit', handleTransfer);
+}
+
+async function handleTransfer(e) {
+    e.preventDefault();
+    
+    const recipient = document.getElementById('transferRecipient').value;
+    const amount = parseFloat(document.getElementById('transferAmount').value);
+    const pin = document.getElementById('transferPin').value;
+    const narration = document.getElementById('transferNarration').value;
+
+    if (amount < 100) {
+        showError('Minimum transfer amount is ₦100');
+        return;
+    }
+
+    if (pin.length !== 4) {
+        showError('Transaction PIN must be 4 digits');
+        return;
+    }
+
+    showLoading('Processing transfer...');
+
+    try {
+        const response = await api.transferFunds({
+            recipient: recipient,
+            amount: amount,
+            transactionPin: pin,
+            narration: narration
+        });
+
+        closeModal();
+        showSuccess(response.message || 'Transfer successful!');
+    } catch (error) {
+        closeModal();
+        showError(error.message || 'Transfer failed. Please try again.');
+    }
+}
+
+function showWithdrawModal() {
+    showModal('Withdraw Funds', `
+        <form id="withdrawForm" style="padding: 24px;">
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Bank</label>
+                <select id="withdrawBank" required
+                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px;">
+                    <option value="">Select Bank</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Account Number</label>
+                <input type="text" id="withdrawAccountNumber" placeholder="0123456789" maxlength="10" pattern="[0-9]{10}" required
+                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px;">
+                <div id="accountNameDisplay" style="margin-top: 8px; color: #16a34a; font-size: 14px;"></div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Amount</label>
+                <input type="number" id="withdrawAmount" placeholder="0.00" min="1000" required
+                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px;">
+                <p style="color: #64748b; font-size: 12px; margin-top: 4px;">Minimum: ₦1,000</p>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Transaction PIN</label>
+                <input type="password" id="withdrawPin" placeholder="Enter 4-digit PIN" maxlength="4" pattern="[0-9]{4}" required
+                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px;">
+            </div>
+        </form>
+    `, `
+        <button type="button" onclick="closeModal()" style="padding: 12px 24px; background: #f1f5f9; border: none; border-radius: 8px; cursor: pointer; margin-right: 8px;">Cancel</button>
+        <button type="submit" form="withdrawForm" class="btn-primary" style="padding: 12px 24px;">Withdraw</button>
+    `);
+
+    loadBanks();
+    document.getElementById('withdrawForm').addEventListener('submit', handleWithdraw);
+    document.getElementById('withdrawAccountNumber').addEventListener('blur', verifyAccountNumber);
+}
+
+async function loadBanks() {
+    // Load Nigerian banks
+    const banks = [
+        'Access Bank', 'GTBank', 'First Bank', 'UBA', 'Zenith Bank',
+        'Ecobank', 'Fidelity Bank', 'FCMB', 'Sterling Bank', 'Union Bank',
+        'Stanbic IBTC', 'Polaris Bank', 'Wema Bank', 'Keystone Bank'
+    ];
+    
+    const select = document.getElementById('withdrawBank');
+    banks.forEach(bank => {
+        const option = document.createElement('option');
+        option.value = bank.toLowerCase().replace(/\s+/g, '-');
+        option.textContent = bank;
+        select.appendChild(option);
+    });
+}
+
+async function verifyAccountNumber() {
+    const accountNumber = document.getElementById('withdrawAccountNumber').value;
+    const bank = document.getElementById('withdrawBank').value;
+    const display = document.getElementById('accountNameDisplay');
+
+    if (accountNumber.length !== 10 || !bank) {
+        display.textContent = '';
+        return;
+    }
+
+    display.textContent = 'Verifying account...';
+
+    // This would call a real API to verify account
+    // For now, show placeholder
+    setTimeout(() => {
+        display.textContent = 'Account Name: [Verification pending]';
+    }, 1000);
+}
+
+async function handleWithdraw(e) {
+    e.preventDefault();
+    
+    const bank = document.getElementById('withdrawBank').value;
+    const accountNumber = document.getElementById('withdrawAccountNumber').value;
+    const amount = parseFloat(document.getElementById('withdrawAmount').value);
+    const pin = document.getElementById('withdrawPin').value;
+
+    if (amount < 1000) {
+        showError('Minimum withdrawal amount is ₦1,000');
+        return;
+    }
+
+    if (pin.length !== 4) {
+        showError('Transaction PIN must be 4 digits');
+        return;
+    }
+
+    showLoading('Processing withdrawal...');
+
+    try {
+        const response = await api.withdrawFunds({
+            bankCode: bank,
+            accountNumber: accountNumber,
+            amount: amount,
+            transactionPin: pin
+        });
+
+        closeModal();
+        showSuccess(response.message || 'Withdrawal request submitted!');
+    } catch (error) {
+        closeModal();
+        showError(error.message || 'Withdrawal failed. Please try again.');
+    }
+}
+
+function copyToClipboard(text) {
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+            showSuccess('Account number copied!');
+        });
+    } else {
+        // Fallback for older browsers
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showSuccess('Account number copied!');
+    }
+}
 
 // ==================== PROFILE MODALS ====================
 function showPersonalDetailsModal() {
