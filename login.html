@@ -249,81 +249,85 @@
         });
 
         // Login form submission with REAL API
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const email = document.getElementById('login-email').value.trim();
-            const password = loginPassword.value;
-            
-            // Validation
-            if (!email || !password) {
-                showError('login-error', 'Please fill in all fields');
-                return;
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const email = document.getElementById('login-email').value.trim();
+    const password = loginPassword.value;
+    
+    // Validation
+    if (!email || !password) {
+        showError('login-error', 'Please fill in all fields');
+        return;
+    }
+    
+    hideError('login-error');
+    
+    const loginBtn = document.getElementById('login-btn');
+    const loginSpinner = document.getElementById('login-spinner');
+    const loginBtnText = loginBtn.querySelector('span');
+    const originalText = loginBtnText.textContent;
+    
+    // Show loading state
+    loginBtn.disabled = true;
+    loginBtnText.textContent = 'Logging in...';
+    loginSpinner.classList.remove('hidden');
+    lucide.createIcons();
+    
+    try {
+        // Call real API
+        const response = await api.login(email, password);
+        
+        console.log('Login response:', response);
+        
+        if (response.success) {
+            // Extract user name properly
+            let userName = 'User';
+            if (response.user) {
+                userName = response.user.firstName || 
+                          response.user.name || 
+                          response.user.fullName || 
+                          response.user.email?.split('@')[0] || 
+                          'User';
             }
             
-            hideError('login-error');
+            // Verify token was saved
+            const savedToken = localStorage.getItem('user_token') || sessionStorage.getItem('user_token');
+            console.log('Token verification after login:', savedToken ? 'SAVED' : 'NOT SAVED');
             
-            const loginBtn = document.getElementById('login-btn');
-            const loginSpinner = document.getElementById('login-spinner');
-            const loginBtnText = loginBtn.querySelector('span');
-            const originalText = loginBtnText.textContent;
-            
-            // Show loading state
-            loginBtn.disabled = true;
-            loginBtnText.textContent = 'Logging in...';
-            loginSpinner.classList.remove('hidden');
-            lucide.createIcons();
-            
-            try {
-                // Call real API
-                const response = await api.login(email, password, false);
-                
-                console.log('LOGIN API Response:', response);
-                
-                if (response.success !== false) {
-                    // Show success alert
-                    const userName = response.user?.firstName || response.user?.name || 'User';
+            Swal.fire({
+                icon: 'success',
+                title: 'Login Successful!',
+                html: `<span>Welcome back, <strong>${userName}</strong>!</span>`,
+                timer: 1500,
+                showConfirmButton: false,
+                didClose: () => {
+                    // Successful login - redirect
+                    const redirectUrl = sessionStorage.getItem('redirect_after_login') || '/user/index.html';
+                    sessionStorage.removeItem('redirect_after_login');
+                    sessionStorage.removeItem('registration_success');
+                    sessionStorage.removeItem('registered_email');
                     
-                    // Verify token was saved
-                    const savedToken = localStorage.getItem('user_token') || sessionStorage.getItem('user_token');
-                    console.log('Token verification after login:', savedToken ? 'SAVED' : 'NOT SAVED');
-                    
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Login Successful!',
-                        text: `Welcome back, ${userName}!`,
-                        timer: 1500,
-                        showConfirmButton: false,
-                        didClose: () => {
-                            // Successful login - redirect with absolute path
-                            const redirectUrl = sessionStorage.getItem('redirect_after_login') || '/user/index.html';
-                            sessionStorage.removeItem('redirect_after_login');
-                            sessionStorage.removeItem('registration_success');
-                            sessionStorage.removeItem('registered_email');
-                            
-                            console.log('Login successful - redirecting to:', redirectUrl);
-                            console.log('Token saved as user_token');
-                            
-                            window.location.href = redirectUrl;
-                        }
-                    });
-                } else {
-                    showError('login-error', response.message || 'Login failed. Please check your credentials.');
-                    resetButton();
+                    console.log('Login successful - redirecting to:', redirectUrl);
+                    window.location.href = redirectUrl;
                 }
-            } catch (error) {
-                console.error('Login error:', error);
-                showError('login-error', error.message || 'Login failed. Please try again.');
-                resetButton();
-            }
-            
-            function resetButton() {
-                loginBtn.disabled = false;
-                loginBtnText.textContent = originalText;
-                loginSpinner.classList.add('hidden');
-            }
-        });
-
+            });
+        } else {
+            showError('login-error', response.message || 'Login failed. Please check your credentials.');
+            resetButton();
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        showError('login-error', error.message || 'Login failed. Please try again.');
+        resetButton();
+    }
+    
+    function resetButton() {
+        loginBtn.disabled = false;
+        loginBtnText.textContent = originalText;
+        loginSpinner.classList.add('hidden');
+    }
+});
         // Forgot password - redirect to forgot password page
         document.getElementById('forgot-password').addEventListener('click', () => {
             window.location.href = 'forgot-password.html';

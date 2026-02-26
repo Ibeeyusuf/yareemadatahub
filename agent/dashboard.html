@@ -177,6 +177,35 @@
                     </a>
                 </div>
 
+                <!-- Charts Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <h3 class="font-bold text-slate-900 mb-4" data-en="Weekly Earnings" data-ha="Ribar Mako">Weekly Earnings</h3>
+                        <div class="h-52 relative">
+                            <canvas id="earningsChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <h3 class="font-bold text-slate-900 mb-4" data-en="Commission by Service" data-ha="Riba Ta Aiki">Commission by Service</h3>
+                        <div class="h-52 relative">
+                            <canvas id="commissionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Service Breakdown & Recent Transactions -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <h3 class="font-bold text-slate-900 mb-4" data-en="Service Activity" data-ha="Ayyukan Aiki">Service Activity</h3>
+                        <div id="service-breakdown" class="space-y-1">
+                            <div class="text-center py-6 text-slate-400">
+                                <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-slate-300 mb-2"></div>
+                                <p class="text-xs">Loading...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-2">
+
                 <!-- Recent Transactions -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200">
                     <div class="p-6 border-b border-slate-200 flex items-center justify-between">
@@ -207,6 +236,9 @@
                     </div>
                 </div>
 
+                    </div><!-- end lg:col-span-2 -->
+                </div><!-- end grid service-breakdown row -->
+
             </div>
         </main>
     </div>
@@ -224,20 +256,9 @@
         Auth.protectPage();
         
         // Load partials
-        fetch('partials/sidebar.html')
-            .then(response => response.text())
-            .then(data => {
-                document.getElementById('sidebarContainer').innerHTML = data;
-                lucide.createIcons();
-            });
+        fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();initSidebar();});
         
-        fetch('partials/header.html')
-            .then(response => response.text())
-            .then(data => {
-                document.getElementById('headerContainer').innerHTML = data;
-                updatePageTitle('dashboard');
-                lucide.createIcons();
-            });
+        fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('dashboard');initHeader();lucide.createIcons();});
         
         fetch('partials/modals.html')
             .then(response => response.text())

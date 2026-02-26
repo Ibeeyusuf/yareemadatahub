@@ -248,14 +248,15 @@
     <div id="modalsContainer"></div>
     <script src="assets/js/config.js"></script>
     <script src="assets/js/auth.js"></script>
+    <script src="assets/js/services.js"></script>
     <script src="assets/js/main.js"></script>
     <script>
         // Protect page
         Auth.protectPage();
         
         // Load partials
-        fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();});
-        fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;lucide.createIcons();});
+        fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();initSidebar();});
+        fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;initHeader();lucide.createIcons();});
         fetch('partials/modals.html').then(r=>r.text()).then(d=>{document.getElementById('modalsContainer').innerHTML=d;lucide.createIcons();});
         
         // RRR Payment Handler
@@ -303,50 +304,30 @@
             async validateRRR() {
                 const rrrInput = document.getElementById('rrr-input');
                 const rrr = rrrInput.value.trim();
-                
+
                 if (rrr.length !== 12) {
                     this.showError('Please enter a valid 12-digit RRR');
                     return;
                 }
-                
-                // Disable button and show loading
+
                 const validateBtn = document.getElementById('validate-btn');
                 const originalText = validateBtn.textContent;
                 validateBtn.disabled = true;
-                validateBtn.innerHTML = '<span class="inline-block animate-spin mr-2">⏳</span> Validating...';
-                
+                validateBtn.innerHTML = '<span class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></span> Validating...';
+
                 try {
-                    // API call would go here
-                    // const result = await API.validateRRR(rrr);
-                    
-                    // For now, this is just UI structure waiting for backend
-                    // When backend is ready, uncomment and implement:
-                    /*
-                    const result = await fetch(`${API_BASE_URL}/rrr/validate`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${Auth.getToken()}`
-                        },
-                        body: JSON.stringify({ rrr })
-                    }).then(r => r.json());
-                    
-                    if (result.success) {
-                        this.currentInvoiceData = result.data;
-                        this.showInvoice(result.data);
+                    const response = await API.post('/rrr/validate', { rrr });
+
+                    if (response.success || response.status === 'success') {
+                        this.currentInvoiceData = response.data;
+                        this.showInvoice(response.data);
                     } else {
-                        this.showError(result.message || 'Failed to validate RRR');
+                        this.showError(response.message || 'Invalid RRR. Please check and try again.');
                     }
-                    */
-                    
-                    // Placeholder: Show error for now since no backend
-                    this.showError('error.');
-                    
                 } catch (error) {
                     console.error('[RRR] Validation error:', error);
-                    this.showError('Network error. Please check your connection and try again.');
+                    this.showError(error.message || 'Network error. Please check your connection.');
                 } finally {
-                    // Restore button
                     validateBtn.disabled = false;
                     validateBtn.textContent = originalText;
                 }
@@ -374,45 +355,33 @@
                     this.showError('No invoice data available');
                     return;
                 }
-                
-                // Show processing state
+
                 this.hideAllStates();
                 document.getElementById('processing-state').classList.remove('hidden');
-                
+
                 try {
-                    // API call would go here
-                    // const result = await API.payRRR(this.currentInvoiceData);
-                    
-                    // For now, this is just UI structure waiting for backend
-                    // When backend is ready, uncomment and implement:
-                    /*
-                    const result = await fetch(`${API_BASE_URL}/rrr/pay`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${Auth.getToken()}`
-                        },
-                        body: JSON.stringify({
-                            rrr: this.currentInvoiceData.rrr,
-                            amount: this.currentInvoiceData.totalPayable
-                        })
-                    }).then(r => r.json());
-                    
-                    if (result.success) {
-                        this.showSuccess(result.data);
-                        
-                        // Refresh wallet balance
-                        if (typeof updateWalletBalance === 'function') {
-                            await updateWalletBalance();
+                    const response = await API.post('/rrr/pay', {
+                        rrr: this.currentInvoiceData.rrr,
+                        amount: this.currentInvoiceData.totalPayable
+                    });
+
+                    if (response.success || response.status === 'success') {
+                        this.showSuccess(response.data);
+                        // Refresh wallet balance in sidebar
+                        if (typeof WalletAPI !== 'undefined') {
+                            const bal = await WalletAPI.getBalance();
+                            if (bal.success && bal.data) {
+                                const b = bal.data.balance || bal.data.availableBalance || 0;
+                                const el = document.getElementById('walletBalance');
+                                if (el) el.textContent = parseFloat(b).toLocaleString('en-NG', { minimumFractionDigits: 2 });
+                            }
                         }
                     } else {
-                        this.showFailed(result.message || 'Payment failed');
+                        this.showFailed(response.message || 'Payment failed. Please try again.');
                     }
-                    */
-                    
                 } catch (error) {
                     console.error('[RRR] Payment error:', error);
-                    this.showFailed('Network error occurred during payment');
+                    this.showFailed(error.message || 'Network error occurred during payment');
                 }
             },
             

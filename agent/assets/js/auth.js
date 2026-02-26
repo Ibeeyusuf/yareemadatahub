@@ -43,7 +43,18 @@ const Auth = {
                     API.setAgentData(user);
                     console.log('[Auth] Agent data stored successfully');
                 }
-                
+
+                // Fetch wallet balance immediately after login so sidebar shows it
+                try {
+                    const walletResp = await API.get(API_CONFIG.ENDPOINTS.WALLET_BALANCE);
+                    if (walletResp && (walletResp.status === 'success' || walletResp.success)) {
+                        const bal = walletResp.data?.balance || walletResp.data?.availableBalance || walletResp.data?.walletBalance || 0;
+                        localStorage.setItem('agentWalletBalance', parseFloat(bal).toString());
+                    }
+                } catch (walletErr) {
+                    console.warn('[Auth] Could not pre-fetch wallet balance:', walletErr.message);
+                }
+
                 return {
                     success: true,
                     message: 'Login successful',
@@ -252,23 +263,33 @@ const AgentDashboard = {
                 return;
             }
             
-            const { stats, recentTransactions, serviceBreakdown } = result.data;
-            
-            // Update stats
-            if (stats) {
-                this.updateStats(stats);
+            const { stats, recentTransactions, serviceBreakdown, weeklyEarnings, weeklyPerformance } = result.data;
+
+            if (stats) this.updateStats(stats);
+            if (recentTransactions) this.updateRecentTransactions(recentTransactions);
+            if (serviceBreakdown) this.updateServiceBreakdown(serviceBreakdown);
+
+            // Charts — render with real data if Chart.js is available
+            if (typeof Chart !== 'undefined' && typeof Charts !== 'undefined') {
+                if (weeklyEarnings && weeklyEarnings.length > 0) {
+                    Charts.renderEarningsChart(weeklyEarnings);
+                } else {
+                    Charts.showEmpty('earningsChart', 'No earnings data yet');
+                }
+
+                if (serviceBreakdown && serviceBreakdown.length > 0) {
+                    Charts.renderCommissionChart(serviceBreakdown);
+                } else {
+                    Charts.showEmpty('commissionChart', 'No commission data yet');
+                }
+
+                if (weeklyPerformance && weeklyPerformance.length > 0) {
+                    Charts.renderPerformanceChart(weeklyPerformance);
+                } else {
+                    Charts.showEmpty('performanceChart', 'No performance data yet');
+                }
             }
-            
-            // Update recent transactions
-            if (recentTransactions) {
-                this.updateRecentTransactions(recentTransactions);
-            }
-            
-            // Update service breakdown
-            if (serviceBreakdown) {
-                this.updateServiceBreakdown(serviceBreakdown);
-            }
-            
+
         } catch (error) {
             console.error('[Dashboard] Load error:', error);
             UI.showToast('Failed to load dashboard', 'error');
@@ -277,40 +298,46 @@ const AgentDashboard = {
     
     // Update stats cards
     updateStats(stats) {
+        // Store wallet balance persistently so sidebar always shows it
+        const walletBalance = stats.walletBalance || 0;
+        localStorage.setItem('agentWalletBalance', walletBalance.toString());
+
         // Today's earnings
         const todayEarnings = document.getElementById('today-earnings');
         const todayCount = document.getElementById('today-count');
-        
         if (todayEarnings) todayEarnings.textContent = UI.formatCurrency(stats.today?.commission || 0);
         if (todayCount) todayCount.textContent = UI.formatNumber(stats.today?.count || 0);
-        
+
         // Monthly stats
         const monthlyCount = document.getElementById('monthly-count');
         if (monthlyCount) monthlyCount.textContent = UI.formatNumber(stats.monthly?.count || 0);
-        
+
         // Total stats
         const totalEarnings = document.getElementById('total-earnings');
         const totalCount = document.getElementById('total-count');
         const totalAmount = document.getElementById('total-amount');
-        
         if (totalEarnings) totalEarnings.textContent = UI.formatCurrency(stats.total?.commission || 0);
         if (totalCount) totalCount.textContent = UI.formatNumber(stats.total?.count || 0);
         if (totalAmount) totalAmount.textContent = UI.formatCurrency(stats.total?.amount || 0);
-        
+
         // Referrals & Commission
         const referralsCount = document.getElementById('referrals-count');
         const availableCommission = document.getElementById('available-commission');
         const totalCommissionEarned = document.getElementById('total-commission-earned');
-        
         if (referralsCount) referralsCount.textContent = UI.formatNumber(stats.referrals || 0);
         if (availableCommission) availableCommission.textContent = UI.formatCurrency(stats.availableCommission || 0);
         if (totalCommissionEarned) totalCommissionEarned.textContent = UI.formatCurrency(stats.totalCommissionEarned || 0);
-        
-        // Wallet balance
-        const walletBalanceElements = document.querySelectorAll('[data-wallet-balance]');
-        walletBalanceElements.forEach(el => {
-            el.textContent = UI.formatCurrency(stats.walletBalance || 0);
+
+        // Update all balance displays on the page
+        document.querySelectorAll('[data-wallet-balance]').forEach(el => {
+            el.textContent = UI.formatCurrency(walletBalance);
         });
+
+        // Update sidebar wallet balance
+        const sidebarBal = document.getElementById('walletBalance');
+        if (sidebarBal) {
+            sidebarBal.textContent = parseFloat(walletBalance).toLocaleString('en-NG', { minimumFractionDigits: 2 });
+        }
     },
     
     // Update recent transactions
@@ -515,6 +542,10 @@ const AgentProfile = {
             
             const agent = result.data.agent || result.data;
             const agentInfo = agent.agentInfo || {};
+            
+            // Update localStorage so sidebar/header always shows fresh data
+            API.setAgentData(agent);
+            window.dispatchEvent(new Event('agentDataUpdated'));
             
             // Basic Info
             this.updateElement('profile-name', agent.fullName || `${agent.firstName} ${agent.lastName}`);

@@ -8,7 +8,23 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/style.css">
-    <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{yareema:{primary:'#1E3D5C',secondary:'#16304a',dark:'#0f1f2e',light:'#e8edf2',success:'#10b981',warning:'#f59e0b',danger:'#ef4444'}}}}}</script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        primary: '#1E3D5C',
+                        yareema: {
+                            primary: '#1E3D5C', secondary: '#16304a',
+                            dark: '#0f1f2e', light: '#e8edf2',
+                            success: '#10b981', warning: '#f59e0b', danger: '#ef4444'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
 </head>
 <body class="text-slate-800 antialiased">
     <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
@@ -17,100 +33,253 @@
         <main class="flex-1 flex flex-col min-w-0 bg-slate-50">
             <div id="headerContainer"></div>
             <div class="p-4 lg:p-8 flex-1 overflow-y-auto space-y-6">
+
+                <!-- Profile Settings -->
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                    <h3 class="font-bold text-slate-900 mb-6">Profile Settings</h3>
+                    <h3 class="font-bold text-slate-900 mb-1">Profile Settings</h3>
+                    <p class="text-sm text-slate-500 mb-6">Update your personal information</p>
+                    <div id="profileFormMessage" class="hidden mb-4 p-3 rounded-lg text-sm"></div>
                     <form onsubmit="handleProfileUpdate(event)" class="space-y-6">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label class="block text-sm font-semibold text-slate-700 mb-2">Full Name</label>
-                                <input type="text" value="Musa Ibrahim" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full">
+                                <input id="settingsFullName" type="text" placeholder="Loading..." class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
                             </div>
                             <div>
                                 <label class="block text-sm font-semibold text-slate-700 mb-2">Phone Number</label>
-                                <input type="tel" value="08012345678" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full">
+                                <input id="settingsPhone" type="tel" placeholder="Loading..." class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
                             </div>
                             <div>
                                 <label class="block text-sm font-semibold text-slate-700 mb-2">Email Address</label>
-                                <input type="email" value="musa@example.com" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full">
+                                <input id="settingsEmail" type="email" placeholder="Loading..." class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
                             </div>
                             <div>
                                 <label class="block text-sm font-semibold text-slate-700 mb-2">Agent ID</label>
-                                <input type="text" value="YAR-AGENT-1234" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm bg-slate-50 w-full" disabled>
+                                <input id="settingsAgentId" type="text" placeholder="—" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm bg-slate-50 w-full cursor-not-allowed" disabled>
                             </div>
                         </div>
-                        <button type="submit" class="px-6 py-3 bg-yareema-primary text-white font-bold rounded-xl hover:bg-yareema-dark">Update Profile</button>
+                        <button type="submit" id="profileUpdateBtn" class="px-6 py-3 text-white font-bold rounded-xl transition-colors flex items-center gap-2" style="background:#1E3D5C">
+                            <i data-lucide="save" class="w-4 h-4"></i>
+                            Update Profile
+                        </button>
                     </form>
                 </div>
+
+                <!-- Bank Details -->
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                    <h3 class="font-bold text-slate-900 mb-6">Bank Details</h3>
+                    <h3 class="font-bold text-slate-900 mb-1">Bank Details</h3>
+                    <p class="text-sm text-slate-500 mb-6">Used for commission withdrawals</p>
+                    <div id="bankFormMessage" class="hidden mb-4 p-3 rounded-lg text-sm"></div>
                     <form onsubmit="handleBankUpdate(event)" class="space-y-6">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label class="block text-sm font-semibold text-slate-700 mb-2">Bank Name</label>
-                                <select class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full">
-                                    <option value="gtbank" selected>GTBank</option>
+                                <select id="settingsBankName" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
+                                    <option value="">Select Bank...</option>
                                     <option value="access">Access Bank</option>
+                                    <option value="fidelity">Fidelity Bank</option>
+                                    <option value="firstbank">First Bank</option>
+                                    <option value="gtbank">GTBank</option>
+                                    <option value="keystone">Keystone Bank</option>
+                                    <option value="opay">OPay</option>
+                                    <option value="palmpay">PalmPay</option>
+                                    <option value="polaris">Polaris Bank</option>
+                                    <option value="stanbic">Stanbic IBTC</option>
+                                    <option value="sterling">Sterling Bank</option>
+                                    <option value="uba">UBA</option>
+                                    <option value="union">Union Bank</option>
+                                    <option value="unity">Unity Bank</option>
+                                    <option value="wema">Wema Bank</option>
                                     <option value="zenith">Zenith Bank</option>
                                 </select>
                             </div>
                             <div>
                                 <label class="block text-sm font-semibold text-slate-700 mb-2">Account Number</label>
-                                <input type="text" value="0123456789" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full">
+                                <input id="settingsAccountNumber" type="text" maxlength="10" placeholder="10-digit account number"
+                                    class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">Account Name</label>
+                                <input id="settingsAccountName" type="text" placeholder="Will auto-fill after verification" readonly
+                                    class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm bg-slate-50 w-full cursor-not-allowed">
                             </div>
                         </div>
-                        <button type="submit" class="px-6 py-3 bg-yareema-primary text-white font-bold rounded-xl hover:bg-yareema-dark">Update Bank Details</button>
+                        <button type="submit" class="px-6 py-3 text-white font-bold rounded-xl transition-colors flex items-center gap-2" style="background:#1E3D5C">
+                            <i data-lucide="save" class="w-4 h-4"></i>
+                            Update Bank Details
+                        </button>
                     </form>
                 </div>
+
+                <!-- Security -->
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                    <h3 class="font-bold text-slate-900 mb-6">Security Settings</h3>
-                    <div class="space-y-4">
-                        <button onclick="openModal('changePINModal')" class="w-full p-4 border-2 border-slate-200 rounded-xl hover:border-yareema-primary flex items-center justify-between">
+                    <h3 class="font-bold text-slate-900 mb-1">Security Settings</h3>
+                    <p class="text-sm text-slate-500 mb-6">Manage your access credentials</p>
+                    <div class="space-y-3">
+                        <button onclick="openModal('changePINModal')" class="w-full p-4 border-2 border-slate-200 rounded-xl hover:border-blue-400 flex items-center justify-between transition-colors group">
                             <div class="flex items-center gap-3">
-                                <i data-lucide="lock" class="w-5 h-5 text-slate-600"></i>
+                                <div class="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
+                                    <i data-lucide="lock" class="w-5 h-5 text-amber-600"></i>
+                                </div>
                                 <div class="text-left">
                                     <p class="font-medium text-slate-900">Change Transaction PIN</p>
                                     <p class="text-xs text-slate-500">Update your 4-digit PIN</p>
                                 </div>
                             </div>
-                            <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400"></i>
+                            <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400 group-hover:text-slate-600"></i>
                         </button>
-                        <button onclick="openModal('changePasswordModal')" class="w-full p-4 border-2 border-slate-200 rounded-xl hover:border-yareema-primary flex items-center justify-between">
+                        <button onclick="openModal('changePasswordModal')" class="w-full p-4 border-2 border-slate-200 rounded-xl hover:border-blue-400 flex items-center justify-between transition-colors group">
                             <div class="flex items-center gap-3">
-                                <i data-lucide="key" class="w-5 h-5 text-slate-600"></i>
+                                <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                                    <i data-lucide="key" class="w-5 h-5 text-blue-600"></i>
+                                </div>
                                 <div class="text-left">
                                     <p class="font-medium text-slate-900">Change Password</p>
                                     <p class="text-xs text-slate-500">Update your login password</p>
                                 </div>
                             </div>
-                            <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400"></i>
+                            <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400 group-hover:text-slate-600"></i>
                         </button>
                     </div>
                 </div>
+
             </div>
         </main>
     </div>
     <div id="modalsContainer"></div>
+
     <script src="assets/js/config.js"></script>
     <script src="assets/js/auth.js"></script>
     <script src="assets/js/main.js"></script>
     <script src="assets/js/services.js"></script>
     <script>
-        // Protect page
         Auth.protectPage();
-        
-        fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();});
-        fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('settings');lucide.createIcons();});
-        fetch('partials/modals.html').then(r=>r.text()).then(d=>{document.getElementById('modalsContainer').innerHTML=d;lucide.createIcons();});
-        
-        // Load profile data and populate form
-        document.addEventListener('DOMContentLoaded', async () => {
-            const result = await AgentProfile.getProfileData();
-            if (result.success && result.data) {
-                const { agent } = result.data;
-                // Populate form fields if they exist
-                // You can add code here to populate the settings form
+
+        fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();initSidebar();});
+        fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('settings');initHeader();lucide.createIcons();});
+        fetch('partials/modals.html').then(r => r.text()).then(d => { document.getElementById('modalsContainer').innerHTML = d; lucide.createIcons(); });
+
+        function showFormMsg(id, message, type) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.className = `mb-4 p-3 rounded-lg text-sm ${type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`;
+            el.textContent = message;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 5000);
+        }
+
+        // Populate settings from localStorage or API
+        async function loadSettingsData() {
+            // First try localStorage for instant load
+            try {
+                const raw = localStorage.getItem('agentData');
+                if (raw) {
+                    const agent = JSON.parse(raw);
+                    populateForm(agent);
+                }
+            } catch(e) {}
+
+            // Then fetch from API for fresh data
+            try {
+                const result = await AgentProfile.getProfileData();
+                if (result.success && result.data) {
+                    const agent = result.data.agent || result.data;
+                    populateForm(agent);
+                    // Update localStorage with fresh data
+                    API.setAgentData(agent);
+                    window.dispatchEvent(new Event('agentDataUpdated'));
+                }
+            } catch(e) {
+                console.warn('[Settings] Could not refresh from API:', e);
             }
-        });
+        }
+
+        function populateForm(agent) {
+            const info = agent.agentInfo || {};
+            const bank = info.bankDetails || {};
+
+            const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+
+            set('settingsFullName', agent.fullName || agent.name || (agent.firstName ? `${agent.firstName} ${agent.lastName || ''}`.trim() : ''));
+            set('settingsPhone', agent.phoneNumber || agent.phone || '');
+            set('settingsEmail', agent.email || '');
+            set('settingsAgentId', info.agentId || agent.agentId || agent.id || '');
+
+            // Bank details
+            if (bank.bankName) {
+                const bankSel = document.getElementById('settingsBankName');
+                if (bankSel) {
+                    // Try to match option by value or text
+                    Array.from(bankSel.options).forEach(opt => {
+                        if (opt.value.toLowerCase().includes(bank.bankName.toLowerCase()) ||
+                            bank.bankName.toLowerCase().includes(opt.text.toLowerCase())) {
+                            opt.selected = true;
+                        }
+                    });
+                }
+            }
+            set('settingsAccountNumber', bank.accountNumber || '');
+            set('settingsAccountName', bank.accountName || '');
+        }
+
+        async function handleProfileUpdate(e) {
+            e.preventDefault();
+            const btn = document.getElementById('profileUpdateBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Updating...';
+            lucide.createIcons();
+
+            try {
+                const payload = {
+                    fullName: document.getElementById('settingsFullName').value.trim(),
+                    phoneNumber: document.getElementById('settingsPhone').value.trim(),
+                    email: document.getElementById('settingsEmail').value.trim()
+                };
+
+                const response = await API.put(API_CONFIG.ENDPOINTS.AGENT_PROFILE || '/agent/profile', payload);
+
+                if (response.success || response.status === 'success') {
+                    showFormMsg('profileFormMessage', 'Profile updated successfully!', 'success');
+                    if (response.data) {
+                        API.setAgentData(response.data.agent || response.data);
+                        window.dispatchEvent(new Event('agentDataUpdated'));
+                    }
+                } else {
+                    throw new Error(response.message || 'Update failed');
+                }
+            } catch(err) {
+                showFormMsg('profileFormMessage', err.message || 'Could not update profile. Please try again.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> Update Profile';
+                lucide.createIcons();
+            }
+        }
+
+        async function handleBankUpdate(e) {
+            e.preventDefault();
+            try {
+                const payload = {
+                    bankName: document.getElementById('settingsBankName').value,
+                    accountNumber: document.getElementById('settingsAccountNumber').value.trim(),
+                    accountName: document.getElementById('settingsAccountName').value.trim()
+                };
+                if (!payload.bankName || !payload.accountNumber) {
+                    showFormMsg('bankFormMessage', 'Please fill in bank name and account number.', 'error');
+                    return;
+                }
+                const response = await API.put('/agent/bank-details', payload);
+                if (response.success || response.status === 'success') {
+                    showFormMsg('bankFormMessage', 'Bank details updated successfully!', 'success');
+                } else {
+                    throw new Error(response.message || 'Update failed');
+                }
+            } catch(err) {
+                showFormMsg('bankFormMessage', err.message || 'Could not update bank details.', 'error');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadSettingsData);
     </script>
 </body>
 </html>

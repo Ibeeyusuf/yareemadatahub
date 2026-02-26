@@ -10,8 +10,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/style.css">
     <script>
-        // Protect page
-        Auth.protectPage();
         tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{yareema:{primary:'#1E3D5C',secondary:'#16304a',dark:'#0f1f2e',light:'#e8edf2',success:'#10b981',warning:'#f59e0b',danger:'#ef4444'}}}}}</script>
 </head>
 <body class="text-slate-800 antialiased">
@@ -22,7 +20,7 @@
             <div id="headerContainer"></div>
             <div class="p-4 lg:p-8 flex-1 overflow-y-auto space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <button onclick="generateReport('daily')" class="bg-white p-6 rounded-xl shadow-sm border-2 border-slate-200 hover:border-yareema-primary text-left">
+                    <button onclick="generateReport('daily', this)" class="bg-white p-6 rounded-xl shadow-sm border-2 border-slate-200 hover:border-yareema-primary text-left">
                         <div class="flex items-center gap-4 mb-3">
                             <div class="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
                                 <i data-lucide="calendar" class="w-6 h-6 text-blue-600"></i>
@@ -32,9 +30,9 @@
                                 <p class="text-xs text-slate-500">Today's transactions</p>
                             </div>
                         </div>
-                        <div class="text-sm font-medium text-yareema-primary">Generate Report →</div>
+                        <div class="text-sm font-medium text-blue-600 report-arrow">Generate Report →</div>
                     </button>
-                    <button onclick="generateReport('weekly')" class="bg-white p-6 rounded-xl shadow-sm border-2 border-slate-200 hover:border-yareema-primary text-left">
+                    <button onclick="generateReport('weekly', this)" class="bg-white p-6 rounded-xl shadow-sm border-2 border-slate-200 hover:border-yareema-primary text-left">
                         <div class="flex items-center gap-4 mb-3">
                             <div class="w-12 h-12 bg-green-50 rounded-lg flex items-center justify-center">
                                 <i data-lucide="calendar-days" class="w-6 h-6 text-green-600"></i>
@@ -44,9 +42,9 @@
                                 <p class="text-xs text-slate-500">Last 7 days</p>
                             </div>
                         </div>
-                        <div class="text-sm font-medium text-yareema-primary">Generate Report →</div>
+                        <div class="text-sm font-medium text-blue-600 report-arrow">Generate Report →</div>
                     </button>
-                    <button onclick="generateReport('monthly')" class="bg-white p-6 rounded-xl shadow-sm border-2 border-slate-200 hover:border-yareema-primary text-left">
+                    <button onclick="generateReport('monthly', this)" class="bg-white p-6 rounded-xl shadow-sm border-2 border-slate-200 hover:border-yareema-primary text-left">
                         <div class="flex items-center gap-4 mb-3">
                             <div class="w-12 h-12 bg-purple-50 rounded-lg flex items-center justify-center">
                                 <i data-lucide="calendar-range" class="w-6 h-6 text-purple-600"></i>
@@ -56,7 +54,7 @@
                                 <p class="text-xs text-slate-500">This month</p>
                             </div>
                         </div>
-                        <div class="text-sm font-medium text-yareema-primary">Generate Report →</div>
+                        <div class="text-sm font-medium text-blue-600 report-arrow">Generate Report →</div>
                     </button>
                 </div>
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
@@ -75,12 +73,109 @@
     <script src="assets/js/services.js"></script>
     <script src="assets/js/charts.js"></script>
     <script>
-        // Protect page
         Auth.protectPage();
-        
-        fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();});
-        fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('reports');lucide.createIcons();});
-        fetch('partials/modals.html').then(r=>r.text()).then(d=>{document.getElementById('modalsContainer').innerHTML=d;lucide.createIcons();});
+
+        fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();initSidebar();});
+        fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('reports');initHeader();lucide.createIcons();});
+        fetch('partials/modals.html').then(r => r.text()).then(d => { document.getElementById('modalsContainer').innerHTML = d; lucide.createIcons(); });
+
+        const reportPeriods = {
+            daily:   { startDate: (() => { const d = new Date(); d.setHours(0,0,0,0); return d.toISOString(); })(), label: "Today" },
+            weekly:  { startDate: (() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString(); })(), label: "Last 7 days" },
+            monthly: { startDate: (() => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d.toISOString(); })(), label: "This month" }
+        };
+
+        async function generateReport(period, btn) {
+            const arrow = btn ? btn.querySelector('.report-arrow') : null;
+            if (arrow) arrow.textContent = '⏳';
+
+            try {
+                const filters = reportPeriods[period];
+                const result = await WalletAPI.getTransactions({
+                    startDate: filters.startDate,
+                    limit: 100
+                });
+
+                if (result.success && result.data) {
+                    const txns = result.data.transactions || result.data || [];
+                    renderReportTable(txns, filters.label);
+                } else {
+                    UI.showToast(result.message || 'Failed to generate report', 'error');
+                }
+            } catch (err) {
+                UI.showToast('Could not load report: ' + err.message, 'error');
+            } finally {
+                if (arrow) arrow.textContent = '→';
+            }
+        }
+
+        function renderReportTable(txns, label) {
+            let container = document.getElementById('report-results');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'report-results';
+                container.className = 'bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden';
+                document.querySelector('.p-4.lg\:p-8').appendChild(container);
+            }
+
+            if (!txns.length) {
+                container.innerHTML = '<div class="p-8 text-center text-slate-400"><p>No transactions found for ' + label + '</p></div>';
+                return;
+            }
+
+            const total = txns.reduce((s, t) => s + (t.amount || 0), 0);
+            const commission = txns.reduce((s, t) => s + (t.commission || t.agentCommission || 0), 0);
+
+            container.innerHTML = '<div class="p-4 border-b border-slate-200 flex items-center justify-between">'
+                + '<h3 class="font-bold text-slate-900">Report: ' + label + '</h3>'
+                + '<span class="text-xs text-slate-500">' + txns.length + ' transactions</span>'
+                + '</div>'
+                + '<div class="grid grid-cols-2 gap-4 p-4 bg-slate-50 border-b border-slate-200">'
+                + '<div class="text-center"><p class="text-xs text-slate-500 mb-1">Total Volume</p><p class="text-xl font-bold text-slate-900">' + UI.formatCurrency(total) + '</p></div>'
+                + '<div class="text-center"><p class="text-xs text-slate-500 mb-1">Commission Earned</p><p class="text-xl font-bold text-green-600">' + UI.formatCurrency(commission) + '</p></div>'
+                + '</div>'
+                + '<div class="overflow-x-auto"><table class="w-full text-left text-sm">'
+                + '<thead><tr class="bg-slate-50 text-xs uppercase text-slate-500 font-semibold">'
+                + '<th class="p-4">Service</th><th class="p-4">Description</th>'
+                + '<th class="p-4">Amount</th><th class="p-4">Commission</th>'
+                + '<th class="p-4">Status</th><th class="p-4">Date</th>'
+                + '</tr></thead><tbody class="divide-y divide-slate-100">'
+                + txns.map(t => '<tr class="hover:bg-slate-50">'
+                    + '<td class="p-4 font-medium text-slate-900">' + (t.service || t.serviceType || t.type || '—') + '</td>'
+                    + '<td class="p-4 text-slate-600">' + (t.description || t.details || '—') + '</td>'
+                    + '<td class="p-4 font-medium">' + UI.formatCurrency(t.amount || 0) + '</td>'
+                    + '<td class="p-4 font-bold text-green-600">' + UI.formatCurrency(t.commission || t.agentCommission || 0) + '</td>'
+                    + '<td class="p-4"><span class="px-2 py-1 text-xs rounded-full ' + getStatusClass(t.status) + '">' + (t.status || '—') + '</span></td>'
+                    + '<td class="p-4 text-slate-500 text-xs">' + UI.formatDate(t.createdAt || t.date) + '</td>'
+                    + '</tr>').join('')
+                + '</tbody></table></div>';
+        }
+
+        function getStatusClass(status) {
+            const s = (status || '').toLowerCase();
+            if (s === 'success' || s === 'completed') return 'bg-green-100 text-green-700';
+            if (s === 'pending' || s === 'processing') return 'bg-yellow-100 text-yellow-700';
+            if (s === 'failed' || s === 'error') return 'bg-red-100 text-red-700';
+            return 'bg-slate-100 text-slate-700';
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Load performance chart with real data from dashboard endpoint
+            try {
+                const result = await AgentDashboard.getDashboardData();
+                if (result.success && result.data && typeof Charts !== 'undefined') {
+                    const { weeklyPerformance, weeklyEarnings } = result.data;
+                    if (weeklyPerformance && weeklyPerformance.length > 0) {
+                        Charts.renderPerformanceChart(weeklyPerformance);
+                    } else {
+                        Charts.showEmpty('performanceChart', 'No performance data yet');
+                    }
+                }
+            } catch (e) {
+                console.warn('[Reports] Chart load failed:', e);
+                if (typeof Charts !== 'undefined') Charts.showEmpty('performanceChart', 'Could not load data');
+            }
+        });
     </script>
 </body>
 </html>

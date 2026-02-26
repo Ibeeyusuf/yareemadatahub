@@ -733,3 +733,61 @@ body {
     border: 1px solid #e2e8f0;
     border-radius: 8px;
 }
+
+/* Payment Polling Spinner */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Transaction Status Badges */
+.tx-status-paid    { color: #16a34a; background: #dcfce7; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.tx-status-pending { color: #d97706; background: #fef3c7; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.tx-status-failed  { color: #dc2626; background: #fee2e2; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+
+/* Transaction Detail Modal */
+.tx-detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 14px;
+}
+.tx-detail-row:last-child { border-bottom: none; }
+.tx-detail-label { color: #64748b; }
+.tx-detail-value { color: #0f172a; font-weight: 500; text-align: right; max-width: 60%; }
+
+/* Provider callback token display */
+.token-box {
+    background: #f0fdf4;
+    border: 1px dashed #86efac;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    margin: 12px 0;
+}
+.token-box .token-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #15803d;
+    letter-spacing: 3px;
+    word-break: break-all;
+}
+
+/* Fund Wallet Gateway Buttons */
+.gateway-btn {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    transition: border-color 0.2s, background 0.2s;
+}
+.gateway-btn:hover {
+    border-color: #1e3d5c;
+    background: #eff6ff;
+}

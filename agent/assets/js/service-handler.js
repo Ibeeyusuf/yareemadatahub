@@ -385,18 +385,22 @@ const ServiceHandler = {
         try {
             const result = await AgentServices.getDataPlans(network);
             
-            if (result.success && result.data) {
+            if (result.success && result.data && result.data.length > 0) {
                 planSelect.innerHTML = '<option value="">Select data plan...</option>';
                 
-                result.data.forEach(plan => {
+                result.data.forEach((plan) => {
                     const option = document.createElement('option');
                     option.value = JSON.stringify(plan);
-                    option.textContent = `${plan.name || plan.plan} - ${UI.formatCurrency(plan.price || plan.amount)}`;
+                    // Use actual API field names: dataAmount, planName, sellingPrice
+                    const label = plan.dataAmount || plan.size || plan.planName || plan.name || plan.plan || 'Data Plan';
+                    const validity = plan.validity ? ` (${plan.validity})` : '';
+                    const price = plan.sellingPrice || plan.price || plan.amount || 0;
+                    option.textContent = `${label}${validity} - ₦${Number(price).toLocaleString()}`;
                     planSelect.appendChild(option);
                 });
             } else {
                 planSelect.innerHTML = '<option value="">Failed to load plans</option>';
-                UI.showToast(result.message, 'error');
+                if (result.message) UI.showToast(result.message, 'error');
             }
         } catch (error) {
             planSelect.innerHTML = '<option value="">Error loading plans</option>';
@@ -420,10 +424,13 @@ const ServiceHandler = {
             if (result.success && result.data) {
                 planSelect.innerHTML = '<option value="">Select package...</option>';
                 
-                result.data.forEach(plan => {
+                result.data.forEach((plan, idx) => {
                     const option = document.createElement('option');
                     option.value = JSON.stringify(plan);
-                    option.textContent = `${plan.name || plan.package} - ${UI.formatCurrency(plan.price || plan.amount)}`;
+                    // Mirror user's label format: planName/name + price
+                    const name = plan.planName || plan.name || plan.description || plan.package || 'Package';
+                    const price = plan.sellingPrice || plan.price || plan.amount || 0;
+                    option.textContent = `${name} - ₦${Number(price).toLocaleString()}`;
                     planSelect.appendChild(option);
                 });
             } else {
@@ -451,8 +458,9 @@ const ServiceHandler = {
         if (planEl && planEl.value) {
             try {
                 const plan = JSON.parse(planEl.value);
-                amount = plan.price || plan.amount || 0;
-                rate = plan.commission || plan.commissionRate || 0;
+                // Actual API uses sellingPrice and profitMargin
+                amount = plan.sellingPrice || plan.price || plan.amount || 0;
+                rate = plan.profitMargin || plan.commission || plan.commissionRate || this.currentService?.commissionRate || 0;
                 commission = (amount * rate / 100);
             } catch (e) {
                 console.error('Parse plan error:', e);
@@ -555,25 +563,56 @@ const ServiceHandler = {
         }
     },
     
-    // Show success message
+    // Show success message - persistent modal for tokens/PINs
     showSuccessMessage(result, service) {
         const details = result.data || {};
-        let message = `✅ ${service.name} purchase successful!`;
+        const hasToken = details.token || details.pin || details.units;
         
-        if (details.token) {
-            message += `\n\n🎫 Token: ${details.token}`;
+        if (hasToken) {
+            // Build persistent modal so agent can copy token/PIN
+            let detailsHTML = '';
+            if (details.token) {
+                detailsHTML += `<div class="mt-4 p-4 bg-amber-50 border-2 border-amber-300 rounded-xl text-center">
+                    <p class="text-xs text-slate-500 mb-1 font-semibold uppercase tracking-wide">Token</p>
+                    <p class="text-2xl font-bold text-amber-700 tracking-widest break-all" id="txn-token">${details.token}</p>
+                    <button onclick="navigator.clipboard.writeText('${details.token}').then(()=>UI.showToast('Token copied!','success'))" class="mt-2 text-xs text-amber-600 hover:text-amber-800 underline">Copy Token</button>
+                </div>`;
+            }
+            if (details.pin) {
+                detailsHTML += `<div class="mt-4 p-4 bg-blue-50 border-2 border-blue-300 rounded-xl text-center">
+                    <p class="text-xs text-slate-500 mb-1 font-semibold uppercase tracking-wide">PIN</p>
+                    <p class="text-2xl font-bold text-blue-700 tracking-widest" id="txn-pin">${details.pin}</p>
+                    <button onclick="navigator.clipboard.writeText('${details.pin}').then(()=>UI.showToast('PIN copied!','success'))" class="mt-2 text-xs text-blue-600 hover:text-blue-800 underline">Copy PIN</button>
+                </div>`;
+            }
+            if (details.units) {
+                detailsHTML += `<div class="mt-4 p-4 bg-green-50 border-2 border-green-300 rounded-xl text-center">
+                    <p class="text-xs text-slate-500 mb-1 font-semibold uppercase tracking-wide">Units</p>
+                    <p class="text-2xl font-bold text-green-700">${details.units}</p>
+                </div>`;
+            }
+
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4';
+            modal.innerHTML = `
+                <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+                    <div class="text-center mb-4">
+                        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i data-lucide="check-circle" class="w-9 h-9 text-green-600"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-slate-900">${service.name} Successful</h3>
+                        <p class="text-sm text-slate-500 mt-1">${result.message || 'Transaction completed successfully'}</p>
+                    </div>
+                    ${detailsHTML}
+                    <button onclick="this.closest('.fixed').remove()" class="mt-6 w-full py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700">
+                        Done
+                    </button>
+                </div>`;
+            document.body.appendChild(modal);
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        } else {
+            UI.showToast(result.message || `${service.name} successful!`, 'success');
         }
-        
-        if (details.pin) {
-            message += `\n\n🔑 PIN: ${details.pin}`;
-        }
-        
-        if (details.units && service.type === 'electricity') {
-            message += `\n\n⚡ Units: ${details.units}`;
-        }
-        
-        // Show in modal or toast
-        UI.showToast(message, 'success');
     },
     
     // Show insufficient balance error with helpful message
@@ -636,9 +675,10 @@ const ServiceHandler = {
                 try {
                     const plan = JSON.parse(planEl.value);
                     data.network = provider;
-                    data.planId = plan.id;
-                    data.planName = plan.name || plan.plan;
-                    data.amount = plan.price || plan.amount;
+                    // Actual API uses _id as plan identifier; also supports planCode
+                    data.planId = plan._id || plan.planCode || plan.id || plan.planId;
+                    data.planName = plan.planName || plan.name || plan.plan;
+                    data.amount = plan.sellingPrice || plan.price || plan.amount;
                     data.phoneNumber = phoneNumber;
                 } catch (e) {
                     console.error('Plan parse error:', e);
@@ -664,20 +704,19 @@ const ServiceHandler = {
                 return null;
             }
         } else if (service.type === 'cable') {
-            // Cable TV payment
             data.serviceType = 'cable';
             data.provider = provider;
             data.smartCardNumber = document.getElementById('smartCardNumber')?.value;
-            data.customerNumber = data.smartCardNumber; // API might need this
+            data.customerNumber = data.smartCardNumber;
             data.customerPhone = phoneNumber;
             
             const planEl = document.getElementById('plan');
             if (planEl && planEl.value) {
                 try {
                     const plan = JSON.parse(planEl.value);
-                    data.packageId = plan.id;
-                    data.packageName = plan.name || plan.package;
-                    data.amount = plan.price || plan.amount;
+                    data.packageId = plan._id || plan.planCode || plan.id || plan.planId;
+                    data.packageName = plan.planName || plan.name || plan.package;
+                    data.amount = plan.sellingPrice || plan.price || plan.amount;
                 } catch (e) {
                     console.error('Cable plan parse error:', e);
                     return null;

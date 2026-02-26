@@ -49,18 +49,128 @@
     </div>
     <script src="assets/js/config.js"></script>
     <script src="assets/js/api.js"></script>
+    <script src="modals/native-modals.js"></script>
     <script>
+        // Icons per transaction type
+        const txIcons = {
+            'WALLET_FUND': 'arrow-down-circle',
+            'AIRTIME': 'phone',
+            'DATA': 'wifi',
+            'ELECTRICITY': 'zap',
+            'CABLE': 'tv',
+            'EDUCATION': 'book-open',
+            'TRANSFER': 'send',
+            'WITHDRAWAL': 'arrow-up-circle',
+            'DEFAULT': 'receipt'
+        };
+
+        const txColors = {
+            'WALLET_FUND': '#dcfce7',
+            'AIRTIME': '#eff6ff',
+            'DATA': '#eff6ff',
+            'ELECTRICITY': '#fef9c3',
+            'CABLE': '#f3e8ff',
+            'EDUCATION': '#e0f2fe',
+            'TRANSFER': '#fce7f3',
+            'WITHDRAWAL': '#fee2e2',
+            'DEFAULT': '#f1f5f9'
+        };
+
+        function getStatusBadge(status) {
+            if (!status) return '';
+            const s = status.toUpperCase();
+            if (s === 'PAID' || s === 'SUCCESS' || s === 'SUCCESSFUL' || s === 'COMPLETED')
+                return '<span class="tx-status-paid">Success</span>';
+            if (s === 'PENDING')
+                return '<span class="tx-status-pending">Pending</span>';
+            return '<span class="tx-status-failed">Failed</span>';
+        }
+
+        function renderTxRow(t) {
+            const typeKey = (t.type || 'DEFAULT').toUpperCase().replace(/\s/g,'_');
+            const icon = txIcons[typeKey] || txIcons['DEFAULT'];
+            const bg = txColors[typeKey] || txColors['DEFAULT'];
+            const isCredit = t.amount > 0 || t.type === 'WALLET_FUND';
+            const amountColor = isCredit ? '#16a34a' : '#dc2626';
+            const amountPrefix = isCredit ? '+' : '-';
+            const absAmount = Math.abs(t.amount || 0);
+
+            return `
+            <div class="activity-item" onclick="showTxDetail(${JSON.stringify(t).replace(/"/g,'&quot;')})" style="cursor:pointer;">
+                <div class="activity-icon" style="background: ${bg};">
+                    <i data-lucide="${icon}" style="width: 22px; height: 22px;"></i>
+                </div>
+                <div class="activity-info">
+                    <div class="activity-title">${t.description || t.type || 'Transaction'}</div>
+                    <div class="activity-time">${new Date(t.createdAt || t.date).toLocaleString('en-NG', {dateStyle:'medium', timeStyle:'short'})}</div>
+                </div>
+                <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+                    <div class="activity-amount" style="color:${amountColor};">${amountPrefix}₦${absAmount.toLocaleString('en-US',{minimumFractionDigits:2})}</div>
+                    ${getStatusBadge(t.status || t.paymentStatus)}
+                </div>
+            </div>`;
+        }
+
+        function showTxDetail(t) {
+            // Build detail rows
+            const rows = [
+                ['Type', t.type || 'N/A'],
+                ['Amount', '₦' + Math.abs(t.amount||0).toLocaleString('en-US',{minimumFractionDigits:2})],
+                ['Status', t.status || t.paymentStatus || 'N/A'],
+                ['Reference', t.reference || t.transactionReference || 'N/A'],
+                ['Date', t.createdAt ? new Date(t.createdAt).toLocaleString('en-NG') : 'N/A'],
+                ['Description', t.description || t.paymentDescription || 'N/A'],
+            ];
+
+            // If it's electricity/airtime — show the token
+            let tokenHTML = '';
+            if (t.token) {
+                tokenHTML = `
+                <div class="token-box">
+                    <p style="color:#64748b; font-size:12px; margin-bottom:6px;">⚡ Electricity Token</p>
+                    <div class="token-value">${t.token}</div>
+                    <button onclick="navigator.clipboard.writeText('${t.token}').then(()=>showSuccess('Token copied!'))" 
+                        style="margin-top:10px; padding:6px 16px; background:#15803d; color:white; border:none; border-radius:6px; cursor:pointer; font-size:13px;">
+                        Copy Token
+                    </button>
+                </div>`;
+            }
+
+            const bodyHTML = `
+            <div style="padding: 8px 0;">
+                ${tokenHTML}
+                ${rows.map(([label, value]) => `
+                    <div class="tx-detail-row">
+                        <span class="tx-detail-label">${label}</span>
+                        <span class="tx-detail-value">${value}</span>
+                    </div>`).join('')}
+            </div>`;
+
+            showModal('Transaction Details', bodyHTML,
+                `<button onclick="closeModal()" class="btn-primary" style="width:100%;">Close</button>`);
+        }
+
         async function loadTxns() {
+            const list = document.getElementById('txnsList');
+            list.innerHTML = '<div style="text-align:center;padding:48px;color:#94a3b8;">Loading...</div>';
             try {
                 const r = await api.getTransactions();
                 const txns = r.data?.transactions || r.transactions || [];
-                document.getElementById('txnsList').innerHTML = txns.length ? txns.map(t => `<div class="activity-item"><div class="activity-icon" style="background: #eff6ff;"><i data-lucide="banknote" class="w-5 h-5"></i></div><div class="activity-info"><div class="activity-title">${t.type}</div><div class="activity-time">${new Date(t.createdAt).toLocaleString()}</div></div><div class="activity-amount">${t.amount < 0 ? '-' : '+'}₦${Math.abs(t.amount).toLocaleString()}</div></div>`).join('') : '<div style="text-align: center; padding: 48px; color: #94a3b8;">No transactions yet</div>';
+                list.innerHTML = txns.length
+                    ? txns.map(renderTxRow).join('')
+                    : '<div style="text-align:center;padding:48px;color:#94a3b8;">No transactions yet</div>';
                 lucide.createIcons();
-            } catch (e) { document.getElementById('txnsList').innerHTML = '<div style="text-align: center; padding: 48px; color: #ef4444;">Error loading</div>'; }
+            } catch (e) {
+                list.innerHTML = '<div style="text-align:center;padding:48px;color:#ef4444;">Error loading transactions</div>';
+            }
         }
+
         if (!api.getToken()) window.location.href = '../login.html'; else loadTxns();
         const user = JSON.parse(localStorage.getItem('user') || '{}');
-        if (user.firstName) { document.getElementById('sidebarName').textContent = user.firstName; document.getElementById('sidebarAvatar').textContent = (user.firstName[0] + (user.lastName?.[0] || '')).toUpperCase(); }
+        if (user.firstName) {
+            document.getElementById('sidebarName').textContent = user.firstName;
+            document.getElementById('sidebarAvatar').textContent = (user.firstName[0] + (user.lastName?.[0] || '')).toUpperCase();
+        }
         lucide.createIcons();
     </script>
 </body>

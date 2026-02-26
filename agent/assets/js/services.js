@@ -38,16 +38,36 @@ const AgentServices = {
             
             console.log('[Services] Data plans response:', response);
             
-            // Handle successful response
-            if (response.success || response.status === 'success') {
-                const plans = response.data || response.plans || [];
-                
-                if (plans.length > 0) {
-                    return {
-                        success: true,
-                        data: plans
-                    };
-                }
+            let plans = [];
+            
+            // ACTUAL API returns: { status:'success', data: { services: { data_recharge: [...] } } }
+            // Each plan has a `provider` / `network` field — filter by selected network
+            if (response.data && response.data.services && response.data.services.data_recharge) {
+                const allPlans = response.data.services.data_recharge;
+                plans = allPlans.filter(p =>
+                    (p.network || p.provider || '').toLowerCase() === network.toLowerCase()
+                );
+                // If no network-filtered results, return all (API may already filter by query param)
+                if (plans.length === 0) plans = allPlans;
+            }
+            // Fallback shapes from other API versions
+            else if (response.data && response.data[network]) {
+                plans = response.data[network];
+            } else if (response.data && response.data.plans && response.data.plans[network]) {
+                plans = response.data.plans[network];
+            } else if (response[network]) {
+                plans = response[network];
+            } else if (Array.isArray(response.data)) {
+                plans = response.data.filter(p =>
+                    (p.network || p.provider || '').toLowerCase() === network.toLowerCase()
+                );
+                if (plans.length === 0) plans = response.data;
+            } else if (Array.isArray(response)) {
+                plans = response;
+            }
+            
+            if (plans.length > 0) {
+                return { success: true, data: plans };
             }
             
             console.warn('[Services] API returned no plans, using fallback');
@@ -55,7 +75,6 @@ const AgentServices = {
             
         } catch (error) {
             console.error('[Services] Error loading data plans:', error);
-            // Use fallback plans on error
             return this.getFallbackDataPlans(network);
         }
     },
@@ -66,28 +85,28 @@ const AgentServices = {
         
         const fallbackPlans = {
             mtn: [
-                { id: 'mtn_1gb', name: '1GB - 30 Days', plan: '1GB', price: 300, amount: 300, validity: '30 days', commission: 5 },
-                { id: 'mtn_2gb', name: '2GB - 30 Days', plan: '2GB', price: 600, amount: 600, validity: '30 days', commission: 5 },
-                { id: 'mtn_3gb', name: '3GB - 30 Days', plan: '3GB', price: 900, amount: 900, validity: '30 days', commission: 5 },
-                { id: 'mtn_5gb', name: '5GB - 30 Days', plan: '5GB', price: 1500, amount: 1500, validity: '30 days', commission: 5 },
-                { id: 'mtn_10gb', name: '10GB - 30 Days', plan: '10GB', price: 3000, amount: 3000, validity: '30 days', commission: 5 }
+                { id: 'mtn_1gb', planName: '1GB - 30 Days', name: '1GB - 30 Days', size: '1GB', plan: '1GB', price: 300, amount: 300, validity: '30 days', commission: 5 },
+                { id: 'mtn_2gb', planName: '2GB - 30 Days', name: '2GB - 30 Days', size: '2GB', plan: '2GB', price: 600, amount: 600, validity: '30 days', commission: 5 },
+                { id: 'mtn_3gb', planName: '3GB - 30 Days', name: '3GB - 30 Days', size: '3GB', plan: '3GB', price: 900, amount: 900, validity: '30 days', commission: 5 },
+                { id: 'mtn_5gb', planName: '5GB - 30 Days', name: '5GB - 30 Days', size: '5GB', plan: '5GB', price: 1500, amount: 1500, validity: '30 days', commission: 5 },
+                { id: 'mtn_10gb', planName: '10GB - 30 Days', name: '10GB - 30 Days', size: '10GB', plan: '10GB', price: 3000, amount: 3000, validity: '30 days', commission: 5 }
             ],
             airtel: [
-                { id: 'airtel_1gb', name: '1GB - 30 Days', plan: '1GB', price: 300, amount: 300, validity: '30 days', commission: 5 },
-                { id: 'airtel_2gb', name: '2GB - 30 Days', plan: '2GB', price: 600, amount: 600, validity: '30 days', commission: 5 },
-                { id: 'airtel_5gb', name: '5GB - 30 Days', plan: '5GB', price: 1500, amount: 1500, validity: '30 days', commission: 5 },
-                { id: 'airtel_10gb', name: '10GB - 30 Days', plan: '10GB', price: 3000, amount: 3000, validity: '30 days', commission: 5 }
+                { id: 'airtel_1gb', planName: '1GB - 30 Days', name: '1GB - 30 Days', size: '1GB', plan: '1GB', price: 300, amount: 300, validity: '30 days', commission: 5 },
+                { id: 'airtel_2gb', planName: '2GB - 30 Days', name: '2GB - 30 Days', size: '2GB', plan: '2GB', price: 600, amount: 600, validity: '30 days', commission: 5 },
+                { id: 'airtel_5gb', planName: '5GB - 30 Days', name: '5GB - 30 Days', size: '5GB', plan: '5GB', price: 1500, amount: 1500, validity: '30 days', commission: 5 },
+                { id: 'airtel_10gb', planName: '10GB - 30 Days', name: '10GB - 30 Days', size: '10GB', plan: '10GB', price: 3000, amount: 3000, validity: '30 days', commission: 5 }
             ],
             glo: [
-                { id: 'glo_1gb', name: '1GB - 30 Days', plan: '1GB', price: 300, amount: 300, validity: '30 days', commission: 5 },
-                { id: 'glo_2gb', name: '2GB - 30 Days', plan: '2GB', price: 600, amount: 600, validity: '30 days', commission: 5 },
-                { id: 'glo_5gb', name: '5GB - 30 Days', plan: '5GB', price: 1400, amount: 1400, validity: '30 days', commission: 5 },
-                { id: 'glo_10gb', name: '10GB - 30 Days', plan: '10GB', price: 2800, amount: 2800, validity: '30 days', commission: 5 }
+                { id: 'glo_1gb', planName: '1GB - 30 Days', name: '1GB - 30 Days', size: '1GB', plan: '1GB', price: 300, amount: 300, validity: '30 days', commission: 5 },
+                { id: 'glo_2gb', planName: '2GB - 30 Days', name: '2GB - 30 Days', size: '2GB', plan: '2GB', price: 600, amount: 600, validity: '30 days', commission: 5 },
+                { id: 'glo_5gb', planName: '5GB - 30 Days', name: '5GB - 30 Days', size: '5GB', plan: '5GB', price: 1400, amount: 1400, validity: '30 days', commission: 5 },
+                { id: 'glo_10gb', planName: '10GB - 30 Days', name: '10GB - 30 Days', size: '10GB', plan: '10GB', price: 2800, amount: 2800, validity: '30 days', commission: 5 }
             ],
             '9mobile': [
-                { id: '9mobile_1gb', name: '1GB - 30 Days', plan: '1GB', price: 300, amount: 300, validity: '30 days', commission: 5 },
-                { id: '9mobile_2gb', name: '2GB - 30 Days', plan: '2GB', price: 600, amount: 600, validity: '30 days', commission: 5 },
-                { id: '9mobile_5gb', name: '5GB - 30 Days', plan: '5GB', price: 1500, amount: 1500, validity: '30 days', commission: 5 }
+                { id: '9mobile_1gb', planName: '1GB - 30 Days', name: '1GB - 30 Days', size: '1GB', plan: '1GB', price: 300, amount: 300, validity: '30 days', commission: 5 },
+                { id: '9mobile_2gb', planName: '2GB - 30 Days', name: '2GB - 30 Days', size: '2GB', plan: '2GB', price: 600, amount: 600, validity: '30 days', commission: 5 },
+                { id: '9mobile_5gb', planName: '5GB - 30 Days', name: '5GB - 30 Days', size: '5GB', plan: '5GB', price: 1500, amount: 1500, validity: '30 days', commission: 5 }
             ]
         };
         
@@ -220,22 +239,47 @@ const AgentServices = {
         try {
             console.log('[Services] Fetching cable plans for:', provider);
             
-            const response = await API.get(`${API_CONFIG.ENDPOINTS.CABLE_PLANS}?provider=${provider}`);
+            // Try with provider param first
+            let response;
+            try {
+                response = await API.get(`${API_CONFIG.ENDPOINTS.CABLE_PLANS}?provider=${provider}`);
+            } catch (e) {
+                response = await API.get(API_CONFIG.ENDPOINTS.CABLE_PLANS);
+            }
             
             console.log('[Services] Cable plans response:', response);
             
-            if (response.success || response.status === 'success') {
-                const plans = response.data || response.plans || [];
-                
-                if (plans.length > 0) {
-                    return {
-                        success: true,
-                        data: plans
-                    };
-                }
+            let plans = [];
+            
+            // ACTUAL API shape: { data: { services: { cable_tv: [...] } } }
+            if (response.data && response.data.services) {
+                const svc = response.data.services;
+                const cablePlans = svc.cable_tv || svc.cable || svc.cabletv || [];
+                plans = cablePlans.filter(p =>
+                    (p.provider || p.network || '').toLowerCase() === provider.toLowerCase()
+                );
+                if (plans.length === 0) plans = cablePlans;
+            }
+            // Fallback shapes
+            else if (response.data && response.data.plans && response.data.plans[provider]) {
+                plans = response.data.plans[provider];
+            } else if (response.data && response.data[provider]) {
+                plans = response.data[provider];
+            } else if (response[provider]) {
+                plans = response[provider];
+            } else if (Array.isArray(response.data)) {
+                plans = response.data.filter(p =>
+                    (p.provider || '').toLowerCase() === provider.toLowerCase()
+                );
+                if (plans.length === 0) plans = response.data;
+            } else if (Array.isArray(response)) {
+                plans = response;
             }
             
-            // If API returns empty or fails, use fallback plans
+            if (plans.length > 0) {
+                return { success: true, data: plans };
+            }
+            
             console.warn('[Services] API returned no cable plans, using fallback');
             return this.getFallbackCablePlans(provider);
             
@@ -251,26 +295,26 @@ const AgentServices = {
         
         const fallbackPlans = {
             dstv: [
-                { id: 'dstv_padi', name: 'DStv Padi', package: 'Padi', price: 2500, amount: 2500, validity: '30 days' },
-                { id: 'dstv_yanga', name: 'DStv Yanga', package: 'Yanga', price: 3500, amount: 3500, validity: '30 days' },
-                { id: 'dstv_confam', name: 'DStv Confam', package: 'Confam', price: 6200, amount: 6200, validity: '30 days' },
-                { id: 'dstv_compact', name: 'DStv Compact', package: 'Compact', price: 10500, amount: 10500, validity: '30 days' },
-                { id: 'dstv_compact_plus', name: 'DStv Compact Plus', package: 'Compact Plus', price: 16600, amount: 16600, validity: '30 days' },
-                { id: 'dstv_premium', name: 'DStv Premium', package: 'Premium', price: 24500, amount: 24500, validity: '30 days' }
+                { id: 'dstv_padi', planName: 'DStv Padi', name: 'DStv Padi', package: 'Padi', sellingPrice: 2500, price: 2500, amount: 2500, validity: '30 days' },
+                { id: 'dstv_yanga', planName: 'DStv Yanga', name: 'DStv Yanga', package: 'Yanga', sellingPrice: 3500, price: 3500, amount: 3500, validity: '30 days' },
+                { id: 'dstv_confam', planName: 'DStv Confam', name: 'DStv Confam', package: 'Confam', sellingPrice: 6200, price: 6200, amount: 6200, validity: '30 days' },
+                { id: 'dstv_compact', planName: 'DStv Compact', name: 'DStv Compact', package: 'Compact', sellingPrice: 10500, price: 10500, amount: 10500, validity: '30 days' },
+                { id: 'dstv_compact_plus', planName: 'DStv Compact Plus', name: 'DStv Compact Plus', package: 'Compact Plus', sellingPrice: 16600, price: 16600, amount: 16600, validity: '30 days' },
+                { id: 'dstv_premium', planName: 'DStv Premium', name: 'DStv Premium', package: 'Premium', sellingPrice: 24500, price: 24500, amount: 24500, validity: '30 days' }
             ],
             gotv: [
-                { id: 'gotv_smallie', name: 'GOtv Smallie', package: 'Smallie', price: 1300, amount: 1300, validity: '30 days' },
-                { id: 'gotv_jinja', name: 'GOtv Jinja', package: 'Jinja', price: 2250, amount: 2250, validity: '30 days' },
-                { id: 'gotv_jolli', name: 'GOtv Jolli', package: 'Jolli', price: 3300, amount: 3300, validity: '30 days' },
-                { id: 'gotv_max', name: 'GOtv Max', package: 'Max', price: 4850, amount: 4850, validity: '30 days' },
-                { id: 'gotv_supa', name: 'GOtv Supa', package: 'Supa', price: 6400, amount: 6400, validity: '30 days' }
+                { id: 'gotv_smallie', planName: 'GOtv Smallie', name: 'GOtv Smallie', package: 'Smallie', sellingPrice: 1300, price: 1300, amount: 1300, validity: '30 days' },
+                { id: 'gotv_jinja', planName: 'GOtv Jinja', name: 'GOtv Jinja', package: 'Jinja', sellingPrice: 2250, price: 2250, amount: 2250, validity: '30 days' },
+                { id: 'gotv_jolli', planName: 'GOtv Jolli', name: 'GOtv Jolli', package: 'Jolli', sellingPrice: 3300, price: 3300, amount: 3300, validity: '30 days' },
+                { id: 'gotv_max', planName: 'GOtv Max', name: 'GOtv Max', package: 'Max', sellingPrice: 4850, price: 4850, amount: 4850, validity: '30 days' },
+                { id: 'gotv_supa', planName: 'GOtv Supa', name: 'GOtv Supa', package: 'Supa', sellingPrice: 6400, price: 6400, amount: 6400, validity: '30 days' }
             ],
             startimes: [
-                { id: 'startimes_nova', name: 'Startimes Nova', package: 'Nova', price: 900, amount: 900, validity: '30 days' },
-                { id: 'startimes_basic', name: 'Startimes Basic', package: 'Basic', price: 1850, amount: 1850, validity: '30 days' },
-                { id: 'startimes_smart', name: 'Startimes Smart', package: 'Smart', price: 2600, amount: 2600, validity: '30 days' },
-                { id: 'startimes_classic', name: 'Startimes Classic', package: 'Classic', price: 3200, amount: 3200, validity: '30 days' },
-                { id: 'startimes_super', name: 'Startimes Super', package: 'Super', price: 5000, amount: 5000, validity: '30 days' }
+                { id: 'startimes_nova', planName: 'Startimes Nova', name: 'Startimes Nova', package: 'Nova', sellingPrice: 900, price: 900, amount: 900, validity: '30 days' },
+                { id: 'startimes_basic', planName: 'Startimes Basic', name: 'Startimes Basic', package: 'Basic', sellingPrice: 1850, price: 1850, amount: 1850, validity: '30 days' },
+                { id: 'startimes_smart', planName: 'Startimes Smart', name: 'Startimes Smart', package: 'Smart', sellingPrice: 2600, price: 2600, amount: 2600, validity: '30 days' },
+                { id: 'startimes_classic', planName: 'Startimes Classic', name: 'Startimes Classic', package: 'Classic', sellingPrice: 3200, price: 3200, amount: 3200, validity: '30 days' },
+                { id: 'startimes_super', planName: 'Startimes Super', name: 'Startimes Super', package: 'Super', sellingPrice: 5000, price: 5000, amount: 5000, validity: '30 days' }
             ]
         };
         
@@ -416,22 +460,34 @@ const WalletAPI = {
 
 // Update wallet balance on page
 async function updateWalletBalance() {
-    const walletElements = document.querySelectorAll('[data-wallet-balance]');
-    
-    if (walletElements.length === 0) return;
-    
     try {
         const result = await WalletAPI.getBalance();
-        
+
         if (result.success && result.data) {
-            const balance = result.data.balance || result.data.availableBalance || 0;
-            walletElements.forEach(el => {
-                el.textContent = UI.formatCurrency(balance);
+            const balance = parseFloat(
+                result.data.balance || result.data.availableBalance || result.data.walletBalance || 0
+            );
+            const formatted = UI.formatCurrency(balance);
+            const rawFormatted = balance.toLocaleString('en-NG', { minimumFractionDigits: 2 });
+
+            // Store in dedicated key — initSidebar() reads this
+            localStorage.setItem('agentWalletBalance', balance.toString());
+
+            // Update all [data-wallet-balance] elements
+            document.querySelectorAll('[data-wallet-balance]').forEach(el => {
+                el.textContent = formatted;
             });
+
+            // Update sidebar balance span directly
+            const sidebarBal = document.getElementById('walletBalance');
+            if (sidebarBal) sidebarBal.textContent = rawFormatted;
+
+            return balance;
         }
     } catch (error) {
-        console.error('[Wallet] Update balance error:', error);
+        console.error('[Wallet] updateWalletBalance error:', error);
     }
+    return 0;
 }
 
 // Load data plans from API
@@ -439,29 +495,33 @@ async function loadDataPlans(network) {
     const planSelect = document.getElementById('dataPlan');
     if (!planSelect) return;
     
-    // Show loading
     planSelect.innerHTML = '<option value="">Loading plans...</option>';
     planSelect.disabled = true;
     
     try {
         const result = await AgentServices.getDataPlans(network);
         
-        if (result.success && result.data) {
+        if (result.success && result.data && result.data.length > 0) {
             planSelect.innerHTML = '<option value="">Select data plan...</option>';
             
             result.data.forEach((plan, index) => {
                 const option = document.createElement('option');
-                option.value = plan.id || index;
-                option.textContent = `${plan.name || plan.plan} - ${UI.formatCurrency(plan.price || plan.amount)}`;
-                option.dataset.price = plan.price || plan.amount;
-                option.dataset.plan = plan.name || plan.plan;
-                option.dataset.planId = plan.id;
-                option.dataset.commission = plan.commission || 0;
+                option.value = plan._id || plan.id || index;
+                // Actual API fields: dataAmount, planName, sellingPrice, validity
+                const label = plan.dataAmount || plan.size || plan.planName || plan.name || plan.plan || 'Data Plan';
+                const validity = plan.validity ? ` (${plan.validity})` : '';
+                const price = plan.sellingPrice || plan.price || plan.amount || 0;
+                option.textContent = `${label}${validity} - ₦${Number(price).toLocaleString()}`;
+                option.dataset.price = price;
+                option.dataset.plan = plan.planName || plan.name || plan.plan;
+                option.dataset.planId = plan._id || plan.id;
+                option.dataset.planCode = plan.planCode || '';
+                option.dataset.commission = plan.profitMargin || plan.commission || 0;
                 planSelect.appendChild(option);
             });
         } else {
             planSelect.innerHTML = '<option value="">Failed to load plans</option>';
-            UI.showToast(result.message, 'error');
+            if (result.message) UI.showToast(result.message, 'error');
         }
     } catch (error) {
         planSelect.innerHTML = '<option value="">Error loading plans</option>';
@@ -476,28 +536,30 @@ async function loadCablePlans(provider) {
     const planSelect = document.getElementById('cablePlan');
     if (!planSelect) return;
     
-    // Show loading
     planSelect.innerHTML = '<option value="">Loading plans...</option>';
     planSelect.disabled = true;
     
     try {
         const result = await AgentServices.getCablePlans(provider);
         
-        if (result.success && result.data) {
+        if (result.success && result.data && result.data.length > 0) {
             planSelect.innerHTML = '<option value="">Select cable plan...</option>';
             
             result.data.forEach((plan, index) => {
                 const option = document.createElement('option');
-                option.value = plan.id || index;
-                option.textContent = `${plan.name || plan.package} - ${UI.formatCurrency(plan.price || plan.amount)}`;
-                option.dataset.price = plan.price || plan.amount;
-                option.dataset.plan = plan.name || plan.package;
-                option.dataset.planId = plan.id;
+                option.value = plan._id || plan.planCode || plan.id || index;
+                const name = plan.planName || plan.name || plan.package || 'Plan';
+                const price = plan.sellingPrice || plan.price || plan.amount || 0;
+                option.textContent = `${name} - ₦${Number(price).toLocaleString()}`;
+                option.dataset.price = price;
+                option.dataset.plan = name;
+                option.dataset.planId = plan._id || plan.id;
+                option.dataset.planCode = plan.planCode || '';
                 planSelect.appendChild(option);
             });
         } else {
             planSelect.innerHTML = '<option value="">Failed to load plans</option>';
-            UI.showToast(result.message, 'error');
+            if (result.message) UI.showToast(result.message, 'error');
         }
     } catch (error) {
         planSelect.innerHTML = '<option value="">Error loading plans</option>';

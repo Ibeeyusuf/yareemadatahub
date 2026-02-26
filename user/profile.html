@@ -3,12 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile</title>
+    <title>Profile - Yareema Data Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .swal2-input {
+            margin: 0.5em 0;
+            padding: 0.75em;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .swal2-input:focus {
+            border-color: #1e3d5c;
+            box-shadow: 0 0 0 3px rgba(30, 61, 92, 0.1);
+            outline: none;
+        }
+    </style>
 </head>
 <body>
     <div class="sidebar">
@@ -17,11 +34,11 @@
             <h1>Yareema Data Hub</h1>
         </div>
         <div class="sidebar-nav">
-            <a href="index.html" class="nav-item"><i data-lucide="home" style="width: 20px; height: 20px;"></i><span>Dashboard</span></a>
-            <a href="services.html" class="nav-item"><i data-lucide="grid" style="width: 20px; height: 20px;"></i><span>Services</span></a>
-            <a href="transactions.html" class="nav-item"><i data-lucide="banknote" class="w-5 h-5"></i><span>Transactions</span></a>
-            <a href="wallet.html" class="nav-item"><i data-lucide="wallet" style="width: 20px; height: 20px;"></i><span>Wallet</span></a>
-            <a href="profile.html" class="nav-item active"><i data-lucide="user" style="width: 20px; height: 20px;"></i><span>Profile</span></a>
+            <a href="index.html" class="nav-item"><i data-lucide="home" style="width:20px;height:20px;"></i><span>Dashboard</span></a>
+            <a href="services.html" class="nav-item"><i data-lucide="grid" style="width:20px;height:20px;"></i><span>Services</span></a>
+            <a href="transactions.html" class="nav-item"><i data-lucide="banknote" style="width:20px;height:20px;"></i><span>Transactions</span></a>
+            <a href="wallet.html" class="nav-item"><i data-lucide="wallet" style="width:20px;height:20px;"></i><span>Wallet</span></a>
+            <a href="profile.html" class="nav-item active"><i data-lucide="user" style="width:20px;height:20px;"></i><span>Profile</span></a>
         </div>
         <div class="sidebar-footer">
             <div class="user-profile" onclick="window.location.href='profile.html'">
@@ -34,98 +51,185 @@
     <div class="main-content">
         <div class="top-bar">
             <h1>My Profile</h1>
-            <button class="btn-primary" onclick="openModal('editprofile')">Edit Profile</button>
         </div>
 
-        <div class="profile-container">
+        <!-- Loading state -->
+        <div id="profileLoading" style="text-align:center;padding:60px;color:#94a3b8;">
+            <div style="width:40px;height:40px;border:3px solid #e2e8f0;border-top-color:#1e3d5c;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px;"></div>
+            Loading profile...
+        </div>
+
+        <div id="profileContent" style="display:none;" class="profile-container">
+
+            <!-- Profile Card -->
             <div class="profile-card">
                 <div class="profile-avatar" id="avatar">U</div>
                 <h2 class="profile-name" id="userName">User</h2>
-                <p class="profile-email" id="userEmail">email@example.com</p>
-                <p class="profile-email" id="userPhone">+234</p>
-                <div id="badges" style="display: flex; gap: 8px; justify-content: center; margin-top: 16px;"></div>
+                <p class="profile-email" id="userEmail">—</p>
+                <p class="profile-email" id="userPhone">—</p>
+
+                <!-- Status badges -->
+                <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px;" id="badges"></div>
             </div>
 
+            <!-- Edit Profile Button -->
+            <div style="display: flex; gap: 10px; margin-bottom: 20px; margin-top: 20px;">
+                <button onclick="showEditProfileModal()" style="flex: 1; padding: 12px; background: #1e3d5c; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <i data-lucide="edit-2" style="width: 18px; height: 18px;"></i>
+                    Edit Profile
+                </button>
+            </div>
+
+            <!-- Account Info -->
             <div class="profile-section">
                 <h3>Account Information</h3>
-                <div class="profile-item" onclick="openModal('personaldetails')">
+
+                <div class="profile-item">
                     <div class="profile-item-left">
-                        <i data-lucide="user" style="width: 20px; height: 20px; color: #1e3d5c;"></i>
-                        <span>Personal Details</span>
+                        <i data-lucide="user" style="width:20px;height:20px;color:#1e3d5c;"></i>
+                        <span>Full Name</span>
                     </div>
-                    <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: #94a3b8;"></i>
+                    <span id="infoFullName" style="color:#64748b;font-size:14px;">—</span>
                 </div>
-                <div class="profile-item" onclick="openModal('security')">
+
+                <div class="profile-item">
                     <div class="profile-item-left">
-                        <i data-lucide="shield-check" style="width: 20px; height: 20px; color: #1e3d5c;"></i>
-                        <span>Security Settings</span>
+                        <i data-lucide="mail" style="width:20px;height:20px;color:#1e3d5c;"></i>
+                        <span>Email</span>
                     </div>
-                    <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: #94a3b8;"></i>
+                    <span id="infoEmail" style="color:#64748b;font-size:14px;">—</span>
                 </div>
-                <div class="profile-item" onclick="openModal('notifications')">
+
+                <div class="profile-item">
                     <div class="profile-item-left">
-                        <i data-lucide="bell" style="width: 20px; height: 20px; color: #1e3d5c;"></i>
-                        <span>Notifications</span>
+                        <i data-lucide="phone" style="width:20px;height:20px;color:#1e3d5c;"></i>
+                        <span>Phone</span>
                     </div>
-                    <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: #94a3b8;"></i>
+                    <span id="infoPhone" style="color:#64748b;font-size:14px;">—</span>
+                </div>
+
+                <div class="profile-item">
+                    <div class="profile-item-left">
+                        <i data-lucide="map-pin" style="width:20px;height:20px;color:#1e3d5c;"></i>
+                        <span>Country</span>
+                    </div>
+                    <span id="infoCountry" style="color:#64748b;font-size:14px;">Nigeria</span>
+                </div>
+
+                <div class="profile-item">
+                    <div class="profile-item-left">
+                        <i data-lucide="calendar" style="width:20px;height:20px;color:#1e3d5c;"></i>
+                        <span>Member Since</span>
+                    </div>
+                    <span id="infoJoined" style="color:#64748b;font-size:14px;">—</span>
+                </div>
+
+                <div class="profile-item">
+                    <div class="profile-item-left">
+                        <i data-lucide="clock" style="width:20px;height:20px;color:#1e3d5c;"></i>
+                        <span>Last Login</span>
+                    </div>
+                    <span id="infoLastLogin" style="color:#64748b;font-size:14px;">—</span>
+                </div>
+
+                <!-- Additional fields from address -->
+                <div class="profile-item" id="addressStreetRow" style="display: none;">
+                    <div class="profile-item-left">
+                        <i data-lucide="home" style="width:20px;height:20px;color:#1e3d5c;"></i>
+                        <span>Street Address</span>
+                    </div>
+                    <span id="infoStreet" style="color:#64748b;font-size:14px;">—</span>
+                </div>
+
+                <div class="profile-item" id="addressCityRow" style="display: none;">
+                    <div class="profile-item-left">
+                        <i data-lucide="map" style="width:20px;height:20px;color:#1e3d5c;"></i>
+                        <span>City</span>
+                    </div>
+                    <span id="infoCity" style="color:#64748b;font-size:14px;">—</span>
+                </div>
+
+                <div class="profile-item" id="addressStateRow" style="display: none;">
+                    <div class="profile-item-left">
+                        <i data-lucide="map" style="width:20px;height:20px;color:#1e3d5c;"></i>
+                        <span>State</span>
+                    </div>
+                    <span id="infoState" style="color:#64748b;font-size:14px;">—</span>
+                </div>
+
+                <div class="profile-item" id="dobRow" style="display: none;">
+                    <div class="profile-item-left">
+                        <i data-lucide="cake" style="width:20px;height:20px;color:#1e3d5c;"></i>
+                        <span>Date of Birth</span>
+                    </div>
+                    <span id="infoDob" style="color:#64748b;font-size:14px;">—</span>
+                </div>
+
+                <div class="profile-item" id="genderRow" style="display: none;">
+                    <div class="profile-item-left">
+                        <i data-lucide="users" style="width:20px;height:20px;color:#1e3d5c;"></i>
+                        <span>Gender</span>
+                    </div>
+                    <span id="infoGender" style="color:#64748b;font-size:14px;">—</span>
                 </div>
             </div>
 
+            <!-- Security -->
             <div class="profile-section">
-                <h3>Preferences</h3>
-                <div class="profile-item" onclick="openModal('devices')">
+                <h3>Security</h3>
+                <div class="profile-item" onclick="showChangePassword()" style="cursor: pointer;">
                     <div class="profile-item-left">
-                        <i data-lucide="smartphone" style="width: 20px; height: 20px; color: #1e3d5c;"></i>
-                        <span>Device Management</span>
+                        <i data-lucide="lock" style="width:20px;height:20px;color:#1e3d5c;"></i>
+                        <span>Change Password</span>
                     </div>
-                    <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: #94a3b8;"></i>
+                    <i data-lucide="chevron-right" style="width:20px;height:20px;color:#94a3b8;"></i>
                 </div>
-                <div class="profile-item">
+                <div class="profile-item" onclick="showSetPIN()" style="cursor: pointer;">
                     <div class="profile-item-left">
-                        <i data-lucide="languages" style="width: 20px; height: 20px; color: #1e3d5c;"></i>
-                        <span>Language</span>
+                        <i data-lucide="shield" style="width:20px;height:20px;color:#1e3d5c;"></i>
+                        <span>Set Transaction PIN</span>
                     </div>
-                    <span style="color: #64748b;">English</span>
-                </div>
-                <div class="profile-item">
-                    <div class="profile-item-left">
-                        <i data-lucide="palette" style="width: 20px; height: 20px; color: #1e3d5c;"></i>
-                        <span>Theme</span>
-                    </div>
-                    <span style="color: #64748b;">Light</span>
+                    <i data-lucide="chevron-right" style="width:20px;height:20px;color:#94a3b8;"></i>
                 </div>
             </div>
 
+            <!-- Referral -->
+            <div class="profile-section">
+                <h3>Referral</h3>
+                <div class="profile-item" id="referralRow">
+                    <div class="profile-item-left">
+                        <i data-lucide="gift" style="width:20px;height:20px;color:#1e3d5c;"></i>
+                        <span>Referral Code</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span id="refCode" style="color:#1e3d5c;font-weight:700;font-size:15px;letter-spacing:1px;">—</span>
+                        <button onclick="copyReferralCode()" style="background:#1e3d5c;color:white;border:none;padding:4px 10px;border-radius:5px;cursor:pointer;font-size:11px;">Copy</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- More -->
             <div class="profile-section">
                 <h3>More</h3>
-                <div class="profile-item" onclick="openModal('referral')">
+                <div class="profile-item">
                     <div class="profile-item-left">
-                        <i data-lucide="gift" style="width: 20px; height: 20px; color: #1e3d5c;"></i>
-                        <span>Referral Program</span>
+                        <i data-lucide="languages" style="width:20px;height:20px;color:#1e3d5c;"></i>
+                        <span>Language</span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span id="refCode" style="color: #64748b; font-size: 14px;"></span>
-                        <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: #94a3b8;"></i>
-                    </div>
-                </div>
-                <div class="profile-item" onclick="openModal('help')">
-                    <div class="profile-item-left">
-                        <i data-lucide="help-circle" style="width: 20px; height: 20px; color: #1e3d5c;"></i>
-                        <span>Help & Support</span>
-                    </div>
-                    <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: #94a3b8;"></i>
+                    <span style="color:#64748b;">English</span>
                 </div>
                 <div class="profile-item">
                     <div class="profile-item-left">
-                        <i data-lucide="info" style="width: 20px; height: 20px; color: #1e3d5c;"></i>
-                        <span>About</span>
+                        <i data-lucide="info" style="width:20px;height:20px;color:#1e3d5c;"></i>
+                        <span>App Version</span>
                     </div>
-                    <span style="color: #64748b;">v1.0.0</span>
+                    <span style="color:#64748b;">v1.0.0</span>
                 </div>
             </div>
 
-            <button onclick="logout()" class="btn-secondary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; border-color: #dc2626; color: #dc2626;">
-                <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
+            <!-- Logout -->
+            <button onclick="logout()" style="width:100%;padding:14px;border:2px solid #dc2626;color:#dc2626;background:white;border-radius:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:24px;">
+                <i data-lucide="log-out" style="width:20px;height:20px;"></i>
                 <span>Logout</span>
             </button>
         </div>
@@ -135,22 +239,372 @@
     <script src="assets/js/api.js"></script>
     <script src="modals/native-modals.js"></script>
     <script>
-        function load() {
-            const u = JSON.parse(localStorage.getItem('user') || '{}');
-            const name = `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'User';
-            document.getElementById('userName').textContent = name;
-            document.getElementById('userEmail').textContent = u.email || 'email@example.com';
-            document.getElementById('userPhone').textContent = u.phoneNumber || '+234';
-            document.getElementById('avatar').textContent = `${u.firstName?.[0] || 'U'}${u.lastName?.[0] || ''}`.toUpperCase();
-            document.getElementById('sidebarName').textContent = u.firstName || 'User';
-            document.getElementById('sidebarAvatar').textContent = `${u.firstName?.[0] || 'U'}${u.lastName?.[0] || ''}`.toUpperCase();
-            if (u.referralCode) document.getElementById('refCode').textContent = u.referralCode;
-            let badges = [];
-            if (u.isEmailVerified) badges.push('<span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; background: #dcfce7; border-radius: 16px; font-size: 12px; font-weight: 600; color: #16a34a;"><i data-lucide="check-circle" style="width: 14px; height: 14px;"></i>Email Verified</span>');
-            if (u.isPhoneVerified) badges.push('<span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; background: #dcfce7; border-radius: 16px; font-size: 12px; font-weight: 600; color: #16a34a;"><i data-lucide="check-circle" style="width: 14px; height: 14px;"></i>Phone Verified</span>');
-            if (badges.length) document.getElementById('badges').innerHTML = badges.join('');
-            lucide.createIcons();
+        // Check authentication
+        if (!api.getToken()) {
+            window.location.href = '../login.html';
         }
+
+        // Main function to load profile
+        async function loadProfile() {
+            try {
+                // Fetch fresh profile from API
+                const response = await api.getProfile();
+                const u = response.data?.user || {};
+
+                // Update local storage with fresh data
+                localStorage.setItem('user_data', JSON.stringify(u));
+
+                const firstName = u.firstName || 'User';
+                const lastName  = u.lastName  || '';
+                const fullName  = u.fullName  || `${firstName} ${lastName}`.trim();
+                const initials  = (firstName[0] + (lastName[0] || '')).toUpperCase();
+
+                // Sidebar
+                document.getElementById('sidebarName').textContent   = firstName;
+                document.getElementById('sidebarAvatar').textContent = initials;
+
+                // Profile card
+                document.getElementById('avatar').textContent   = initials;
+                document.getElementById('userName').textContent  = fullName;
+                document.getElementById('userEmail').textContent = u.email || '—';
+                document.getElementById('userPhone').textContent = u.phoneNumber || '—';
+
+                // Account info rows
+                document.getElementById('infoFullName').textContent  = fullName;
+                document.getElementById('infoEmail').textContent     = u.email || '—';
+                document.getElementById('infoPhone').textContent     = u.phoneNumber || '—';
+                document.getElementById('infoCountry').textContent   = u.address?.country || 'Nigeria';
+                document.getElementById('infoJoined').textContent    = u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-NG', {year:'numeric',month:'long',day:'numeric'}) : '—';
+                document.getElementById('infoLastLogin').textContent = u.lastLogin  ? new Date(u.lastLogin).toLocaleString()  : '—';
+
+                // Address fields
+                if (u.address?.street) {
+                    document.getElementById('infoStreet').textContent = u.address.street;
+                    document.getElementById('addressStreetRow').style.display = 'flex';
+                }
+                if (u.address?.city) {
+                    document.getElementById('infoCity').textContent = u.address.city;
+                    document.getElementById('addressCityRow').style.display = 'flex';
+                }
+                if (u.address?.state) {
+                    document.getElementById('infoState').textContent = u.address.state;
+                    document.getElementById('addressStateRow').style.display = 'flex';
+                }
+                
+                // Date of Birth and Gender
+                if (u.dateOfBirth) {
+                    document.getElementById('infoDob').textContent = new Date(u.dateOfBirth).toLocaleDateString('en-NG', {year:'numeric',month:'long',day:'numeric'});
+                    document.getElementById('dobRow').style.display = 'flex';
+                }
+                if (u.gender) {
+                    document.getElementById('infoGender').textContent = u.gender.charAt(0).toUpperCase() + u.gender.slice(1);
+                    document.getElementById('genderRow').style.display = 'flex';
+                }
+
+                // Referral code
+                if (u.referralCode) {
+                    document.getElementById('refCode').textContent = u.referralCode;
+                    window._referralCode = u.referralCode;
+                }
+
+                // Badges
+                const badges = [];
+                if (u.isEmailVerified) {
+                    badges.push(`<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 12px;background:#dcfce7;border-radius:16px;font-size:12px;font-weight:600;color:#16a34a;"><i data-lucide="check-circle" style="width:14px;height:14px;"></i>Email Verified</span>`);
+                } else {
+                    badges.push(`<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 12px;background:#fef3c7;border-radius:16px;font-size:12px;font-weight:600;color:#92400e;"><i data-lucide="alert-circle" style="width:14px;height:14px;"></i>Email Unverified</span>`);
+                }
+                if (u.isPhoneVerified) {
+                    badges.push(`<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 12px;background:#dcfce7;border-radius:16px;font-size:12px;font-weight:600;color:#16a34a;"><i data-lucide="check-circle" style="width:14px;height:14px;"></i>Phone Verified</span>`);
+                }
+                document.getElementById('badges').innerHTML = badges.join('');
+
+                // Show content
+                document.getElementById('profileLoading').style.display = 'none';
+                document.getElementById('profileContent').style.display = 'block';
+                lucide.createIcons();
+
+            } catch (err) {
+                console.error('Profile load error:', err);
+                // Fallback to cached data
+                const u = JSON.parse(localStorage.getItem('user_data') || '{}');
+                if (u.firstName) {
+                    document.getElementById('sidebarName').textContent   = u.firstName;
+                    document.getElementById('sidebarAvatar').textContent = (u.firstName[0] + (u.lastName?.[0] || '')).toUpperCase();
+                    document.getElementById('avatar').textContent        = (u.firstName[0] + (u.lastName?.[0] || '')).toUpperCase();
+                    document.getElementById('userName').textContent      = u.fullName || `${u.firstName} ${u.lastName || ''}`.trim();
+                    document.getElementById('userEmail').textContent     = u.email || '—';
+                    document.getElementById('userPhone').textContent     = u.phoneNumber || '—';
+                    document.getElementById('infoFullName').textContent  = u.fullName || `${u.firstName} ${u.lastName || ''}`.trim();
+                    document.getElementById('infoEmail').textContent     = u.email || '—';
+                    document.getElementById('infoPhone').textContent     = u.phoneNumber || '—';
+                    
+                    if (u.referralCode) { 
+                        document.getElementById('refCode').textContent = u.referralCode; 
+                        window._referralCode = u.referralCode; 
+                    }
+                    
+                    if (u.createdAt) {
+                        document.getElementById('infoJoined').textContent = new Date(u.createdAt).toLocaleDateString('en-NG', {year:'numeric',month:'long',day:'numeric'});
+                    }
+                    
+                    // Show address fields if available
+                    if (u.address?.street) {
+                        document.getElementById('infoStreet').textContent = u.address.street;
+                        document.getElementById('addressStreetRow').style.display = 'flex';
+                    }
+                    if (u.address?.city) {
+                        document.getElementById('infoCity').textContent = u.address.city;
+                        document.getElementById('addressCityRow').style.display = 'flex';
+                    }
+                    if (u.address?.state) {
+                        document.getElementById('infoState').textContent = u.address.state;
+                        document.getElementById('addressStateRow').style.display = 'flex';
+                    }
+                }
+                document.getElementById('profileLoading').style.display = 'none';
+                document.getElementById('profileContent').style.display = 'block';
+                lucide.createIcons();
+            }
+        }
+
+        // Edit Profile Modal
+        function showEditProfileModal() {
+            const user = JSON.parse(localStorage.getItem('user_data') || '{}');
+            
+            Swal.fire({
+                title: 'Edit Profile',
+                html: `
+                    <div style="text-align: left; padding: 10px; max-height: 60vh; overflow-y: auto;">
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; text-align: left; color: #64748b; font-size: 13px; margin-bottom: 5px;">First Name *</label>
+                            <input type="text" id="edit_firstName" class="swal2-input" style="width: 100%;" value="${user.firstName || ''}" placeholder="First Name">
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; text-align: left; color: #64748b; font-size: 13px; margin-bottom: 5px;">Last Name *</label>
+                            <input type="text" id="edit_lastName" class="swal2-input" style="width: 100%;" value="${user.lastName || ''}" placeholder="Last Name">
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; text-align: left; color: #64748b; font-size: 13px; margin-bottom: 5px;">Date of Birth</label>
+                            <input type="date" id="edit_dob" class="swal2-input" style="width: 100%;" value="${user.dateOfBirth || ''}">
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; text-align: left; color: #64748b; font-size: 13px; margin-bottom: 5px;">Gender</label>
+                            <select id="edit_gender" class="swal2-input" style="width: 100%;">
+                                <option value="">Select Gender</option>
+                                <option value="male" ${user.gender === 'male' ? 'selected' : ''}>Male</option>
+                                <option value="female" ${user.gender === 'female' ? 'selected' : ''}>Female</option>
+                                <option value="other" ${user.gender === 'other' ? 'selected' : ''}>Other</option>
+                            </select>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; text-align: left; color: #64748b; font-size: 13px; margin-bottom: 5px;">Street Address</label>
+                            <input type="text" id="edit_street" class="swal2-input" style="width: 100%;" value="${user.address?.street || ''}" placeholder="Street">
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; text-align: left; color: #64748b; font-size: 13px; margin-bottom: 5px;">City</label>
+                            <input type="text" id="edit_city" class="swal2-input" style="width: 100%;" value="${user.address?.city || ''}" placeholder="City">
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; text-align: left; color: #64748b; font-size: 13px; margin-bottom: 5px;">State</label>
+                            <input type="text" id="edit_state" class="swal2-input" style="width: 100%;" value="${user.address?.state || ''}" placeholder="State">
+                        </div>
+                    </div>
+                    <p style="color: #94a3b8; font-size: 12px; margin-top: 10px; text-align: left;">* Required fields</p>
+                `,
+                confirmButtonText: 'Update Profile',
+                confirmButtonColor: '#1e3d5c',
+                showCancelButton: true,
+                cancelButtonText: 'Cancel',
+                width: '500px',
+                preConfirm: async () => {
+                    const firstName = document.getElementById('edit_firstName').value.trim();
+                    const lastName = document.getElementById('edit_lastName').value.trim();
+                    
+                    if (!firstName || !lastName) {
+                        Swal.showValidationMessage('First name and last name are required');
+                        return false;
+                    }
+                    
+                    // Prepare the update payload
+                    const updateData = {
+                        firstName: firstName,
+                        lastName: lastName
+                    };
+                    
+                    // Add optional fields if they have values
+                    const dob = document.getElementById('edit_dob').value;
+                    if (dob) updateData.dateOfBirth = dob;
+                    
+                    const gender = document.getElementById('edit_gender').value;
+                    if (gender) updateData.gender = gender;
+                    
+                    // Add address if any field has value
+                    const street = document.getElementById('edit_street').value.trim();
+                    const city = document.getElementById('edit_city').value.trim();
+                    const state = document.getElementById('edit_state').value.trim();
+                    
+                    if (street || city || state) {
+                        updateData.address = {};
+                        if (street) updateData.address.street = street;
+                        if (city) updateData.address.city = city;
+                        if (state) updateData.address.state = state;
+                    }
+                    
+                    try {
+                        const response = await api.updateProfile(updateData);
+                        return response;
+                    } catch (error) {
+                        Swal.showValidationMessage(error.message || 'Failed to update profile');
+                        return false;
+                    }
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Profile Updated!',
+                        text: 'Your profile has been updated successfully.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        location.reload(); // Reload to show updated data
+                    });
+                }
+            });
+        }
+
+        // Copy Referral Code
+        function copyReferralCode() {
+            const code = window._referralCode || document.getElementById('refCode').textContent;
+            if (code && code !== '—') {
+                navigator.clipboard.writeText(code).then(() => {
+                    Swal.fire({ 
+                        icon: 'success', 
+                        title: 'Copied!', 
+                        text: `Referral code ${code} copied.`, 
+                        timer: 1500, 
+                        showConfirmButton: false 
+                    });
+                }).catch(() => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Failed to copy',
+                        text: 'Please try again',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                });
+            } else {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'No Referral Code',
+                    text: 'You don\'t have a referral code yet.',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            }
+        }
+
+        // Change Password
+        function showChangePassword() {
+            Swal.fire({
+                title: 'Change Password',
+                html: `
+                    <input type="password" id="cp_current" class="swal2-input" placeholder="Current Password">
+                    <input type="password" id="cp_new" class="swal2-input" placeholder="New Password">
+                    <input type="password" id="cp_confirm" class="swal2-input" placeholder="Confirm New Password">
+                `,
+                confirmButtonText: 'Change Password',
+                confirmButtonColor: '#1e3d5c',
+                showCancelButton: true,
+                cancelButtonText: 'Cancel',
+                preConfirm: async () => {
+                    const current = document.getElementById('cp_current').value;
+                    const newPwd  = document.getElementById('cp_new').value;
+                    const confirm = document.getElementById('cp_confirm').value;
+                    
+                    if (!current || !newPwd || !confirm) {
+                        Swal.showValidationMessage('Please fill all fields');
+                        return false;
+                    }
+                    if (newPwd !== confirm) {
+                        Swal.showValidationMessage('Passwords do not match');
+                        return false;
+                    }
+                    if (newPwd.length < 6) {
+                        Swal.showValidationMessage('Password must be at least 6 characters');
+                        return false;
+                    }
+                    
+                    try {
+                        await api.changePassword(current, newPwd);
+                        return true;
+                    } catch(e) {
+                        Swal.showValidationMessage(e.message || 'Failed to change password');
+                        return false;
+                    }
+                }
+            }).then(r => {
+                if (r.isConfirmed) {
+                    Swal.fire({ 
+                        icon: 'success', 
+                        title: 'Password Changed!', 
+                        text: 'Your password has been updated successfully.',
+                        timer: 1500, 
+                        showConfirmButton: false 
+                    });
+                }
+            });
+        }
+
+        // Set Transaction PIN
+        function showSetPIN() {
+            Swal.fire({
+                title: 'Set Transaction PIN',
+                html: `
+                    <input type="password" id="pin_val" class="swal2-input" placeholder="Enter 4-digit PIN" maxlength="4" inputmode="numeric">
+                    <input type="password" id="pin_confirm" class="swal2-input" placeholder="Confirm PIN" maxlength="4" inputmode="numeric">
+                `,
+                confirmButtonText: 'Set PIN',
+                confirmButtonColor: '#1e3d5c',
+                showCancelButton: true,
+                cancelButtonText: 'Cancel',
+                preConfirm: async () => {
+                    const pin     = document.getElementById('pin_val').value;
+                    const confirm = document.getElementById('pin_confirm').value;
+                    
+                    if (!pin || pin.length !== 4 || !/^\d+$/.test(pin)) {
+                        Swal.showValidationMessage('PIN must be exactly 4 digits');
+                        return false;
+                    }
+                    if (pin !== confirm) {
+                        Swal.showValidationMessage('PINs do not match');
+                        return false;
+                    }
+                    
+                    try {
+                        await api.setTransactionPIN(pin, confirm);
+                        return true;
+                    } catch(e) {
+                        Swal.showValidationMessage(e.message || 'Failed to set PIN');
+                        return false;
+                    }
+                }
+            }).then(r => {
+                if (r.isConfirmed) {
+                    Swal.fire({ 
+                        icon: 'success', 
+                        title: 'PIN Set!', 
+                        text: 'Your transaction PIN has been set.',
+                        timer: 1500, 
+                        showConfirmButton: false 
+                    });
+                }
+            });
+        }
+
+        // Logout
         function logout() {
             Swal.fire({
                 title: 'Logout?',
@@ -159,10 +613,17 @@
                 showCancelButton: true,
                 confirmButtonText: 'Yes, Logout',
                 confirmButtonColor: '#1e3d5c',
+                cancelButtonText: 'Cancel',
                 cancelButtonColor: '#64748b'
-            }).then(r => { if (r.isConfirmed) api.logout(); });
+            }).then(r => { 
+                if (r.isConfirmed) {
+                    api.logout();
+                }
+            });
         }
-        if (!api.getToken()) window.location.href = '../login.html'; else load();
+
+        // Initialize
+        loadProfile();
         lucide.createIcons();
     </script>
 </body>

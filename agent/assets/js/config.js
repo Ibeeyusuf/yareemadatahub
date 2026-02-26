@@ -98,8 +98,14 @@ const API = {
     
     // Get stored agent data
     getAgentData() {
-        const data = localStorage.getItem(API_CONFIG.STORAGE_KEYS.AGENT_DATA);
-        return data ? JSON.parse(data) : null;
+        try {
+            const data = localStorage.getItem(API_CONFIG.STORAGE_KEYS.AGENT_DATA);
+            return data ? JSON.parse(data) : null;
+        } catch (e) {
+            console.warn('[API] Corrupted agentData in localStorage, clearing.');
+            localStorage.removeItem(API_CONFIG.STORAGE_KEYS.AGENT_DATA);
+            return null;
+        }
     },
     
     // Set agent data

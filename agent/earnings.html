@@ -80,8 +80,8 @@
         Auth.protectPage();
         
         // Load partials
-        fetch('partials/sidebar.html').then(r => r.text()).then(d => { document.getElementById('sidebarContainer').innerHTML = d; lucide.createIcons(); });
-        fetch('partials/header.html').then(r => r.text()).then(d => { document.getElementById('headerContainer').innerHTML = d; updatePageTitle('earnings'); lucide.createIcons(); });
+        fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();initSidebar();});
+        fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('earnings');initHeader();lucide.createIcons();});
         fetch('partials/modals.html').then(r => r.text()).then(d => { document.getElementById('modalsContainer').innerHTML = d; lucide.createIcons(); });
         
         // Load earnings data on page load

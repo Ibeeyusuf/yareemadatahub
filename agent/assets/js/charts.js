@@ -1,141 +1,142 @@
-// Charts Module - Handles all chart initializations
+// charts.js — All chart initializations, driven by real API data
 
-function initCharts() {
-    initEarningsChart();
-    initCommissionChart();
-    initPerformanceChart();
-}
+const Charts = {
+    earningsChart: null,
+    commissionChart: null,
+    performanceChart: null,
 
-function initEarningsChart() {
-    const ctx = document.getElementById('earningsChart')?.getContext('2d');
-    if (!ctx) return;
-    
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-            datasets: [{
-                label: 'Daily Earnings',
-                data: [1200, 1900, 1500, 2500, 2200, 3000, 2450],
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                tension: 0.4,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
+    // Called from dashboard after API data loads
+    renderEarningsChart(weeklyData) {
+        const ctx = document.getElementById('earningsChart')?.getContext('2d');
+        if (!ctx) return;
+
+        if (this.earningsChart) this.earningsChart.destroy();
+
+        const labels = weeklyData.map(d => d.label || d.date || '');
+        const values = weeklyData.map(d => d.commission || d.earnings || d.amount || 0);
+
+        this.earningsChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Commission Earned',
+                    data: values,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#10b981',
+                    pointRadius: 4
+                }]
             },
-            scales: {
-                y: { 
-                    beginAtZero: true, 
-                    grid: { borderDash: [2, 2] },
-                    ticks: {
-                        callback: function(value) {
-                            return '₦' + value.toLocaleString();
-                        }
-                    }
-                },
-                x: { grid: { display: false } }
-            }
-        }
-    });
-}
-
-function initCommissionChart() {
-    const ctx = document.getElementById('commissionChart')?.getContext('2d');
-    if (!ctx) return;
-    
-    new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Data', 'Airtime', 'Bills', 'Education'],
-            datasets: [{
-                data: [45280, 32150, 28420, 22600],
-                backgroundColor: ['#0ea5e9', '#10b981', '#f59e0b', '#8b5cf6'],
-                borderWidth: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '70%',
-            plugins: {
-                legend: { 
-                    position: 'bottom',
-                    labels: {
-                        padding: 15,
-                        font: {
-                            size: 12
-                        }
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.label + ': ₦' + context.parsed.toLocaleString();
-                        }
-                    }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { borderDash: [3, 3], color: 'rgba(0,0,0,0.06)' },
+                        ticks: { callback: v => '₦' + v.toLocaleString('en-NG') }
+                    },
+                    x: { grid: { display: false } }
                 }
             }
-        }
-    });
-}
+        });
+    },
 
-function initPerformanceChart() {
-    const ctx = document.getElementById('performanceChart')?.getContext('2d');
-    if (!ctx) return;
-    
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
-            datasets: [{
-                label: 'Transactions',
-                data: [45, 52, 48, 61],
-                backgroundColor: '#0ea5e9',
-                borderRadius: 6
-            }, {
-                label: 'Earnings (₦1000s)',
-                data: [5.2, 6.8, 5.9, 7.5],
-                backgroundColor: '#10b981',
-                borderRadius: 6
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { 
-                    position: 'top',
-                    labels: {
-                        padding: 15,
-                        font: {
-                            size: 12
-                        }
-                    }
-                }
+    renderCommissionChart(serviceBreakdown) {
+        const ctx = document.getElementById('commissionChart')?.getContext('2d');
+        if (!ctx) return;
+
+        if (this.commissionChart) this.commissionChart.destroy();
+
+        const labels = serviceBreakdown.map(s => s.name || s.service || '');
+        const data = serviceBreakdown.map(s => s.commission || s.amount || 0);
+        const colors = ['#0ea5e9', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#ec4899'];
+
+        this.commissionChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels,
+                datasets: [{
+                    data,
+                    backgroundColor: colors.slice(0, labels.length),
+                    borderWidth: 0
+                }]
             },
-            scales: {
-                y: { 
-                    beginAtZero: true,
-                    grid: { borderDash: [2, 2] }
-                },
-                x: {
-                    grid: { display: false }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { padding: 15, font: { size: 12 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ctx.label + ': ₦' + ctx.parsed.toLocaleString('en-NG')
+                        }
+                    }
                 }
             }
-        }
-    });
-}
+        });
+    },
 
-// Initialize charts when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    // Only init if Chart.js is loaded
-    if (typeof Chart !== 'undefined') {
-        initCharts();
+    renderPerformanceChart(weeklyData) {
+        const ctx = document.getElementById('performanceChart')?.getContext('2d');
+        if (!ctx) return;
+
+        if (this.performanceChart) this.performanceChart.destroy();
+
+        const labels = weeklyData.map(d => d.label || d.week || '');
+        const txns   = weeklyData.map(d => d.count || d.transactions || 0);
+        const earn   = weeklyData.map(d => (d.commission || d.earnings || 0) / 1000);
+
+        this.performanceChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Transactions',
+                        data: txns,
+                        backgroundColor: '#0ea5e9',
+                        borderRadius: 6
+                    },
+                    {
+                        label: 'Earnings (₦k)',
+                        data: earn,
+                        backgroundColor: '#10b981',
+                        borderRadius: 6
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top', labels: { padding: 15, font: { size: 12 } } }
+                },
+                scales: {
+                    y: { beginAtZero: true, grid: { borderDash: [3, 3], color: 'rgba(0,0,0,0.06)' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    },
+
+    // Show empty state inside a chart canvas parent
+    showEmpty(canvasId, message) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const wrapper = canvas.parentElement;
+        canvas.style.display = 'none';
+        const msg = document.createElement('div');
+        msg.className = 'flex items-center justify-center h-full text-slate-400 text-sm';
+        msg.textContent = message || 'No data available yet';
+        wrapper.appendChild(msg);
     }
-});
+};

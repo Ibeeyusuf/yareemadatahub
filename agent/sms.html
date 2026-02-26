@@ -9,9 +9,22 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/style.css">
     <script>
-        // Protect page
-        Auth.protectPage();
-        tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{yareema:{primary:'#1E3D5C',secondary:'#16304a',dark:'#0f1f2e',light:'#e8edf2',success:'#10b981',warning:'#f59e0b',danger:'#ef4444'}}}}}</script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        primary: '#1E3D5C',
+                        yareema: {
+                            primary: '#1E3D5C', secondary: '#16304a',
+                            dark: '#0f1f2e', light: '#e8edf2',
+                            success: '#10b981', warning: '#f59e0b', danger: '#ef4444'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
 </head>
 <body class="text-slate-800 antialiased">
     <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
@@ -19,53 +32,166 @@
         <div id="sidebarContainer"></div>
         <main class="flex-1 flex flex-col min-w-0 bg-slate-50">
             <div id="headerContainer"></div>
-            <div class="p-4 lg:p-8 flex-1 overflow-y-auto">
+            <div class="p-4 lg:p-8 flex-1 overflow-y-auto space-y-6">
+
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                    <h3 class="font-bold text-slate-900 mb-6">Send Bulk SMS</h3>
-                    <form onsubmit="handleBulkSMS(event)" class="space-y-6">
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-700 mb-2">Sender ID</label>
-                            <input type="text" placeholder="e.g., YareemaHub" maxlength="11" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
+                    <h3 class="font-bold text-slate-900 mb-1">Send Bulk SMS</h3>
+                    <p class="text-sm text-slate-500 mb-6">Send messages to multiple recipients at once</p>
+
+                    <div id="smsFormMsg" class="hidden mb-4 p-3 rounded-lg text-sm"></div>
+
+                    <form id="smsForm" onsubmit="handleBulkSMS(event)" class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">Sender ID</label>
+                                <input id="smsSenderId" type="text" placeholder="e.g., YareemaHub" maxlength="11"
+                                    class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full" required>
+                                <p class="text-xs text-slate-400 mt-1">Max 11 characters, no spaces</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">Recipient Count</label>
+                                <p class="px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm text-slate-700" id="recipientCount">0 numbers entered</p>
+                            </div>
                         </div>
+
                         <div>
                             <label class="block text-sm font-semibold text-slate-700 mb-2">Phone Numbers</label>
-                            <textarea placeholder="Enter phone numbers separated by comma (e.g., 08012345678, 08098765432)" rows="4" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full resize-none" required></textarea>
+                            <textarea id="smsNumbers" rows="4" oninput="updateRecipientCount()"
+                                placeholder="Enter phone numbers separated by comma or new line&#10;e.g., 08012345678, 08098765432"
+                                class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full resize-none" required></textarea>
                         </div>
+
                         <div>
-                            <label class="block text-sm font-semibold text-slate-700 mb-2">Message</label>
-                            <textarea id="smsMessage" placeholder="Type your message here..." rows="6" onkeyup="updateSMSCount()" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full resize-none" required></textarea>
-                            <div class="flex justify-between text-xs text-slate-500 mt-1">
-                                <span><span id="charCount">0</span> characters</span>
-                                <span><span id="smsCount">0</span> SMS page(s)</span>
-                            </div>
-                        </div>
-                        <div class="p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                            <div class="flex justify-between items-center">
-                                <div>
-                                    <p class="text-sm font-medium text-slate-700">Estimated Cost</p>
-                                    <p class="text-xs text-slate-500">₦4 per SMS page</p>
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="block text-sm font-semibold text-slate-700">Message</label>
+                                <div class="text-xs text-slate-400">
+                                    <span id="charCount">0</span> chars · <span id="smsPageCount">0</span> SMS page(s)
                                 </div>
-                                <p class="text-2xl font-bold text-blue-600" id="smsCost">₦0</p>
+                            </div>
+                            <textarea id="smsMessage" rows="5" oninput="updateSMSCount()"
+                                placeholder="Type your message here..."
+                                class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full resize-none" required></textarea>
+                        </div>
+
+                        <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-700">Estimated Cost</p>
+                                    <p class="text-xs text-slate-500">&#8358;4 per SMS page per recipient</p>
+                                </div>
+                                <p class="text-2xl font-bold text-slate-900" id="smsCost">&#8358;0.00</p>
                             </div>
                         </div>
-                        <button type="submit" class="w-full py-4 bg-gradient-to-r from-pink-600 to-pink-700 text-white font-bold rounded-xl hover:shadow-lg transition-all text-lg">Send SMS</button>
+
+                        <button type="submit" id="smsSubmitBtn"
+                            class="w-full py-4 text-white font-bold rounded-xl hover:shadow-lg transition-all text-lg flex items-center justify-center gap-2"
+                            style="background: linear-gradient(135deg, #1E3D5C, #16304a)">
+                            <i data-lucide="send" class="w-5 h-5"></i>
+                            Send SMS
+                        </button>
                     </form>
                 </div>
+
             </div>
         </main>
     </div>
     <div id="modalsContainer"></div>
+
     <script src="assets/js/config.js"></script>
     <script src="assets/js/auth.js"></script>
     <script src="assets/js/main.js"></script>
     <script src="assets/js/services.js"></script>
     <script>
-        // Protect page
         Auth.protectPage();
-        
-        fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();});
-        fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('sms');lucide.createIcons();});
-        fetch('partials/modals.html').then(r=>r.text()).then(d=>{document.getElementById('modalsContainer').innerHTML=d;lucide.createIcons();});
+
+        fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();initSidebar();});
+        fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('sms');initHeader();lucide.createIcons();});
+        fetch('partials/modals.html').then(r => r.text()).then(d => { document.getElementById('modalsContainer').innerHTML = d; lucide.createIcons(); });
+
+        function parseNumbers(raw) {
+            return raw.split(/[,\n]+/)
+                .map(n => n.trim().replace(/\s/g, ''))
+                .filter(n => n.length >= 10);
+        }
+
+        function updateRecipientCount() {
+            const raw = document.getElementById('smsNumbers').value;
+            const nums = parseNumbers(raw);
+            document.getElementById('recipientCount').textContent = nums.length + ' number' + (nums.length !== 1 ? 's' : '') + ' entered';
+            updateCost();
+        }
+
+        function updateSMSCount() {
+            const msg = document.getElementById('smsMessage').value;
+            const len = msg.length;
+            const pages = len === 0 ? 0 : (len <= 160 ? 1 : Math.ceil(len / 153));
+            document.getElementById('charCount').textContent = len;
+            document.getElementById('smsPageCount').textContent = pages;
+            updateCost();
+        }
+
+        function updateCost() {
+            const raw = document.getElementById('smsNumbers').value;
+            const nums = parseNumbers(raw);
+            const msg = document.getElementById('smsMessage').value;
+            const len = msg.length;
+            const pages = len === 0 ? 0 : (len <= 160 ? 1 : Math.ceil(len / 153));
+            const cost = nums.length * pages * 4;
+            document.getElementById('smsCost').textContent = '\u20a6' + cost.toLocaleString('en-NG', { minimumFractionDigits: 2 });
+        }
+
+        function showFormMsg(message, type) {
+            const el = document.getElementById('smsFormMsg');
+            el.className = 'mb-4 p-3 rounded-lg text-sm ' + (type === 'success'
+                ? 'bg-green-50 text-green-700 border border-green-200'
+                : 'bg-red-50 text-red-700 border border-red-200');
+            el.textContent = message;
+            el.classList.remove('hidden');
+            if (type === 'success') setTimeout(() => el.classList.add('hidden'), 5000);
+        }
+
+        async function handleBulkSMS(e) {
+            e.preventDefault();
+
+            const senderId = document.getElementById('smsSenderId').value.trim();
+            const rawNumbers = document.getElementById('smsNumbers').value;
+            const message = document.getElementById('smsMessage').value.trim();
+            const phoneNumbers = parseNumbers(rawNumbers);
+
+            if (!senderId) { showFormMsg('Please enter a Sender ID.', 'error'); return; }
+            if (phoneNumbers.length === 0) { showFormMsg('Please enter at least one valid phone number.', 'error'); return; }
+            if (!message) { showFormMsg('Please enter a message.', 'error'); return; }
+
+            const btn = document.getElementById('smsSubmitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></span> Sending...';
+
+            try {
+                const result = await AgentServices.payBill({
+                    serviceType: 'sms',
+                    senderId,
+                    phoneNumbers,
+                    message
+                });
+
+                if (result.success) {
+                    showFormMsg(result.message || 'SMS sent successfully!', 'success');
+                    document.getElementById('smsForm').reset();
+                    document.getElementById('charCount').textContent = '0';
+                    document.getElementById('smsPageCount').textContent = '0';
+                    document.getElementById('smsCost').textContent = '\u20a6 0.00';
+                    document.getElementById('recipientCount').textContent = '0 numbers entered';
+                } else {
+                    showFormMsg(result.message || 'Failed to send SMS. Please try again.', 'error');
+                }
+            } catch (err) {
+                showFormMsg(err.message || 'An error occurred. Please try again.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-lucide="send" class="w-5 h-5"></i> Send SMS';
+                lucide.createIcons();
+            }
+        }
     </script>
 </body>
 </html>

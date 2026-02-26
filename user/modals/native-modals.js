@@ -95,6 +95,7 @@ function openModal(type) {
         'education': showEducationModal,
         'sms': showSMSModal,
         'swap': showSwapModal,
+        'rechargepin': showRechargePINModal,
         'remita': showRemitaModal,
         'alpha': showAlphaModal,
         'fund': showFundModal,
@@ -117,22 +118,21 @@ function openModal(type) {
 }
 
 // ==================== DATA MODAL ====================
-let selectedNetwork = 'MTN';
-let selectedPlan = null;
-let dataPlans = [];
+let selectedNetwork = 'mtn';
+let currentDataPlans = [];
 
 async function showDataModal() {
-    selectedNetwork = 'MTN';
-    await loadDataPlans('MTN');
+    selectedNetwork = 'mtn';
+    currentDataPlans = [];
     
     const bodyHTML = `
         <div class="form-group">
             <label>Select Network</label>
             <div class="network-grid">
-                <button type="button" class="network-btn active" data-network="MTN" onclick="selectDataNetwork('MTN')" style="background: #FFCC00; color: #000;">MTN</button>
-                <button type="button" class="network-btn" data-network="AIRTEL" onclick="selectDataNetwork('AIRTEL')" style="background: #FF0000; color: #fff;">Airtel</button>
-                <button type="button" class="network-btn" data-network="GLO" onclick="selectDataNetwork('GLO')" style="background: #00C300; color: #fff;">Glo</button>
-                <button type="button" class="network-btn" data-network="9MOBILE" onclick="selectDataNetwork('9MOBILE')" style="background: #006400; color: #fff;">9mobile</button>
+                <button type="button" class="network-btn active" data-network="mtn" onclick="selectDataNetwork('mtn')" style="background: #FFCC00; color: #000;">MTN</button>
+                <button type="button" class="network-btn" data-network="airtel" onclick="selectDataNetwork('airtel')" style="background: #FF0000; color: #fff;">Airtel</button>
+                <button type="button" class="network-btn" data-network="glo" onclick="selectDataNetwork('glo')" style="background: #00C300; color: #fff;">Glo</button>
+                <button type="button" class="network-btn" data-network="9mobile" onclick="selectDataNetwork('9mobile')" style="background: #006400; color: #fff;">9mobile</button>
             </div>
         </div>
         <div class="form-group">
@@ -157,15 +157,30 @@ async function showDataModal() {
     `;
     
     showModal('Buy Data', bodyHTML, footerHTML);
-    updateDataPlanDropdown();
+    
+    // Load initial plans for MTN
+    await loadDataPlans('mtn');
 }
 
 function selectDataNetwork(network) {
     selectedNetwork = network;
+    // Update active state
     document.querySelectorAll('.network-btn').forEach(btn => {
         btn.classList.remove('active');
+        // Reset styles
+        if (btn.dataset.network === 'mtn') btn.style.cssText = 'background: #FFCC00; color: #000;';
+        if (btn.dataset.network === 'airtel') btn.style.cssText = 'background: #FF0000; color: #fff;';
+        if (btn.dataset.network === 'glo') btn.style.cssText = 'background: #00C300; color: #fff;';
+        if (btn.dataset.network === '9mobile') btn.style.cssText = 'background: #006400; color: #fff;';
     });
-    document.querySelector(`[data-network="${network}"]`).classList.add('active');
+    
+    // Add active class to selected
+    const selectedBtn = document.querySelector(`[data-network="${network}"]`);
+    selectedBtn.classList.add('active');
+    // Highlight active button
+    selectedBtn.style.cssText += '; border: 3px solid white; box-shadow: 0 0 0 2px #1e3d5c;';
+    
+    // Load plans for selected network
     loadDataPlans(network);
 }
 
@@ -177,11 +192,30 @@ async function loadDataPlans(network) {
     
     try {
         const response = await api.getDataPlans(network);
-        dataPlans = response.data?.plans || response.plans || [];
+        
+        // Fix: Check the actual response structure
+        if (response.data && response.data[network]) {
+            // Case: { data: { mtn: [...] } }
+            currentDataPlans = response.data[network];
+        } else if (response.data && response.data.plans && response.data.plans[network]) {
+            // Case: { data: { plans: { mtn: [...] } } }
+            currentDataPlans = response.data.plans[network];
+        } else if (response[network]) {
+            // Case: { mtn: [...] }
+            currentDataPlans = response[network];
+        } else if (Array.isArray(response)) {
+            // Case: Direct array
+            currentDataPlans = response;
+        } else {
+            currentDataPlans = [];
+        }
+        
         updateDataPlanDropdown();
     } catch (error) {
         console.error('Error loading plans:', error);
-        planSelect.innerHTML = '<option value="">Error loading plans</option>';
+        if (planSelect) {
+            planSelect.innerHTML = '<option value="">Failed to load plans. Click to retry</option>';
+        }
     }
 }
 
@@ -189,44 +223,63 @@ function updateDataPlanDropdown() {
     const planSelect = document.getElementById('dataPlan');
     if (!planSelect) return;
     
-    if (dataPlans.length > 0) {
-        planSelect.innerHTML = '<option value="">Choose a plan</option>' + 
-            dataPlans.map((plan, idx) => `<option value="${idx}">${plan.name} - ₦${plan.price.toLocaleString()}</option>`).join('');
+    if (currentDataPlans.length > 0) {
+        planSelect.innerHTML = '<option value="">Choose a plan</option>' +
+            currentDataPlans.map((plan, index) => {
+                // Handle your plan structure
+                const name = plan.planName || 'Data Plan';
+                const price = plan.price || 0;
+                const dataAmount = plan.size || '';
+                const validity = plan.validity ? ` (${plan.validity})` : '';
+                
+                let label = name;
+                if (dataAmount) label = dataAmount; // Use size as the main label
+                label += validity;
+                label += ` - ₦${Number(price).toLocaleString()}`;
+                
+                return `<option value="${index}">${label}</option>`;
+            }).join('');
     } else {
-        planSelect.innerHTML = '<option value="">No plans available</option>';
+        planSelect.innerHTML = '<option value="">No plans available for this network</option>';
     }
 }
 
 async function submitDataPurchase() {
-    const phone = document.getElementById('dataPhone').value;
-    const planIdx = document.getElementById('dataPlan').value;
-    const pin = document.getElementById('dataPin').value;
+    const phone = document.getElementById('dataPhone').value.trim();
+    const planIndex = document.getElementById('dataPlan').value;
+    const pin = document.getElementById('dataPin').value.trim();
     
-    if (!phone || phone.length !== 11) {
-        showError('Please enter a valid 11-digit phone number');
-        return;
-    }
-    if (!planIdx) {
-        showError('Please select a data plan');
-        return;
-    }
+    // Validate PIN format
     if (!pin || pin.length !== 4) {
-        showError('Please enter your 4-digit PIN');
+        showError('Please enter your 4-digit transaction PIN');
+        return;
+    }
+    if (!/^\d+$/.test(pin)) {
+        showError('Transaction PIN must contain only numbers');
         return;
     }
     
-    const plan = dataPlans[planIdx];
-    if (!plan) {
-        showError('Invalid plan selected');
-        return;
-    }
+    // ... other validations ...
     
     try {
         showLoading('Purchasing data...');
-        const response = await api.purchaseData(phone, selectedNetwork, plan._id || plan.id, pin);
-        showSuccess(response.message || 'Data purchased successfully!');
+        const response = await api.purchaseData(phone, selectedNetwork, planId, pin);
+        
+        closeModal();
+        setTimeout(() => {
+            showSuccess('Data purchased successfully!');
+        }, 300);
     } catch (error) {
-        showError(error.message || 'Purchase failed. Please try again.');
+        closeModal();
+        setTimeout(() => {
+            const errorMsg = error.message || '';
+            
+            if (errorMsg.toLowerCase().includes('pin')) {
+                showError('Invalid transaction PIN. Please try again.');
+            } else {
+                showError(errorMsg || 'Purchase failed. Please try again.');
+            }
+        }, 300);
     }
 }
 
@@ -236,10 +289,10 @@ function showAirtimeModal() {
         <div class="form-group">
             <label>Select Network</label>
             <div class="network-grid">
-                <button type="button" class="network-btn-air active" data-network="MTN" onclick="selectAirtimeNetwork('MTN')" style="background: #FFCC00; color: #000;">MTN</button>
-                <button type="button" class="network-btn-air" data-network="AIRTEL" onclick="selectAirtimeNetwork('AIRTEL')" style="background: #FF0000; color: #fff;">Airtel</button>
-                <button type="button" class="network-btn-air" data-network="GLO" onclick="selectAirtimeNetwork('GLO')" style="background: #00C300; color: #fff;">Glo</button>
-                <button type="button" class="network-btn-air" data-network="9MOBILE" onclick="selectAirtimeNetwork('9MOBILE')" style="background: #006400; color: #fff;">9mobile</button>
+                <button type="button" class="network-btn-air active" data-network="mtn" onclick="selectAirtimeNetwork('mtn')" style="background: #FFCC00; color: #000;">MTN</button>
+                <button type="button" class="network-btn-air" data-network="airtel" onclick="selectAirtimeNetwork('airtel')" style="background: #FF0000; color: #fff;">Airtel</button>
+                <button type="button" class="network-btn-air" data-network="glo" onclick="selectAirtimeNetwork('glo')" style="background: #00C300; color: #fff;">Glo</button>
+                <button type="button" class="network-btn-air" data-network="9mobile" onclick="selectAirtimeNetwork('9mobile')" style="background: #006400; color: #fff;">9mobile</button>
             </div>
         </div>
         <div class="form-group">
@@ -262,7 +315,7 @@ function showAirtimeModal() {
     `;
     
     showModal('Buy Airtime', bodyHTML, footerHTML);
-    window.selectedAirtimeNetwork = 'MTN';
+    window.selectedAirtimeNetwork = 'mtn';
 }
 
 function selectAirtimeNetwork(network) {
@@ -276,6 +329,16 @@ async function submitAirtimePurchase() {
     const amount = parseInt(document.getElementById('airtimeAmount').value);
     const pin = document.getElementById('airtimePin').value;
     
+    // PIN Validation
+    if (!pin || pin.length !== 4) {
+        showError('Please enter your 4-digit transaction PIN');
+        return;
+    }
+    if (!/^\d+$/.test(pin)) {
+        showError('Transaction PIN must contain only numbers');
+        return;
+    }
+    
     if (!phone || phone.length !== 11) {
         showError('Please enter a valid 11-digit phone number');
         return;
@@ -284,17 +347,33 @@ async function submitAirtimePurchase() {
         showError('Amount must be at least ₦50');
         return;
     }
-    if (!pin || pin.length !== 4) {
-        showError('Please enter your 4-digit PIN');
-        return;
-    }
     
     try {
         showLoading('Purchasing airtime...');
         const response = await api.purchaseAirtime(phone, window.selectedAirtimeNetwork, amount, pin);
-        showSuccess(response.message || 'Airtime purchased successfully!');
+        
+        closeModal();
+        setTimeout(() => {
+            showSuccess(`
+                <div style="text-align: center;">
+                    <p style="font-size: 16px; margin-bottom: 8px;">Airtime Purchase Successful! 📱</p>
+                    <p style="font-size: 14px; color: #64748b;">₦${amount} airtime sent to ${phone}</p>
+                </div>
+            `);
+        }, 300);
     } catch (error) {
-        showError(error.message || 'Purchase failed. Please try again.');
+        closeModal();
+        setTimeout(() => {
+            const errorMsg = error.message || '';
+            
+            if (errorMsg.toLowerCase().includes('pin')) {
+                showError('Invalid transaction PIN. Please try again.');
+            } else if (errorMsg.toLowerCase().includes('balance') || errorMsg.toLowerCase().includes('insufficient')) {
+                showError('Insufficient wallet balance. Please fund your wallet.');
+            } else {
+                showError(errorMsg || 'Airtime purchase failed. Please try again.');
+            }
+        }, 300);
     }
 }
 
@@ -345,6 +424,16 @@ async function submitElectricityPayment() {
     const phone = document.getElementById('electricityPhone').value;
     const pin = document.getElementById('electricityPin').value;
     
+    // PIN Validation
+    if (!pin || pin.length !== 4) {
+        showError('Please enter your 4-digit transaction PIN');
+        return;
+    }
+    if (!/^\d+$/.test(pin)) {
+        showError('Transaction PIN must contain only numbers');
+        return;
+    }
+    
     if (!meter) {
         showError('Please enter meter number');
         return;
@@ -357,17 +446,35 @@ async function submitElectricityPayment() {
         showError('Please enter a valid phone number');
         return;
     }
-    if (!pin || pin.length !== 4) {
-        showError('Please enter your 4-digit PIN');
-        return;
-    }
     
     try {
-        showLoading('Processing payment...');
+        showLoading('Processing electricity payment...');
         const response = await api.purchaseElectricity(meter, disco, amount, phone, pin);
-        showSuccess(response.message || 'Electricity payment successful!');
+        
+        closeModal();
+        setTimeout(() => {
+            showSuccess(`
+                <div style="text-align: center;">
+                    <p style="font-size: 16px; margin-bottom: 8px;">Payment Successful! 💡</p>
+                    <p style="font-size: 14px; color: #64748b;">₦${amount} credited to meter ${meter}</p>
+                </div>
+            `);
+        }, 300);
     } catch (error) {
-        showError(error.message || 'Payment failed. Please try again.');
+        closeModal();
+        setTimeout(() => {
+            const errorMsg = error.message || '';
+            
+            if (errorMsg.toLowerCase().includes('pin')) {
+                showError('Invalid transaction PIN. Please try again.');
+            } else if (errorMsg.toLowerCase().includes('meter')) {
+                showError('Invalid meter number. Please verify and try again.');
+            } else if (errorMsg.toLowerCase().includes('balance')) {
+                showError('Insufficient wallet balance.');
+            } else {
+                showError(errorMsg || 'Payment failed. Please try again.');
+            }
+        }, 300);
     }
 }
 
@@ -391,10 +498,11 @@ async function showTVModal() {
         <div class="form-group">
             <label>Select Package</label>
             <select id="tvPlan" class="form-input">
-                <option value="">Loading packages...</option>
+                <option value="">Select provider first</option>
             </select>
         </div>
-        <div class="form-group">
+        <div id="tvPlansMessage"></div>
+        <div class="form-group" style="margin-top: 16px;">
             <label>Transaction PIN</label>
             <input type="password" id="tvPin" placeholder="Enter 4-digit PIN" maxlength="4" class="form-input">
         </div>
@@ -406,6 +514,8 @@ async function showTVModal() {
     `;
     
     showModal('Cable TV Subscription', bodyHTML, footerHTML);
+    
+    // Load plans for default provider (DSTV)
     await loadTVPlans('dstv');
 }
 
@@ -416,17 +526,66 @@ async function loadTVPlans(provider) {
     planSelect.innerHTML = '<option value="">Loading packages...</option>';
     
     try {
-        const response = await api.getCablePlans(provider);
-        tvPlans = response.data?.plans || response.plans || [];
+        const response = await api.getCablePlans();
+        console.log('TV Plans response:', response); // For debugging
         
-        if (tvPlans.length > 0) {
-            planSelect.innerHTML = '<option value="">Choose package</option>' + 
-                tvPlans.map((plan, idx) => `<option value="${idx}">${plan.name} - ₦${plan.price.toLocaleString()}</option>`).join('');
+        // Check if plans exist in the response
+        if (response.data && response.data.plans) {
+            const plansObj = response.data.plans;
+            
+            // Check if the provider has plans
+            if (plansObj[provider] && plansObj[provider].length > 0) {
+                tvPlans = plansObj[provider];
+                planSelect.innerHTML = '<option value="">Choose package</option>' + 
+                    tvPlans.map((plan, idx) => {
+                        const name = plan.planName || plan.name || plan.description || 'Package';
+                        const price = plan.sellingPrice || plan.price || plan.amount || 0;
+                        return `<option value="${idx}">${name} - ₦${Number(price).toLocaleString()}</option>`;
+                    }).join('');
+            } else {
+                // No plans for this provider
+                tvPlans = [];
+                planSelect.innerHTML = '<option value="">No packages available for this provider</option>';
+                
+                // Show a message
+                const parent = planSelect.parentNode;
+                const oldMessage = document.getElementById('tvPlansMessage');
+                if (oldMessage) oldMessage.remove();
+                
+                const messageDiv = document.createElement('div');
+                messageDiv.id = 'tvPlansMessage';
+                messageDiv.innerHTML = `
+                    <div style="background: #fef3c7; padding: 12px; border-radius: 8px; margin-top: 10px; text-align: center; border-left: 4px solid #f59e0b;">
+                        <p style="color: #92400e; font-size: 13px; margin: 0;">
+                            ⚡ No cable plans available at the moment. Please check back later.
+                        </p>
+                    </div>
+                `;
+                parent.appendChild(messageDiv);
+            }
         } else {
+            tvPlans = [];
             planSelect.innerHTML = '<option value="">No packages available</option>';
         }
     } catch (error) {
+        console.error('Error loading TV plans:', error);
         planSelect.innerHTML = '<option value="">Error loading packages</option>';
+        
+        // Show error message
+        const parent = planSelect.parentNode;
+        const oldMessage = document.getElementById('tvPlansMessage');
+        if (oldMessage) oldMessage.remove();
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.id = 'tvPlansMessage';
+        messageDiv.innerHTML = `
+            <div style="background: #fee2e2; padding: 12px; border-radius: 8px; margin-top: 10px; text-align: center; border-left: 4px solid #dc2626;">
+                <p style="color: #dc2626; font-size: 13px; margin: 0;">
+                    ❌ Failed to load plans. Please try again.
+                </p>
+            </div>
+        `;
+        parent.appendChild(messageDiv);
     }
 }
 
@@ -436,6 +595,16 @@ async function submitTVSubscription() {
     const planIdx = document.getElementById('tvPlan').value;
     const pin = document.getElementById('tvPin').value;
     
+    // PIN Validation
+    if (!pin || pin.length !== 4) {
+        showError('Please enter your 4-digit transaction PIN');
+        return;
+    }
+    if (!/^\d+$/.test(pin)) {
+        showError('Transaction PIN must contain only numbers');
+        return;
+    }
+    
     if (!smartCard) {
         showError('Please enter smart card number');
         return;
@@ -444,8 +613,8 @@ async function submitTVSubscription() {
         showError('Please select a package');
         return;
     }
-    if (!pin || pin.length !== 4) {
-        showError('Please enter your 4-digit PIN');
+    if (!tvPlans || tvPlans.length === 0) {
+        showError('No packages available. Please try again later.');
         return;
     }
     
@@ -457,10 +626,33 @@ async function submitTVSubscription() {
     
     try {
         showLoading('Processing subscription...');
-        const response = await api.purchaseCableTV(smartCard, provider, plan._id || plan.id, 1, pin);
-        showSuccess(response.message || 'Subscription successful!');
+        const planId = plan._id || plan.id || plan.planCode || plan.planId;
+        const response = await api.purchaseCableTV(smartCard, provider, planId, 1, pin);
+        
+        closeModal();
+        setTimeout(() => {
+            showSuccess(`
+                <div style="text-align: center;">
+                    <p style="font-size: 16px; margin-bottom: 8px;">Subscription Successful! 📺</p>
+                    <p style="font-size: 14px; color: #64748b;">Your ${provider.toUpperCase()} subscription is now active</p>
+                </div>
+            `);
+        }, 300);
     } catch (error) {
-        showError(error.message || 'Subscription failed. Please try again.');
+        closeModal();
+        setTimeout(() => {
+            const errorMsg = error.message || '';
+            
+            if (errorMsg.toLowerCase().includes('pin')) {
+                showError('Invalid transaction PIN. Please try again.');
+            } else if (errorMsg.toLowerCase().includes('smart card')) {
+                showError('Invalid smart card number. Please verify.');
+            } else if (errorMsg.toLowerCase().includes('balance')) {
+                showError('Insufficient wallet balance.');
+            } else {
+                showError(errorMsg || 'Subscription failed. Please try again.');
+            }
+        }, 300);
     }
 }
 
@@ -498,21 +690,132 @@ async function submitEducationPurchase() {
     const quantity = parseInt(document.getElementById('eduQuantity').value);
     const pin = document.getElementById('eduPin').value;
     
-    if (!quantity || quantity < 1) {
-        showError('Please enter valid quantity');
+    // PIN Validation
+    if (!pin || pin.length !== 4) {
+        showError('Please enter your 4-digit transaction PIN');
         return;
     }
-    if (!pin || pin.length !== 4) {
-        showError('Please enter your 4-digit PIN');
+    if (!/^\d+$/.test(pin)) {
+        showError('Transaction PIN must contain only numbers');
+        return;
+    }
+    
+    if (!quantity || quantity < 1) {
+        showError('Please enter valid quantity');
         return;
     }
     
     try {
         showLoading('Processing purchase...');
         const response = await api.purchaseEducationPIN(examType, quantity, pin);
-        showSuccess(response.message || 'Purchase successful! PINs sent to your email.');
+        
+        closeModal();
+        setTimeout(() => {
+            showSuccess(`
+                <div style="text-align: center;">
+                    <p style="font-size: 16px; margin-bottom: 8px;">Purchase Successful! 📚</p>
+                    <p style="font-size: 14px; color: #64748b;">${quantity} ${examType.toUpperCase()} PIN(s) sent to your email</p>
+                </div>
+            `);
+        }, 300);
     } catch (error) {
-        showError(error.message || 'Purchase failed. Please try again.');
+        closeModal();
+        setTimeout(() => {
+            const errorMsg = error.message || '';
+            
+            if (errorMsg.toLowerCase().includes('pin')) {
+                showError('Invalid transaction PIN. Please try again.');
+            } else if (errorMsg.toLowerCase().includes('balance')) {
+                showError('Insufficient wallet balance.');
+            } else {
+                showError(errorMsg || 'Purchase failed. Please try again.');
+            }
+        }, 300);
+    }
+}
+
+// ==================== RECHARGE PIN MODAL ====================
+function showRechargePINModal() {
+    showModal('Recharge PIN', `
+        <div class="form-group">
+            <label>Select Network</label>
+            <select id="pinNetwork" class="form-input">
+                <option value="mtn">MTN</option>
+                <option value="airtel">Airtel</option>
+                <option value="glo">Glo</option>
+                <option value="9mobile">9mobile</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Denomination (₦)</label>
+            <select id="pinType" class="form-input">
+                <option value="100">₦100</option>
+                <option value="200">₦200</option>
+                <option value="500">₦500</option>
+                <option value="1000">₦1,000</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Quantity</label>
+            <input type="number" id="pinQuantity" value="1" min="1" max="10" class="form-input">
+        </div>
+        <div class="form-group">
+            <label>Transaction PIN</label>
+            <input type="password" id="pinTxPin" placeholder="Enter 4-digit PIN" maxlength="4" class="form-input">
+        </div>
+    `, `
+        <button onclick="closeModal()" class="btn-secondary">Cancel</button>
+        <button onclick="submitRechargePIN()" class="btn-primary">Purchase PIN</button>
+    `);
+}
+
+async function submitRechargePIN() {
+    const network = document.getElementById('pinNetwork').value;
+    const pinType = document.getElementById('pinType').value;
+    const quantity = parseInt(document.getElementById('pinQuantity').value);
+    const pin = document.getElementById('pinTxPin').value;
+
+    // PIN Validation
+    if (!pin || pin.length !== 4) {
+        showError('Please enter your 4-digit transaction PIN');
+        return;
+    }
+    if (!/^\d+$/.test(pin)) {
+        showError('Transaction PIN must contain only numbers');
+        return;
+    }
+
+    if (!quantity || quantity < 1) {
+        showError('Please enter a valid quantity');
+        return;
+    }
+
+    try {
+        showLoading('Purchasing recharge PIN...');
+        const response = await api.purchaseRechargePIN(network, pinType, quantity, pin);
+        
+        closeModal();
+        setTimeout(() => {
+            showSuccess(`
+                <div style="text-align: center;">
+                    <p style="font-size: 16px; margin-bottom: 8px;">PIN Purchase Successful! 🔐</p>
+                    <p style="font-size: 14px; color: #64748b;">${quantity} x ₦${pinType} ${network.toUpperCase()} PIN(s) purchased</p>
+                </div>
+            `);
+        }, 300);
+    } catch (error) {
+        closeModal();
+        setTimeout(() => {
+            const errorMsg = error.message || '';
+            
+            if (errorMsg.toLowerCase().includes('pin')) {
+                showError('Invalid transaction PIN. Please try again.');
+            } else if (errorMsg.toLowerCase().includes('balance')) {
+                showError('Insufficient wallet balance.');
+            } else {
+                showError(errorMsg || 'Purchase failed. Please try again.');
+            }
+        }, 300);
     }
 }
 
@@ -522,10 +825,10 @@ function showSwapModal() {
         <div class="form-group">
             <label>Network</label>
             <select id="swapNetwork" class="form-input">
-                <option value="MTN">MTN</option>
-                <option value="AIRTEL">Airtel</option>
-                <option value="GLO">Glo</option>
-                <option value="9MOBILE">9mobile</option>
+                <option value="mtn">MTN</option>
+                <option value="airtel">Airtel</option>
+                <option value="glo">Glo</option>
+                <option value="9mobile">9mobile</option>
             </select>
         </div>
         <div class="form-group">
@@ -566,25 +869,93 @@ async function submitAirtimeSwap() {
     const amount = parseInt(document.getElementById('swapAmount').value);
     const pin = document.getElementById('swapPin').value;
     
+    // Validate PIN format first (client-side)
+    if (!pin || pin.length !== 4) {
+        showError('Please enter your 4-digit transaction PIN');
+        return;
+    }
+    if (!/^\d+$/.test(pin)) {
+        showError('Transaction PIN must contain only numbers');
+        return;
+    }
+    
+    // Other validations
     if (!phone || phone.length !== 11) {
-        showError('Please enter valid phone number');
+        showError('Please enter a valid 11-digit phone number');
         return;
     }
     if (!amount || amount < 500) {
-        showError('Amount must be at least ₦500');
-        return;
-    }
-    if (!pin || pin.length !== 4) {
-        showError('Please enter your 4-digit PIN');
+        showError('Minimum swap amount is ₦500');
         return;
     }
     
     try {
-        showLoading('Processing swap...');
+        showLoading('Processing your swap...');
+        
         const response = await api.swapAirtime(phone, network, amount, pin);
-        showSuccess(response.message || `Swap successful! ₦${(amount * 0.85).toLocaleString()} credited to your wallet.`);
+        
+        // Success
+        const cashValue = amount * 0.85;
+        closeModal();
+        setTimeout(() => {
+            showSuccess(`
+                <div style="text-align: center;">
+                    <p style="font-size: 16px; margin-bottom: 8px;">Swap Successful! 🎉</p>
+                    <p style="font-size: 14px; color: #64748b;">₦${amount.toLocaleString()} airtime converted to</p>
+                    <p style="font-size: 24px; font-weight: 700; color: #16a34a;">₦${cashValue.toLocaleString()}</p>
+                </div>
+            `);
+        }, 300);
+        
     } catch (error) {
-        showError(error.message || 'Swap failed. Please try again.');
+        console.error('Swap error:', error);
+        
+        const errorMsg = error.message || '';
+        
+        // Close loading modal
+        closeModal();
+        
+        // Show appropriate error message after a tiny delay
+        setTimeout(() => {
+            // Check for PIN-related errors
+            if (errorMsg.toLowerCase().includes('pin')) {
+                showError(`
+                    <div style="text-align: center;">
+                        <p style="margin-bottom: 8px;">Invalid Transaction PIN</p>
+                        <p style="font-size: 13px; color: #64748b;">Please check your PIN and try again</p>
+                    </div>
+                `);
+            }
+            // Check for balance errors
+            else if (errorMsg.toLowerCase().includes('balance') || errorMsg.toLowerCase().includes('insufficient')) {
+                showError(`
+                    <div style="text-align: center;">
+                        <p style="margin-bottom: 8px;">Insufficient Balance</p>
+                        <p style="font-size: 13px; color: #64748b;">Please fund your wallet and try again</p>
+                    </div>
+                `);
+            }
+            // Session expired
+            else if (errorMsg.toLowerCase().includes('session') || errorMsg.toLowerCase().includes('login')) {
+                showError(`
+                    <div style="text-align: center;">
+                        <p style="margin-bottom: 8px;">Session Expired</p>
+                        <p style="font-size: 13px; color: #64748b;">Please login again to continue</p>
+                    </div>
+                `);
+                setTimeout(() => {
+                    window.location.href = '/login.html';
+                }, 2000);
+            }
+            else {
+                showError(`
+                    <div style="text-align: center;">
+                        <p>Unable to complete swap</p>
+                        <p style="font-size: 13px; color: #64748b; margin-top: 4px;">${errorMsg || 'Please try again'}</p>
+                    </div>
+                `);
+            }
+        }, 300);
     }
 }
 
@@ -730,59 +1101,262 @@ function showAlphaModal() {
 // WALLET MODALS
 function showFundModal() {
     showModal('Fund Wallet', `
-        <div style="padding: 24px;">
-            <div style="margin-bottom: 24px;">
-                <p style="color: #64748b; margin-bottom: 16px;">Transfer funds to your wallet account:</p>
-                
-                <div style="background: #f8fafc; padding: 16px; border-radius: 12px; margin-bottom: 16px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <span style="color: #64748b; font-size: 14px;">Account Number</span>
-                        <button onclick="copyToClipboard(document.getElementById('fundAccountNumber').textContent)" style="background: #1e3d5c; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;">Copy</button>
+        <div style="padding:8px 0;">
+
+            <!-- NIN/BVN Form (first time only) -->
+            <div id="fundVerifyStep" style="display:none;">
+                <div style="background:#eff6ff;padding:14px;border-radius:10px;margin-bottom:20px;border-left:4px solid #1e3d5c;">
+                    <p style="color:#1e3d5c;font-size:13px;font-weight:600;margin:0 0 4px;">One-time Verification</p>
+                    <p style="color:#64748b;font-size:12px;margin:0;">Enter your NIN or BVN to create your dedicated wallet account.</p>
+                </div>
+                <div class="form-group">
+                    <label>Verification Type</label>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px;">
+                        <button type="button" id="ninBtn" onclick="selectIdType('nin')"
+                            style="padding:12px;border:2px solid #1e3d5c;border-radius:8px;background:#1e3d5c;color:white;cursor:pointer;font-weight:600;font-size:14px;">NIN</button>
+                        <button type="button" id="bvnBtn" onclick="selectIdType('bvn')"
+                            style="padding:12px;border:2px solid #e2e8f0;border-radius:8px;background:white;color:#64748b;cursor:pointer;font-weight:600;font-size:14px;">BVN</button>
                     </div>
-                    <div id="fundAccountNumber" style="font-size: 24px; font-weight: 600; color: #1e3d5c; letter-spacing: 2px;">Loading...</div>
+                </div>
+                <div class="form-group" style="margin-top:16px;">
+                    <label id="idInputLabel">NIN (11 digits)</label>
+                    <input type="tel" id="idNumberInput" placeholder="Enter your NIN" maxlength="11" class="form-input">
+                    <small style="color:#94a3b8;font-size:12px;margin-top:6px;display:block;">🔒 Encrypted and only used for account verification</small>
+                </div>
+                <button onclick="submitIdVerification()" class="btn-primary" style="width:100%;margin-top:8px;">Continue</button>
+            </div>
+
+            <!-- Loading -->
+            <div id="fundLoadingStep" style="display:block;text-align:center;padding:40px 0;">
+                <div style="width:48px;height:48px;border:4px solid #e2e8f0;border-top-color:#1e3d5c;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px;"></div>
+                <p style="color:#1e3d5c;font-weight:600;" id="fundLoadingText">Loading...</p>
+            </div>
+
+            <!-- Account Details -->
+            <div id="fundAccountStep" style="display:none;">
+                <p style="color:#64748b;margin-bottom:16px;font-size:14px;">Transfer to your dedicated wallet account:</p>
+
+                <div style="background:#f8fafc;padding:16px;border-radius:12px;margin-bottom:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                        <span style="color:#64748b;font-size:13px;">Account Number</span>
+                        <button onclick="copyToClipboard(document.getElementById('fundAccountNumber').textContent)"
+                            style="background:#1e3d5c;color:white;border:none;padding:5px 10px;border-radius:5px;cursor:pointer;font-size:11px;">Copy</button>
+                    </div>
+                    <div id="fundAccountNumber" style="font-size:22px;font-weight:700;color:#1e3d5c;letter-spacing:2px;">—</div>
                 </div>
 
-                <div style="background: #f8fafc; padding: 16px; border-radius: 12px; margin-bottom: 16px;">
-                    <div style="margin-bottom: 8px;">
-                        <span style="color: #64748b; font-size: 14px;">Bank Name</span>
-                    </div>
-                    <div id="fundBankName" style="font-size: 16px; font-weight: 600; color: #1e3d5c;">Loading...</div>
+                <div style="background:#f8fafc;padding:14px;border-radius:12px;margin-bottom:12px;">
+                    <span style="color:#64748b;font-size:13px;">Bank</span>
+                    <div id="fundBankName" style="font-weight:600;color:#1e3d5c;margin-top:4px;">—</div>
                 </div>
 
-                <div style="background: #f8fafc; padding: 16px; border-radius: 12px;">
-                    <div style="margin-bottom: 8px;">
-                        <span style="color: #64748b; font-size: 14px;">Account Name</span>
-                    </div>
-                    <div id="fundAccountName" style="font-size: 16px; font-weight: 600; color: #1e3d5c;">Loading...</div>
+                <div style="background:#f8fafc;padding:14px;border-radius:12px;margin-bottom:16px;">
+                    <span style="color:#64748b;font-size:13px;">Account Name</span>
+                    <div id="fundAccountName" style="font-weight:600;color:#1e3d5c;margin-top:4px;">—</div>
                 </div>
 
-                <div style="background: #fef3c7; padding: 12px; border-radius: 8px; margin-top: 16px; border-left: 4px solid #f59e0b;">
-                    <p style="color: #92400e; font-size: 13px; margin: 0;">Funds reflect automatically within 5 minutes</p>
+                <div style="background:#fef3c7;padding:12px;border-radius:8px;border-left:4px solid #f59e0b;">
+                    <p style="color:#92400e;font-size:13px;margin:0;">⚡ Funds reflect within 1–5 minutes after transfer</p>
+                </div>
+
+                <div id="paymentConfirmSection" style="margin-top:16px;display:none;">
+                    <div style="background:#eff6ff;padding:16px;border-radius:12px;border:1px solid #bfdbfe;">
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                            <div id="pollSpinner" style="width:16px;height:16px;border:3px solid #bfdbfe;border-top-color:#1e3d5c;border-radius:50%;animation:spin 1s linear infinite;flex-shrink:0;"></div>
+                            <span style="color:#1e3d5c;font-weight:600;font-size:14px;" id="pollStatusText">Waiting for your payment...</span>
+                        </div>
+                        <p style="color:#64748b;font-size:12px;margin:0;" id="pollSubText">We'll detect your payment automatically</p>
+                        <div style="margin-top:10px;background:#dbeafe;border-radius:4px;height:4px;overflow:hidden;">
+                            <div id="pollProgressBar" style="height:100%;background:#1e3d5c;width:0%;transition:width 0.5s;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:8px;margin-top:16px;">
+                    <button onclick="closeModal()" class="btn-secondary" style="flex:1;">Close</button>
+                    <button onclick="startPaymentPolling()" id="confirmedTransferBtn" class="btn-primary" style="flex:1;">I've Transferred ✓</button>
                 </div>
             </div>
-        </div>
-    `, `<button onclick="closeModal()" class="btn-primary" style="width: 100%;">Close</button>`);
 
-    // Load wallet details
-    loadWalletDetails();
+        </div>
+    `, '');
+
+    _initFundModal();
 }
 
-async function loadWalletDetails() {
+async function _initFundModal() {
     try {
-        const wallet = await api.getWalletBalance();
-        const accountNumber = wallet.data?.accountNumber || wallet.accountNumber || 'N/A';
-        const bankName = wallet.data?.bankName || wallet.bankName || 'N/A';
-        const accountName = wallet.data?.accountName || wallet.accountName || 'N/A';
+        const response = await api.createWalletAccount({});
+        const wallet = response.data?.wallet || response.data || response;
+        const primary = wallet.primaryAccount;
 
-        document.getElementById('fundAccountNumber').textContent = accountNumber;
-        document.getElementById('fundBankName').textContent = bankName;
-        document.getElementById('fundAccountName').textContent = accountName;
-    } catch (error) {
-        console.error('Error loading wallet details:', error);
-        document.getElementById('fundAccountNumber').textContent = 'Error loading';
-        document.getElementById('fundBankName').textContent = 'Error loading';
-        document.getElementById('fundAccountName').textContent = 'Error loading';
+        if (primary && primary.accountNumber) {
+            // Account exists and has details — show directly
+            _showFundAccountDetails(primary);
+        } else {
+            // Wallet exists but no Monnify account yet — show NIN/BVN form
+            document.getElementById('fundLoadingStep').style.display = 'none';
+            document.getElementById('fundVerifyStep').style.display  = 'block';
+        }
+    } catch (err) {
+        // Error — show NIN/BVN form
+        document.getElementById('fundLoadingStep').style.display = 'none';
+        document.getElementById('fundVerifyStep').style.display  = 'block';
     }
+}
+
+function _showFundAccountDetails(account) {
+    document.getElementById('fundAccountNumber').textContent = account.accountNumber  || account.account_number || 'N/A';
+    document.getElementById('fundBankName').textContent      = account.bankName       || account.bank_name      || account.bank || 'N/A';
+    document.getElementById('fundAccountName').textContent   = account.accountName   || account.account_name   || account.name || 'N/A';
+    document.getElementById('fundLoadingStep').style.display = 'none';
+    document.getElementById('fundVerifyStep').style.display  = 'none';
+    document.getElementById('fundAccountStep').style.display = 'block';
+}
+
+let _selectedIdType = 'nin';
+
+function selectIdType(type) {
+    _selectedIdType = type;
+    const ninBtn = document.getElementById('ninBtn');
+    const bvnBtn = document.getElementById('bvnBtn');
+    const label  = document.getElementById('idInputLabel');
+    const input  = document.getElementById('idNumberInput');
+    if (type === 'nin') {
+        ninBtn.style.cssText = 'padding:12px;border:2px solid #1e3d5c;border-radius:8px;background:#1e3d5c;color:white;cursor:pointer;font-weight:600;font-size:14px;';
+        bvnBtn.style.cssText = 'padding:12px;border:2px solid #e2e8f0;border-radius:8px;background:white;color:#64748b;cursor:pointer;font-weight:600;font-size:14px;';
+        label.textContent = 'NIN (11 digits)';
+        input.placeholder = 'Enter your NIN';
+        input.maxLength   = 11;
+    } else {
+        bvnBtn.style.cssText = 'padding:12px;border:2px solid #1e3d5c;border-radius:8px;background:#1e3d5c;color:white;cursor:pointer;font-weight:600;font-size:14px;';
+        ninBtn.style.cssText = 'padding:12px;border:2px solid #e2e8f0;border-radius:8px;background:white;color:#64748b;cursor:pointer;font-weight:600;font-size:14px;';
+        label.textContent = 'BVN (11 digits)';
+        input.placeholder = 'Enter your BVN';
+        input.maxLength   = 11;
+    }
+}
+
+async function submitIdVerification() {
+    const idNumber = document.getElementById('idNumberInput').value.trim();
+    if (!idNumber || idNumber.length !== 11) {
+        showError(_selectedIdType.toUpperCase() + ' must be exactly 11 digits');
+        return;
+    }
+
+    document.getElementById('fundVerifyStep').style.display  = 'none';
+    document.getElementById('fundLoadingStep').style.display = 'block';
+    document.getElementById('fundLoadingText').textContent   = 'Setting up your account...';
+
+    try {
+        const payload  = _selectedIdType === 'nin' ? { nin: idNumber } : { bvn: idNumber };
+        const response = await api.createWalletAccount(payload);
+        const wallet   = response.data?.wallet || response.data || response;
+        const primary  = wallet.primaryAccount;
+
+        if (primary && primary.accountNumber) {
+            _showFundAccountDetails(primary);
+        } else {
+            // Account created but primaryAccount not in response yet — show error
+            document.getElementById('fundLoadingStep').style.display = 'none';
+            document.getElementById('fundVerifyStep').style.display  = 'block';
+            showError(response.message || 'Account setup incomplete. Please try again.');
+        }
+    } catch (err) {
+        // Backend error (wrong NIN/BVN etc) — show error and bring form back
+        document.getElementById('fundLoadingStep').style.display = 'none';
+        document.getElementById('fundVerifyStep').style.display  = 'block';
+        showError(err.message || 'Something went wrong. Please try again.');
+    }
+}
+
+// ==================== PAYMENT POLLING ====================
+let _pollInterval = null;
+let _pollAttempts = 0;
+const POLL_MAX = 24; // 24 x 5s = 2 minutes
+
+function startPaymentPolling() {
+    _pollAttempts = 0;
+    const btn = document.getElementById('confirmedTransferBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Checking...'; }
+    document.getElementById('paymentConfirmSection').style.display = 'block';
+
+    api.getWalletBalance().then(w => {
+        window._balanceBeforeFund = parseFloat(w.data?.balance || w.balance || 0);
+    }).catch(() => { window._balanceBeforeFund = 0; });
+
+    _pollInterval = setInterval(_checkPaymentReceived, 5000);
+}
+
+async function _checkPaymentReceived() {
+    _pollAttempts++;
+    const progress = (_pollAttempts / POLL_MAX) * 100;
+    const bar = document.getElementById('pollProgressBar');
+    if (bar) bar.style.width = progress + '%';
+
+    try {
+        const w = await api.getWalletBalance();
+        const newBalance = parseFloat(w.data?.balance || w.balance || 0);
+        const credited   = newBalance - (window._balanceBeforeFund || 0);
+        if (credited > 0) {
+            clearInterval(_pollInterval);
+            closeModal();
+            showPaymentSuccess(newBalance, credited);
+            return;
+        }
+    } catch (e) { console.warn('Poll check error:', e); }
+
+    if (_pollAttempts >= POLL_MAX) {
+        clearInterval(_pollInterval);
+        const statusEl = document.getElementById('pollStatusText');
+        const subEl    = document.getElementById('pollSubText');
+        const spinner  = document.getElementById('pollSpinner');
+        if (statusEl) statusEl.textContent = 'Taking longer than expected';
+        if (subEl)    subEl.textContent    = 'Your balance will update automatically. Check transaction history in a few minutes.';
+        if (spinner)  spinner.style.borderTopColor = '#f59e0b';
+        const btn = document.getElementById('confirmedTransferBtn');
+        if (btn) { btn.disabled = false; btn.textContent = 'Retry'; btn.onclick = startPaymentPolling; }
+    } else {
+        const statusEl = document.getElementById('pollStatusText');
+        if (statusEl) statusEl.textContent = `Waiting for payment... (${_pollAttempts}/${POLL_MAX})`;
+    }
+}
+
+// Silent poll — used after Paystack/Flutterwave redirect back
+function startSilentPoll() {
+    api.getWalletBalance().then(w => {
+        window._balanceBeforeFund = parseFloat(w.data?.balance || w.balance || 0);
+    }).catch(() => {});
+    let attempts = 0;
+    const silentInterval = setInterval(async () => {
+        attempts++;
+        try {
+            const w = await api.getWalletBalance();
+            const newBalance = parseFloat(w.data?.balance || w.balance || 0);
+            const credited   = newBalance - (window._balanceBeforeFund || 0);
+            if (credited > 0) { clearInterval(silentInterval); showPaymentSuccess(newBalance, credited); }
+        } catch (e) {}
+        if (attempts >= 24) clearInterval(silentInterval);
+    }, 5000);
+}
+
+function showPaymentSuccess(newBalance, credited) {
+    const fmt    = (n) => '₦' + n.toLocaleString('en-US', { minimumFractionDigits: 2 });
+    showModal('Payment Received! 🎉', `
+        <div style="text-align:center;padding:32px;">
+            <div style="width:80px;height:80px;margin:0 auto 20px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+            <p style="color:#64748b;font-size:14px;margin-bottom:6px;">Amount Credited</p>
+            <p style="font-size:36px;font-weight:700;color:#16a34a;margin-bottom:4px;">${fmt(credited)}</p>
+            <p style="color:#64748b;font-size:14px;">New Balance: <strong style="color:#1e3d5c;">${fmt(newBalance)}</strong></p>
+        </div>
+    `, `<button onclick="closeModal(); location.reload();" class="btn-primary" style="width:100%;">Done</button>`);
+
+    const balEl = document.getElementById('balance');
+    if (balEl) balEl.textContent = fmt(newBalance);
 }
 
 function showTransferModal() {
@@ -842,10 +1416,10 @@ async function handleTransfer(e) {
 
     try {
         const response = await api.transferFunds({
-            recipient: recipient,
+            recipientEmail: recipient,
+            description: narration,
             amount: amount,
             transactionPin: pin,
-            narration: narration
         });
 
         closeModal();

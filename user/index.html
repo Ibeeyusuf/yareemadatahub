@@ -183,43 +183,74 @@
 
         async function loadData() {
             try {
-                const user = JSON.parse(localStorage.getItem('user') || '{}');
-                const name = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'User';
-                document.getElementById('sidebarName').textContent = name;
-                document.getElementById('topBarUser').textContent = `Welcome back, ${user.firstName || 'User'}`;
-                document.getElementById('sidebarAvatar').textContent = `${user.firstName?.[0] || 'U'}${user.lastName?.[0] || ''}`.toUpperCase();
-                document.getElementById('greeting').textContent = getGreeting();
+                // user_data is saved from login response: response.data.user
+                const user = JSON.parse(localStorage.getItem('user_data') || '{}');
+                const firstName = user.firstName || 'User';
+                const lastName  = user.lastName  || '';
+                const initials  = (firstName[0] + (lastName[0] || '')).toUpperCase();
 
-                const wallet = await api.getWalletBalance();
-                actualBalance = wallet.data?.balance || wallet.balance || 0;
-                if (!hideBalance) {
-                    document.getElementById('walletBalance').textContent = `₦${actualBalance.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+                document.getElementById('greeting').textContent    = getGreeting();
+                document.getElementById('sidebarName').textContent = firstName;
+                document.getElementById('sidebarAvatar').textContent = initials;
+                document.getElementById('topBarUser').textContent  = `Welcome back, ${firstName}`;
+
+                // Load wallet balance
+                try {
+                    const wallet = await api.getWalletBalance();
+                    const walletData = wallet.data?.wallet || wallet.data || {};
+                    actualBalance = parseFloat(walletData.balance || wallet.data?.balance || 0);
+                    if (!hideBalance) {
+                        document.getElementById('walletBalance').textContent = `₦${actualBalance.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+                    }
+                    // Show primary account number on dashboard if it exists
+                    const primary = walletData.primaryAccount;
+                    document.getElementById('walletAccount').textContent = primary?.accountNumber
+                        ? `Account: ${primary.accountNumber}`
+                        : 'Tap "Account" to set up bank transfer';
+                } catch(e) {
+                    document.getElementById('walletBalance').textContent = '₦0.00';
+                    document.getElementById('walletAccount').textContent = 'Could not load balance';
                 }
-                document.getElementById('walletAccount').textContent = wallet.data?.accountNumber ? `Account: ${wallet.data.accountNumber}` : 'No account number';
 
-                const txns = await api.getTransactions({ limit: 5 });
-                const transactions = txns.data?.transactions || txns.transactions || [];
-                
-                if (transactions.length > 0) {
-                    document.getElementById('recentActivity').innerHTML = transactions.map(tx => `
-                        <div class="activity-item">
-                            <div class="activity-icon" style="background: #eff6ff;">
-                                <i data-lucide="receipt" style="width: 24px; height: 24px; color: #1e3d5c;"></i>
-                            </div>
-                            <div class="activity-info">
-                                <div class="activity-title">${tx.type || 'Transaction'}</div>
-                                <div class="activity-time">${new Date(tx.createdAt).toLocaleString()}</div>
-                            </div>
-                            <div class="activity-amount">${tx.amount < 0 ? '-' : '+'}₦${Math.abs(tx.amount).toLocaleString()}</div>
-                        </div>
-                    `).join('');
-                } else {
-                    document.getElementById('recentActivity').innerHTML = '<div style="text-align: center; padding: 48px; color: #94a3b8;">No recent transactions</div>';
+                // Load recent transactions
+                try {
+                    const txns = await api.getTransactions({ limit: 5 });
+                    const transactions = txns.data?.transactions || txns.transactions || [];
+                    const iconMap = {
+                        data_recharge: {icon:'wifi', bg:'#eff6ff', color:'#2563eb'},
+                        airtime: {icon:'phone', bg:'#f0fdf4', color:'#16a34a'},
+                        electricity: {icon:'zap', bg:'#fffbeb', color:'#d97706'},
+                        cable: {icon:'tv', bg:'#faf5ff', color:'#9333ea'},
+                        wallet_funding: {icon:'arrow-down-circle', bg:'#dcfce7', color:'#16a34a'},
+                        transfer: {icon:'send', bg:'#eff6ff', color:'#1e3d5c'},
+                    };
+                    if (transactions.length > 0) {
+                        document.getElementById('recentActivity').innerHTML = transactions.map(tx => {
+                            const t = iconMap[tx.type] || {icon:'receipt', bg:'#f8fafc', color:'#64748b'};
+                            const isCredit = tx.type === 'wallet_funding' || (tx.amount > 0);
+                            return `<div class="activity-item">
+                                <div class="activity-icon" style="background:${t.bg};">
+                                    <i data-lucide="${t.icon}" style="width:24px;height:24px;color:${t.color};"></i>
+                                </div>
+                                <div class="activity-info">
+                                    <div class="activity-title">${tx.description || tx.type || 'Transaction'}</div>
+                                    <div class="activity-time">${new Date(tx.createdAt).toLocaleString()}</div>
+                                </div>
+                                <div class="activity-amount" style="color:${isCredit ? '#16a34a' : '#dc2626'}">
+                                    ${isCredit ? '+' : '-'}₦${Math.abs(tx.amount).toLocaleString('en-US', {minimumFractionDigits:2})}
+                                </div>
+                            </div>`;
+                        }).join('');
+                    } else {
+                        document.getElementById('recentActivity').innerHTML = '<div style="text-align:center;padding:48px;color:#94a3b8;">No recent transactions</div>';
+                    }
+                } catch(e) {
+                    document.getElementById('recentActivity').innerHTML = '<div style="text-align:center;padding:48px;color:#94a3b8;">Could not load transactions</div>';
                 }
 
                 lucide.createIcons();
             } catch (error) {
-                console.error('Error loading data:', error);
+                console.error('Dashboard load error:', error);
             }
         }
 
