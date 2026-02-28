@@ -39,6 +39,10 @@
             <a href="transactions.html" class="nav-item"><i data-lucide="banknote" style="width:20px;height:20px;"></i><span>Transactions</span></a>
             <a href="wallet.html" class="nav-item"><i data-lucide="wallet" style="width:20px;height:20px;"></i><span>Wallet</span></a>
             <a href="profile.html" class="nav-item active"><i data-lucide="user" style="width:20px;height:20px;"></i><span>Profile</span></a>
+            <a href="#" class="nav-item logout" onclick="logout(); return false;" style="margin-top: 16px;">
+                <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
+                <span>Logout</span>
+            </a>
         </div>
         <div class="sidebar-footer">
             <div class="user-profile" onclick="window.location.href='profile.html'">
@@ -49,7 +53,7 @@
     </div>
 
     <div class="main-content">
-        <div class="top-bar">
+        <div class="top-bar" style="display:flex;align-items:center;gap:12px;"><button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Open menu"><i data-lucide="menu" style="width:20px;height:20px;"></i></button>
             <h1>My Profile</h1>
         </div>
 
@@ -625,6 +629,23 @@
         // Initialize
         loadProfile();
         lucide.createIcons();
+    </script>
+    <script>
+        function toggleSidebar() {
+            document.querySelector('.sidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+        function closeSidebar() {
+            document.querySelector('.sidebar').classList.remove('open');
+            document.getElementById('sidebarOverlay').classList.remove('active');
+        }
+        function logout() {
+            localStorage.removeItem('user_token');
+            localStorage.removeItem('user_data');
+            sessionStorage.removeItem('user_token');
+            sessionStorage.removeItem('user_data');
+            window.location.href = '../login.html';
+        }
     </script>
 </body>
 </html>

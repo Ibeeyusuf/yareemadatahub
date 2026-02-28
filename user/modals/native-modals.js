@@ -1098,83 +1098,104 @@ function showAlphaModal() {
     showError('This service is currently unavailable. Please contact support.'); 
 }
 
-// WALLET MODALS
+// ==================== FUND WALLET MODAL ====================
+// Helpers
+function _fundStep(show) {
+    ['fundLoadingStep','fundVerifyStep','fundAccountStep'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = (id === show) ? 'block' : 'none';
+    });
+}
+
+function _saveWalletAccounts(accounts) {
+    try { localStorage.setItem('wallet_accounts', JSON.stringify(accounts)); } catch(e) {}
+}
+
+function _loadWalletAccounts() {
+    try { return JSON.parse(localStorage.getItem('wallet_accounts') || 'null'); } catch(e) { return null; }
+}
+
 function showFundModal() {
     showModal('Fund Wallet', `
-        <div style="padding:8px 0;">
+        <div id="fundModalWrap" style="padding:4px 0;">
 
-            <!-- NIN/BVN Form (first time only) -->
-            <div id="fundVerifyStep" style="display:none;">
-                <div style="background:#eff6ff;padding:14px;border-radius:10px;margin-bottom:20px;border-left:4px solid #1e3d5c;">
-                    <p style="color:#1e3d5c;font-size:13px;font-weight:600;margin:0 0 4px;">One-time Verification</p>
-                    <p style="color:#64748b;font-size:12px;margin:0;">Enter your NIN or BVN to create your dedicated wallet account.</p>
-                </div>
-                <div class="form-group">
-                    <label>Verification Type</label>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px;">
-                        <button type="button" id="ninBtn" onclick="selectIdType('nin')"
-                            style="padding:12px;border:2px solid #1e3d5c;border-radius:8px;background:#1e3d5c;color:white;cursor:pointer;font-weight:600;font-size:14px;">NIN</button>
-                        <button type="button" id="bvnBtn" onclick="selectIdType('bvn')"
-                            style="padding:12px;border:2px solid #e2e8f0;border-radius:8px;background:white;color:#64748b;cursor:pointer;font-weight:600;font-size:14px;">BVN</button>
-                    </div>
-                </div>
-                <div class="form-group" style="margin-top:16px;">
-                    <label id="idInputLabel">NIN (11 digits)</label>
-                    <input type="tel" id="idNumberInput" placeholder="Enter your NIN" maxlength="11" class="form-input">
-                    <small style="color:#94a3b8;font-size:12px;margin-top:6px;display:block;">🔒 Encrypted and only used for account verification</small>
-                </div>
-                <button onclick="submitIdVerification()" class="btn-primary" style="width:100%;margin-top:8px;">Continue</button>
-            </div>
-
-            <!-- Loading -->
-            <div id="fundLoadingStep" style="display:block;text-align:center;padding:40px 0;">
+            <!-- Step: Loading -->
+            <div id="fundLoadingStep" style="text-align:center;padding:48px 0;">
                 <div style="width:48px;height:48px;border:4px solid #e2e8f0;border-top-color:#1e3d5c;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px;"></div>
-                <p style="color:#1e3d5c;font-weight:600;" id="fundLoadingText">Loading...</p>
+                <p style="color:#1e3d5c;font-weight:600;font-size:15px;" id="fundLoadingText">Checking your wallet...</p>
             </div>
 
-            <!-- Account Details -->
-            <div id="fundAccountStep" style="display:none;">
-                <p style="color:#64748b;margin-bottom:16px;font-size:14px;">Transfer to your dedicated wallet account:</p>
-
-                <div style="background:#f8fafc;padding:16px;border-radius:12px;margin-bottom:12px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                        <span style="color:#64748b;font-size:13px;">Account Number</span>
-                        <button onclick="copyToClipboard(document.getElementById('fundAccountNumber').textContent)"
-                            style="background:#1e3d5c;color:white;border:none;padding:5px 10px;border-radius:5px;cursor:pointer;font-size:11px;">Copy</button>
+            <!-- Step: NIN/BVN Verification (first time) -->
+            <div id="fundVerifyStep" style="display:none;">
+                <div style="background:linear-gradient(135deg,#eff6ff,#dbeafe);padding:16px;border-radius:12px;margin-bottom:20px;display:flex;gap:12px;align-items:flex-start;">
+                    <div style="width:36px;height:36px;background:#1e3d5c;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                     </div>
-                    <div id="fundAccountNumber" style="font-size:22px;font-weight:700;color:#1e3d5c;letter-spacing:2px;">—</div>
+                    <div>
+                        <p style="color:#1e3d5c;font-size:14px;font-weight:700;margin:0 0 3px;">One-time Account Setup</p>
+                        <p style="color:#475569;font-size:12px;margin:0;line-height:1.5;">We need your NIN or BVN to create your dedicated virtual bank account for funding.</p>
+                    </div>
                 </div>
 
-                <div style="background:#f8fafc;padding:14px;border-radius:12px;margin-bottom:12px;">
-                    <span style="color:#64748b;font-size:13px;">Bank</span>
-                    <div id="fundBankName" style="font-weight:600;color:#1e3d5c;margin-top:4px;">—</div>
+                <div class="form-group">
+                    <label style="font-size:13px;color:#64748b;margin-bottom:8px;display:block;">Choose Verification Method</label>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                        <button type="button" id="ninBtn" onclick="selectIdType('nin')"
+                            style="padding:14px;border:2px solid #1e3d5c;border-radius:10px;background:#1e3d5c;color:white;cursor:pointer;font-weight:700;font-size:14px;transition:all 0.2s;">
+                            🪪 NIN
+                        </button>
+                        <button type="button" id="bvnBtn" onclick="selectIdType('bvn')"
+                            style="padding:14px;border:2px solid #e2e8f0;border-radius:10px;background:white;color:#64748b;cursor:pointer;font-weight:700;font-size:14px;transition:all 0.2s;">
+                            🏦 BVN
+                        </button>
+                    </div>
                 </div>
 
-                <div style="background:#f8fafc;padding:14px;border-radius:12px;margin-bottom:16px;">
-                    <span style="color:#64748b;font-size:13px;">Account Name</span>
-                    <div id="fundAccountName" style="font-weight:600;color:#1e3d5c;margin-top:4px;">—</div>
+                <div class="form-group" style="margin-top:16px;">
+                    <label id="idInputLabel" style="font-weight:600;">NIN (11 digits)</label>
+                    <input type="tel" id="idNumberInput" placeholder="Enter your NIN" maxlength="11" class="form-input"
+                        style="letter-spacing:2px;font-size:18px;font-weight:600;text-align:center;"
+                        oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                    <div style="display:flex;align-items:center;gap:6px;margin-top:8px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        <small style="color:#94a3b8;font-size:11px;">256-bit encrypted · used only for account verification</small>
+                    </div>
                 </div>
 
-                <div style="background:#fef3c7;padding:12px;border-radius:8px;border-left:4px solid #f59e0b;">
-                    <p style="color:#92400e;font-size:13px;margin:0;">⚡ Funds reflect within 1–5 minutes after transfer</p>
+                <button onclick="submitIdVerification()" class="btn-primary" style="width:100%;margin-top:4px;padding:14px;font-size:15px;" id="verifySubmitBtn">
+                    Create My Wallet Account →
+                </button>
+            </div>
+
+            <!-- Step: Account Details -->
+            <div id="fundAccountStep" style="display:none;">
+                <p style="color:#64748b;margin-bottom:14px;font-size:13px;font-weight:500;">
+                    Transfer to any of your dedicated accounts below:
+                </p>
+                <div id="fundAccountsList"></div>
+
+                <div style="background:#fef3c7;padding:12px 14px;border-radius:8px;border-left:3px solid #f59e0b;margin-bottom:16px;">
+                    <p style="color:#92400e;font-size:12px;margin:0;line-height:1.5;">⚡ <strong>Instant funding</strong> — funds reflect within 1–5 minutes of transfer</p>
                 </div>
 
-                <div id="paymentConfirmSection" style="margin-top:16px;display:none;">
-                    <div style="background:#eff6ff;padding:16px;border-radius:12px;border:1px solid #bfdbfe;">
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                <div id="paymentConfirmSection" style="display:none;margin-bottom:16px;">
+                    <div style="background:#eff6ff;padding:14px;border-radius:12px;border:1px solid #bfdbfe;">
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
                             <div id="pollSpinner" style="width:16px;height:16px;border:3px solid #bfdbfe;border-top-color:#1e3d5c;border-radius:50%;animation:spin 1s linear infinite;flex-shrink:0;"></div>
                             <span style="color:#1e3d5c;font-weight:600;font-size:14px;" id="pollStatusText">Waiting for your payment...</span>
                         </div>
-                        <p style="color:#64748b;font-size:12px;margin:0;" id="pollSubText">We'll detect your payment automatically</p>
-                        <div style="margin-top:10px;background:#dbeafe;border-radius:4px;height:4px;overflow:hidden;">
+                        <p style="color:#64748b;font-size:12px;margin:0;" id="pollSubText">We'll detect your transfer automatically</p>
+                        <div style="margin-top:10px;background:#dbeafe;border-radius:4px;height:3px;overflow:hidden;">
                             <div id="pollProgressBar" style="height:100%;background:#1e3d5c;width:0%;transition:width 0.5s;"></div>
                         </div>
                     </div>
                 </div>
 
-                <div style="display:flex;gap:8px;margin-top:16px;">
+                <div style="display:flex;gap:8px;">
                     <button onclick="closeModal()" class="btn-secondary" style="flex:1;">Close</button>
-                    <button onclick="startPaymentPolling()" id="confirmedTransferBtn" class="btn-primary" style="flex:1;">I've Transferred ✓</button>
+                    <button onclick="startPaymentPolling()" id="confirmedTransferBtn" class="btn-primary" style="flex:1;">
+                        I've Transferred ✓
+                    </button>
                 </div>
             </div>
 
@@ -1185,33 +1206,86 @@ function showFundModal() {
 }
 
 async function _initFundModal() {
+    // 1. Check localStorage first — instant display if we have cached accounts
+    const cached = _loadWalletAccounts();
+    if (cached && cached.length > 0) {
+        _renderFundAccounts(cached);
+        return;
+    }
+
+    // 2. No cache — try API
+    _fundStep('fundLoadingStep');
     try {
         const response = await api.createWalletAccount({});
-        const wallet = response.data?.wallet || response.data || response;
-        const primary = wallet.primaryAccount;
+        const wallet   = response.data?.wallet || response.data || response;
+        const accounts = wallet.accounts || [];
+        const primary  = wallet.primaryAccount;
 
-        if (primary && primary.accountNumber) {
-            // Account exists and has details — show directly
-            _showFundAccountDetails(primary);
+        if (accounts.length > 0) {
+            _saveWalletAccounts(accounts);
+            _renderFundAccounts(accounts);
+        } else if (primary && (primary.accountNumber || typeof primary === 'string')) {
+            // Fallback: single account format
+            const fallback = [{
+                accountNumber: primary.accountNumber || primary,
+                bankName: primary.bankName || 'Bank',
+                accountName: primary.accountName || '',
+                isDefault: true
+            }];
+            _saveWalletAccounts(fallback);
+            _renderFundAccounts(fallback);
         } else {
-            // Wallet exists but no Monnify account yet — show NIN/BVN form
-            document.getElementById('fundLoadingStep').style.display = 'none';
-            document.getElementById('fundVerifyStep').style.display  = 'block';
+            // No accounts yet — show NIN/BVN form
+            _fundStep('fundVerifyStep');
         }
     } catch (err) {
-        // Error — show NIN/BVN form
-        document.getElementById('fundLoadingStep').style.display = 'none';
-        document.getElementById('fundVerifyStep').style.display  = 'block';
+        // API error means no wallet yet — show setup form
+        _fundStep('fundVerifyStep');
     }
 }
 
-function _showFundAccountDetails(account) {
-    document.getElementById('fundAccountNumber').textContent = account.accountNumber  || account.account_number || 'N/A';
-    document.getElementById('fundBankName').textContent      = account.bankName       || account.bank_name      || account.bank || 'N/A';
-    document.getElementById('fundAccountName').textContent   = account.accountName   || account.account_name   || account.name || 'N/A';
-    document.getElementById('fundLoadingStep').style.display = 'none';
-    document.getElementById('fundVerifyStep').style.display  = 'none';
-    document.getElementById('fundAccountStep').style.display = 'block';
+function _renderFundAccounts(accounts) {
+    const container = document.getElementById('fundAccountsList');
+    if (!container) return;
+
+    container.innerHTML = accounts.map((acc, i) => `
+        <div style="background:${acc.isDefault ? 'linear-gradient(135deg,#f0f9ff,#e0f2fe)' : '#f8fafc'};
+             border:${acc.isDefault ? '1.5px solid #7dd3fc' : '1px solid #e2e8f0'};
+             border-radius:14px;padding:16px;margin-bottom:10px;position:relative;">
+            ${acc.isDefault ? `<span style="position:absolute;top:10px;right:12px;background:#0284c7;color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:0.5px;">PRIMARY</span>` : ''}
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                <div style="width:36px;height:36px;background:${acc.isDefault ? '#0284c7' : '#1e3d5c'};border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                </div>
+                <div>
+                    <div style="font-weight:700;color:#0f172a;font-size:14px;">${acc.bankName || 'Bank'}</div>
+                    <div style="color:#64748b;font-size:12px;">${acc.accountName || ''}</div>
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;background:white;border-radius:8px;padding:10px 14px;border:1px solid #e2e8f0;">
+                <span style="font-size:22px;font-weight:700;color:#1e3d5c;letter-spacing:3px;" id="accNum_${i}">${acc.accountNumber}</span>
+                <button onclick="copyFundAccount('accNum_${i}', this)"
+                    style="background:#1e3d5c;color:white;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px;white-space:nowrap;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    Copy
+                </button>
+            </div>
+        </div>
+    `).join('');
+
+    _fundStep('fundAccountStep');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function copyFundAccount(elemId, btn) {
+    const num = document.getElementById(elemId)?.textContent?.trim();
+    if (!num) return;
+    navigator.clipboard.writeText(num).then(() => {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '✓ Copied!';
+        btn.style.background = '#16a34a';
+        setTimeout(() => { btn.innerHTML = orig; btn.style.background = '#1e3d5c'; }, 2000);
+    });
 }
 
 let _selectedIdType = 'nin';
@@ -1222,15 +1296,19 @@ function selectIdType(type) {
     const bvnBtn = document.getElementById('bvnBtn');
     const label  = document.getElementById('idInputLabel');
     const input  = document.getElementById('idNumberInput');
+
+    const activeStyle  = 'padding:14px;border:2px solid #1e3d5c;border-radius:10px;background:#1e3d5c;color:white;cursor:pointer;font-weight:700;font-size:14px;transition:all 0.2s;';
+    const inactiveStyle = 'padding:14px;border:2px solid #e2e8f0;border-radius:10px;background:white;color:#64748b;cursor:pointer;font-weight:700;font-size:14px;transition:all 0.2s;';
+
     if (type === 'nin') {
-        ninBtn.style.cssText = 'padding:12px;border:2px solid #1e3d5c;border-radius:8px;background:#1e3d5c;color:white;cursor:pointer;font-weight:600;font-size:14px;';
-        bvnBtn.style.cssText = 'padding:12px;border:2px solid #e2e8f0;border-radius:8px;background:white;color:#64748b;cursor:pointer;font-weight:600;font-size:14px;';
+        ninBtn.style.cssText = activeStyle;  bvnBtn.style.cssText = inactiveStyle;
+        ninBtn.textContent = '🪪 NIN';       bvnBtn.textContent = '🏦 BVN';
         label.textContent = 'NIN (11 digits)';
         input.placeholder = 'Enter your NIN';
         input.maxLength   = 11;
     } else {
-        bvnBtn.style.cssText = 'padding:12px;border:2px solid #1e3d5c;border-radius:8px;background:#1e3d5c;color:white;cursor:pointer;font-weight:600;font-size:14px;';
-        ninBtn.style.cssText = 'padding:12px;border:2px solid #e2e8f0;border-radius:8px;background:white;color:#64748b;cursor:pointer;font-weight:600;font-size:14px;';
+        bvnBtn.style.cssText = activeStyle;  ninBtn.style.cssText = inactiveStyle;
+        bvnBtn.textContent = '🏦 BVN';       ninBtn.textContent = '🪪 NIN';
         label.textContent = 'BVN (11 digits)';
         input.placeholder = 'Enter your BVN';
         input.maxLength   = 11;
@@ -1239,35 +1317,141 @@ function selectIdType(type) {
 
 async function submitIdVerification() {
     const idNumber = document.getElementById('idNumberInput').value.trim();
-    if (!idNumber || idNumber.length !== 11) {
-        showError(_selectedIdType.toUpperCase() + ' must be exactly 11 digits');
+    if (!/^\d{11}$/.test(idNumber)) {
+        // Inline error — don't use showError which would replace the modal
+        const input = document.getElementById('idNumberInput');
+        input.style.borderColor = '#dc2626';
+        input.style.boxShadow   = '0 0 0 3px rgba(220,38,38,0.1)';
+        const existing = document.getElementById('idInlineError');
+        if (existing) existing.remove();
+        const err = document.createElement('p');
+        err.id = 'idInlineError';
+        err.style.cssText = 'color:#dc2626;font-size:12px;margin-top:6px;';
+        err.textContent = _selectedIdType.toUpperCase() + ' must be exactly 11 digits';
+        input.parentNode.appendChild(err);
         return;
     }
 
-    document.getElementById('fundVerifyStep').style.display  = 'none';
-    document.getElementById('fundLoadingStep').style.display = 'block';
-    document.getElementById('fundLoadingText').textContent   = 'Setting up your account...';
+    const btn = document.getElementById('verifySubmitBtn');
+    btn.disabled    = true;
+    btn.textContent = 'Setting up your account...';
+    btn.style.opacity = '0.7';
+    _fundStep('fundLoadingStep');
+    document.getElementById('fundLoadingText').textContent = 'Creating your wallet accounts...';
 
     try {
         const payload  = _selectedIdType === 'nin' ? { nin: idNumber } : { bvn: idNumber };
         const response = await api.createWalletAccount(payload);
-        const wallet   = response.data?.wallet || response.data || response;
-        const primary  = wallet.primaryAccount;
 
-        if (primary && primary.accountNumber) {
-            _showFundAccountDetails(primary);
+        // Only proceed on success status
+        if (response.status !== 'success' && !response.data) {
+            throw new Error(response.message || 'Wallet creation failed');
+        }
+
+        const wallet   = response.data?.wallet || response.data || response;
+        const accounts = wallet.accounts || [];
+
+        if (accounts.length > 0) {
+            _saveWalletAccounts(accounts);
+            // Show success screen BEFORE account details
+            _showWalletCreatedSuccess(wallet, accounts);
         } else {
-            // Account created but primaryAccount not in response yet — show error
-            document.getElementById('fundLoadingStep').style.display = 'none';
-            document.getElementById('fundVerifyStep').style.display  = 'block';
-            showError(response.message || 'Account setup incomplete. Please try again.');
+            throw new Error('No accounts were created. Please try again or contact support.');
         }
     } catch (err) {
-        // Backend error (wrong NIN/BVN etc) — show error and bring form back
-        document.getElementById('fundLoadingStep').style.display = 'none';
-        document.getElementById('fundVerifyStep').style.display  = 'block';
-        showError(err.message || 'Something went wrong. Please try again.');
+        // Come back to verify form with inline error — never flash success
+        _fundStep('fundVerifyStep');
+        const btn2 = document.getElementById('verifySubmitBtn');
+        if (btn2) { btn2.disabled = false; btn2.textContent = 'Create My Wallet Account →'; btn2.style.opacity = '1'; }
+        const existing = document.getElementById('idInlineError');
+        if (existing) existing.remove();
+        const errEl = document.createElement('div');
+        errEl.id = 'idInlineError';
+        errEl.style.cssText = 'background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:12px;margin-top:12px;color:#dc2626;font-size:13px;';
+        errEl.innerHTML = `<strong>Setup Failed</strong><br>${err.message || 'Please check your details and try again.'}`;
+        document.getElementById('fundVerifyStep').appendChild(errEl);
     }
+}
+
+function _showWalletCreatedSuccess(wallet, accounts) {
+    const primaryAcc = accounts.find(a => a.isDefault) || accounts[0];
+    document.getElementById('modalTitle').textContent = '🎉 Wallet Created!';
+    document.getElementById('modalBody').innerHTML = `
+        <div style="text-align:center;padding:8px 0 20px;">
+            <div style="width:72px;height:72px;margin:0 auto 16px;border-radius:50%;background:linear-gradient(135deg,#dcfce7,#bbf7d0);display:flex;align-items:center;justify-content:center;">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <h3 style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:6px;">Wallet Created Successfully!</h3>
+            <p style="color:#64748b;font-size:14px;">Your dedicated bank accounts are ready. Transfer money to fund your wallet instantly.</p>
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <p style="font-size:13px;font-weight:600;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">Your Accounts (${accounts.length})</p>
+            ${accounts.map((acc, i) => `
+                <div style="background:${acc.isDefault ? 'linear-gradient(135deg,#f0f9ff,#e0f2fe)' : '#f8fafc'};
+                     border:${acc.isDefault ? '1.5px solid #7dd3fc' : '1px solid #e2e8f0'};
+                     border-radius:14px;padding:14px;margin-bottom:8px;position:relative;">
+                    ${acc.isDefault ? `<span style="position:absolute;top:10px;right:12px;background:#0284c7;color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">PRIMARY</span>` : ''}
+                    <div style="font-weight:700;color:#0f172a;font-size:14px;margin-bottom:2px;">${acc.bankName}</div>
+                    <div style="color:#64748b;font-size:12px;margin-bottom:8px;">${acc.accountName}</div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;background:white;border-radius:8px;padding:8px 12px;border:1px solid #e2e8f0;">
+                        <span style="font-size:20px;font-weight:700;color:#1e3d5c;letter-spacing:3px;" id="succNum_${i}">${acc.accountNumber}</span>
+                        <button onclick="copyFundAccount('succNum_${i}', this)"
+                            style="background:#1e3d5c;color:white;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;">
+                            Copy
+                        </button>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+
+        <div style="background:#fef3c7;padding:12px 14px;border-radius:8px;border-left:3px solid #f59e0b;">
+            <p style="color:#92400e;font-size:12px;margin:0;">⚡ <strong>Instant funding</strong> — funds reflect within 1–5 minutes</p>
+        </div>
+    `;
+    document.getElementById('modalFooter').innerHTML = `
+        <button onclick="closeModal()" class="btn-secondary" style="flex:1;">Close</button>
+        <button onclick="_goToFundAccountStep()" class="btn-primary" style="flex:1;">Fund Now →</button>
+    `;
+    document.getElementById('modalFooter').style.display = 'flex';
+    document.getElementById('modalFooter').style.gap = '10px';
+}
+
+function _goToFundAccountStep() {
+    const cached = _loadWalletAccounts();
+    if (!cached) { closeModal(); return; }
+    document.getElementById('modalTitle').textContent = 'Fund Wallet';
+    document.getElementById('modalFooter').innerHTML  = '';
+    document.getElementById('modalBody').innerHTML    = `
+        <div id="fundModalWrap" style="padding:4px 0;">
+            <div id="fundLoadingStep" style="display:none;"></div>
+            <div id="fundVerifyStep"  style="display:none;"></div>
+            <div id="fundAccountStep" style="display:none;">
+                <p style="color:#64748b;margin-bottom:14px;font-size:13px;font-weight:500;">Transfer to any account below:</p>
+                <div id="fundAccountsList"></div>
+                <div style="background:#fef3c7;padding:12px 14px;border-radius:8px;border-left:3px solid #f59e0b;margin-bottom:16px;">
+                    <p style="color:#92400e;font-size:12px;margin:0;">⚡ <strong>Instant funding</strong> — funds reflect within 1–5 minutes</p>
+                </div>
+                <div id="paymentConfirmSection" style="display:none;margin-bottom:16px;">
+                    <div style="background:#eff6ff;padding:14px;border-radius:12px;border:1px solid #bfdbfe;">
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                            <div id="pollSpinner" style="width:16px;height:16px;border:3px solid #bfdbfe;border-top-color:#1e3d5c;border-radius:50%;animation:spin 1s linear infinite;flex-shrink:0;"></div>
+                            <span style="color:#1e3d5c;font-weight:600;font-size:14px;" id="pollStatusText">Waiting for your payment...</span>
+                        </div>
+                        <p style="color:#64748b;font-size:12px;margin:0;" id="pollSubText">We'll detect your transfer automatically</p>
+                        <div style="margin-top:10px;background:#dbeafe;border-radius:4px;height:3px;overflow:hidden;">
+                            <div id="pollProgressBar" style="height:100%;background:#1e3d5c;width:0%;transition:width 0.5s;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button onclick="closeModal()" class="btn-secondary" style="flex:1;">Close</button>
+                    <button onclick="startPaymentPolling()" id="confirmedTransferBtn" class="btn-primary" style="flex:1;">I've Transferred ✓</button>
+                </div>
+            </div>
+        </div>
+    `;
+    _renderFundAccounts(cached);
 }
 
 // ==================== PAYMENT POLLING ====================

@@ -32,6 +32,10 @@
             <a href="profile.html" class="nav-item">
                 <i data-lucide="user" style="width: 20px; height: 20px;"></i><span>Profile</span>
             </a>
+            <a href="#" class="nav-item logout" onclick="logout(); return false;" style="margin-top: 16px;">
+                <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
+                <span>Logout</span>
+            </a>
         </div>
         <div class="sidebar-footer">
             <div class="user-profile" onclick="window.location.href='profile.html'">
@@ -41,7 +45,7 @@
         </div>
     </div>
     <div class="main-content">
-        <div class="top-bar">
+        <div class="top-bar" style="display:flex;align-items:center;gap:12px;"><button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Open menu"><i data-lucide="menu" style="width:20px;height:20px;"></i></button>
             <h1>Transaction History</h1>
             <button class="icon-btn" onclick="loadTxns()"><i data-lucide="refresh-cw" style="width: 20px; height: 20px;"></i></button>
         </div>
@@ -172,6 +176,23 @@
             document.getElementById('sidebarAvatar').textContent = (user.firstName[0] + (user.lastName?.[0] || '')).toUpperCase();
         }
         lucide.createIcons();
+    </script>
+    <script>
+        function toggleSidebar() {
+            document.querySelector('.sidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+        function closeSidebar() {
+            document.querySelector('.sidebar').classList.remove('open');
+            document.getElementById('sidebarOverlay').classList.remove('active');
+        }
+        function logout() {
+            localStorage.removeItem('user_token');
+            localStorage.removeItem('user_data');
+            sessionStorage.removeItem('user_token');
+            sessionStorage.removeItem('user_data');
+            window.location.href = '../login.html';
+        }
     </script>
 </body>
 </html>
