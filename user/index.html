@@ -261,9 +261,22 @@
                     }
                     // Show primary account number on dashboard if it exists
                     const primary = walletData.primaryAccount;
-                    document.getElementById('walletAccount').textContent = primary?.accountNumber
-                        ? `Account: ${primary.accountNumber}`
-                        : 'Tap "Account" to set up bank transfer';
+                    // Also check localStorage for saved accounts
+                    let savedAccounts = null;
+                    try { savedAccounts = JSON.parse(localStorage.getItem('wallet_accounts') || 'null'); } catch(e) {}
+
+                    if (primary?.accountNumber) {
+                        document.getElementById('walletAccount').textContent = `Account: ${primary.accountNumber}`;
+                        // Save to localStorage if not already there
+                        if (!savedAccounts && walletData.accounts?.length) {
+                            try { localStorage.setItem('wallet_accounts', JSON.stringify(walletData.accounts)); } catch(e) {}
+                        }
+                    } else if (savedAccounts?.length) {
+                        const def = savedAccounts.find(a => a.isDefault) || savedAccounts[0];
+                        document.getElementById('walletAccount').textContent = `Account: ${def.accountNumber} · ${def.bankName}`;
+                    } else {
+                        document.getElementById('walletAccount').textContent = 'Tap "Fund Wallet" to set up bank transfer';
+                    }
                 } catch(e) {
                     document.getElementById('walletBalance').textContent = '₦0.00';
                     document.getElementById('walletAccount').textContent = 'Could not load balance';
@@ -273,21 +286,75 @@
                 try {
                     const txns = await api.getTransactions({ limit: 5 });
                     const transactions = txns.data?.transactions || txns.transactions || [];
-                    const iconMap = {
-                        data_recharge: {icon:'wifi', bg:'#eff6ff', color:'#2563eb'},
-                        airtime: {icon:'phone', bg:'#f0fdf4', color:'#16a34a'},
-                        electricity: {icon:'zap', bg:'#fffbeb', color:'#d97706'},
-                        cable: {icon:'tv', bg:'#faf5ff', color:'#9333ea'},
-                        wallet_funding: {icon:'arrow-down-circle', bg:'#dcfce7', color:'#16a34a'},
-                        transfer: {icon:'send', bg:'#eff6ff', color:'#1e3d5c'},
+                    const svgIcons = {
+                        data_recharge: {
+                            bg: '#eff6ff',
+                            svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+                                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="#2563eb"/>
+                            </svg>`
+                        },
+                        airtime: {
+                            bg: '#f0fdf4',
+                            svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18" stroke-width="3"/>
+                                <path d="M9 7h6M9 11h4"/>
+                            </svg>`
+                        },
+                        electricity: {
+                            bg: '#fffbeb',
+                            svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="#fef3c7"/>
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" stroke="#d97706" stroke-width="1.5"/>
+                            </svg>`
+                        },
+                        cable: {
+                            bg: '#faf5ff',
+                            svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9333ea" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="2" y="7" width="20" height="13" rx="2"/><polyline points="16 2 12 7 8 2"/>
+                                <line x1="8" y1="17" x2="10" y2="17"/><line x1="14" y1="17" x2="16" y2="17"/>
+                            </svg>`
+                        },
+                        wallet_funding: {
+                            bg: '#dcfce7',
+                            svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2v20M17 7H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                            </svg>`
+                        },
+                        transfer: {
+                            bg: '#eff6ff',
+                            svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1e3d5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                            </svg>`
+                        },
+                        education: {
+                            bg: '#eef2ff',
+                            svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/>
+                            </svg>`
+                        },
+                        swap: {
+                            bg: '#fff7ed',
+                            svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                                <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+                            </svg>`
+                        },
+                        default: {
+                            bg: '#f1f5f9',
+                            svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/>
+                            </svg>`
+                        }
                     };
                     if (transactions.length > 0) {
                         document.getElementById('recentActivity').innerHTML = transactions.map(tx => {
-                            const t = iconMap[tx.type] || {icon:'receipt', bg:'#f8fafc', color:'#64748b'};
+                            const t = svgIcons[tx.type] || svgIcons.default;
                             const isCredit = tx.type === 'wallet_funding' || (tx.amount > 0);
                             return `<div class="activity-item">
-                                <div class="activity-icon" style="background:${t.bg};">
-                                    <i data-lucide="${t.icon}" style="width:24px;height:24px;color:${t.color};"></i>
+                                <div class="activity-icon" style="background:${t.bg}; display:flex; align-items:center; justify-content:center;">
+                                    ${t.svg}
                                 </div>
                                 <div class="activity-info">
                                     <div class="activity-title">${tx.description || tx.type || 'Transaction'}</div>

@@ -1174,29 +1174,9 @@ function showFundModal() {
                 </p>
                 <div id="fundAccountsList"></div>
 
-                <div style="background:#fef3c7;padding:12px 14px;border-radius:8px;border-left:3px solid #f59e0b;margin-bottom:16px;">
-                    <p style="color:#92400e;font-size:12px;margin:0;line-height:1.5;">⚡ <strong>Instant funding</strong> — funds reflect within 1–5 minutes of transfer</p>
-                </div>
+                
 
-                <div id="paymentConfirmSection" style="display:none;margin-bottom:16px;">
-                    <div style="background:#eff6ff;padding:14px;border-radius:12px;border:1px solid #bfdbfe;">
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-                            <div id="pollSpinner" style="width:16px;height:16px;border:3px solid #bfdbfe;border-top-color:#1e3d5c;border-radius:50%;animation:spin 1s linear infinite;flex-shrink:0;"></div>
-                            <span style="color:#1e3d5c;font-weight:600;font-size:14px;" id="pollStatusText">Waiting for your payment...</span>
-                        </div>
-                        <p style="color:#64748b;font-size:12px;margin:0;" id="pollSubText">We'll detect your transfer automatically</p>
-                        <div style="margin-top:10px;background:#dbeafe;border-radius:4px;height:3px;overflow:hidden;">
-                            <div id="pollProgressBar" style="height:100%;background:#1e3d5c;width:0%;transition:width 0.5s;"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div style="display:flex;gap:8px;">
-                    <button onclick="closeModal()" class="btn-secondary" style="flex:1;">Close</button>
-                    <button onclick="startPaymentPolling()" id="confirmedTransferBtn" class="btn-primary" style="flex:1;">
-                        I've Transferred ✓
-                    </button>
-                </div>
+                <button onclick="closeModal()" class="btn-primary" style="width:100%;margin-top:4px;">Close</button>
             </div>
 
         </div>
@@ -1213,33 +1193,22 @@ async function _initFundModal() {
         return;
     }
 
-    // 2. No cache — try API
+    // 2. No cache — check wallet balance API (never call createWalletAccount on load)
     _fundStep('fundLoadingStep');
     try {
-        const response = await api.createWalletAccount({});
-        const wallet   = response.data?.wallet || response.data || response;
+        const response = await api.getWalletBalance();
+        const wallet   = response.data?.wallet || response.data || {};
         const accounts = wallet.accounts || [];
-        const primary  = wallet.primaryAccount;
 
         if (accounts.length > 0) {
             _saveWalletAccounts(accounts);
             _renderFundAccounts(accounts);
-        } else if (primary && (primary.accountNumber || typeof primary === 'string')) {
-            // Fallback: single account format
-            const fallback = [{
-                accountNumber: primary.accountNumber || primary,
-                bankName: primary.bankName || 'Bank',
-                accountName: primary.accountName || '',
-                isDefault: true
-            }];
-            _saveWalletAccounts(fallback);
-            _renderFundAccounts(fallback);
         } else {
-            // No accounts yet — show NIN/BVN form
+            // Wallet exists but no virtual accounts — show NIN/BVN setup
             _fundStep('fundVerifyStep');
         }
     } catch (err) {
-        // API error means no wallet yet — show setup form
+        // API error — show setup form
         _fundStep('fundVerifyStep');
     }
 }
@@ -1405,9 +1374,7 @@ function _showWalletCreatedSuccess(wallet, accounts) {
             `).join('')}
         </div>
 
-        <div style="background:#fef3c7;padding:12px 14px;border-radius:8px;border-left:3px solid #f59e0b;">
-            <p style="color:#92400e;font-size:12px;margin:0;">⚡ <strong>Instant funding</strong> — funds reflect within 1–5 minutes</p>
-        </div>
+        
     `;
     document.getElementById('modalFooter').innerHTML = `
         <button onclick="closeModal()" class="btn-secondary" style="flex:1;">Close</button>
@@ -1429,25 +1396,8 @@ function _goToFundAccountStep() {
             <div id="fundAccountStep" style="display:none;">
                 <p style="color:#64748b;margin-bottom:14px;font-size:13px;font-weight:500;">Transfer to any account below:</p>
                 <div id="fundAccountsList"></div>
-                <div style="background:#fef3c7;padding:12px 14px;border-radius:8px;border-left:3px solid #f59e0b;margin-bottom:16px;">
-                    <p style="color:#92400e;font-size:12px;margin:0;">⚡ <strong>Instant funding</strong> — funds reflect within 1–5 minutes</p>
-                </div>
-                <div id="paymentConfirmSection" style="display:none;margin-bottom:16px;">
-                    <div style="background:#eff6ff;padding:14px;border-radius:12px;border:1px solid #bfdbfe;">
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-                            <div id="pollSpinner" style="width:16px;height:16px;border:3px solid #bfdbfe;border-top-color:#1e3d5c;border-radius:50%;animation:spin 1s linear infinite;flex-shrink:0;"></div>
-                            <span style="color:#1e3d5c;font-weight:600;font-size:14px;" id="pollStatusText">Waiting for your payment...</span>
-                        </div>
-                        <p style="color:#64748b;font-size:12px;margin:0;" id="pollSubText">We'll detect your transfer automatically</p>
-                        <div style="margin-top:10px;background:#dbeafe;border-radius:4px;height:3px;overflow:hidden;">
-                            <div id="pollProgressBar" style="height:100%;background:#1e3d5c;width:0%;transition:width 0.5s;"></div>
-                        </div>
-                    </div>
-                </div>
-                <div style="display:flex;gap:8px;">
-                    <button onclick="closeModal()" class="btn-secondary" style="flex:1;">Close</button>
-                    <button onclick="startPaymentPolling()" id="confirmedTransferBtn" class="btn-primary" style="flex:1;">I've Transferred ✓</button>
-                </div>
+                
+                <button onclick="closeModal()" class="btn-primary" style="width:100%;margin-top:4px;">Close</button>
             </div>
         </div>
     `;
