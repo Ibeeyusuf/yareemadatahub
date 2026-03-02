@@ -136,7 +136,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 UI.hideLoading('submit-btn', 'submit-spinner');
                 
                 if (result.success) {
-                    UI.showSuccess('registration-error', result.message || 'Registration successful! Please check your email for verification.');
+                    UI.showSuccess('registration-error', result.message || 'Registration successful! Please log in to continue setup.');
+                    
+                    // Flag that this is a new registration — login page will redirect to set-pin
+                    sessionStorage.setItem('agent_new_registration', '1');
                     
                     setTimeout(() => {
                         window.location.href = 'index.html';

@@ -83,7 +83,6 @@
         </div>
         <h2>Secure Your Account</h2>
         <p class="subtitle">Set a 4-digit PIN to authorise transactions.</p>
-        
 
         <div class="pin-label">Enter 4-digit PIN</div>
         <div class="pin-row" id="pinRow1">
@@ -122,9 +121,9 @@
 </div>
 
 <script>
-    // Auth check — inline, zero dependency
-    var TOKEN = localStorage.getItem('user_token') || sessionStorage.getItem('user_token');
-    if (!TOKEN) { window.location.href = 'login.html'; }
+    // Agent uses 'agentToken' — not 'user_token'
+    var TOKEN = localStorage.getItem('agentToken') || sessionStorage.getItem('agentToken');
+    if (!TOKEN) { window.location.href = 'index.html'; }
 
     var BASE_URL = 'https://vtu-api-d3q2.onrender.com';
 
@@ -162,7 +161,6 @@
                     e.preventDefault();
                 }
             });
-
             box.addEventListener('input', function() {
                 var v = this.value.replace(/[^0-9]/g, '');
                 this.value = v ? v[v.length-1] : '';
@@ -177,30 +175,22 @@
 
     wireRow(row1, 'err1');
     wireRow(row2, 'err2');
-
     setTimeout(function(){ row1[0].focus(); }, 200);
 
     function updateBtn() {
         var btn = document.getElementById('submitBtn');
         var ready = getPin(row1).length === 4 && getPin(row2).length === 4;
-        if (ready) {
-            btn.classList.remove('inactive');
-        } else {
-            btn.classList.add('inactive');
-        }
+        btn.classList.toggle('inactive', !ready);
     }
 
     function submitSetup() {
         var btn = document.getElementById('submitBtn');
         if (btn.classList.contains('inactive')) return;
-
         var p1 = getPin(row1);
         var p2 = getPin(row2);
-
         if (p1.length !== 4) { showErr(row1, 'err1', 'Please enter all 4 digits'); return; }
         if (p2.length !== 4) { showErr(row2, 'err2', 'Please enter all 4 digits'); return; }
         if (p1 !== p2) { showErr(row2, 'err2', 'PINs do not match — try again'); clearRow(row2); updateBtn(); return; }
-
         doSetup(p1, p2);
     }
 
@@ -209,11 +199,11 @@
         try {
             await callAPI('/api/v1/auth/set-transaction-pin', { transactionPin: p1, confirmPin: p2 });
 
-            // Save pin flag
+            // Save pin flag using agent-specific key
             try {
-                var u = JSON.parse(localStorage.getItem('user_data') || '{}');
-                var uid = u._id || u.id || '';
-                if (uid) localStorage.setItem('pin_set_' + uid, 'true');
+                var agent = JSON.parse(localStorage.getItem('agentData') || '{}');
+                var uid = agent._id || agent.id || '';
+                if (uid) localStorage.setItem('agent_pin_set_' + uid, 'true');
             } catch(e){}
 
             // Create wallet — no NIN/BVN required
@@ -226,23 +216,18 @@
                 var accounts = wallet.accounts || [];
 
                 if (accounts.length > 0) {
-                    // Save with user-specific key so Fund Wallet modal finds it
                     try {
-                        var u2 = JSON.parse(localStorage.getItem('user_data') || '{}');
-                        var uid2 = u2._id || u2.id || '';
-                        if (uid2) {
-                            localStorage.setItem('wallet_accounts_' + uid2, JSON.stringify(accounts));
-                        }
+                        var agent2 = JSON.parse(localStorage.getItem('agentData') || '{}');
+                        var uid2 = agent2._id || agent2.id || '';
+                        if (uid2) localStorage.setItem('agent_wallet_accounts_' + uid2, JSON.stringify(accounts));
                     } catch(e){}
-                    // Also save generic fallback
-                    localStorage.setItem('wallet_accounts', JSON.stringify(accounts));
+                    localStorage.setItem('agent_wallet_accounts', JSON.stringify(accounts));
                 } else {
-                    // Wallet was created but accounts array was empty in response.
-                    // The fund modal will fetch them fresh from /api/v1/wallet/balance on next open.
+                    // Accounts will be provisioned — fund modal will fetch on first open
                     console.info('Wallet created, accounts will be fetched on first Fund Wallet open.');
                 }
             } catch(we) {
-                // Wallet creation is non-fatal — user can still log in, fund modal will retry
+                // Wallet creation is non-fatal — agent can still log in
                 console.warn('Wallet create non-fatal:', we.message);
             }
 
@@ -252,7 +237,7 @@
             document.getElementById('step3Circle').textContent = '✓';
             document.getElementById('line2').className = 'step-line line-done';
             document.getElementById('successWrap').classList.add('show');
-            setTimeout(function(){ window.location.href = 'user/index.html'; }, 2200);
+            setTimeout(function(){ window.location.href = 'dashboard.html'; }, 2200);
 
         } catch(err) {
             hideLoading();
