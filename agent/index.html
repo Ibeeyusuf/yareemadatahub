@@ -260,7 +260,8 @@
             }
             
             // Email format validation
-            if (!email.includes('@')) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
                 UI.showError('login-error', 'Please enter a valid email address');
                 return;
             }
@@ -278,11 +279,19 @@
                 UI.hideLoading('login-btn', 'login-spinner');
                 
                 if (result.success) {
-                    // Redirect to dashboard
-                    window.location.href = 'dashboard.html';
+                    // Show success message
+                    UI.showToast('Login successful! Redirecting...', 'success');
+                    
+                    // Redirect to dashboard after short delay
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 1500);
                 } else {
-                    // Show error
-                    UI.showError('login-error', result.message || 'Login failed. Please try again.');
+                    // Show specific error message from backend
+                    UI.showError('login-error', result.message);
+                    
+                    // Log for debugging
+                    console.log('Login failed:', result.message);
                 }
             } catch (error) {
                 // Hide loading
@@ -298,8 +307,16 @@
         document.getElementById('forgot-password').addEventListener('click', async () => {
             const email = prompt('Enter your email address:');
             if (email && email.trim()) {
-                if (!email.includes('@')) {
-                    alert('Please enter a valid email address');
+                const trimmedEmail = email.trim();
+                
+                // Validate email
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(trimmedEmail)) {
+                    if (typeof UI !== 'undefined' && UI.showToast) {
+                        UI.showToast('Please enter a valid email address', 'error');
+                    } else {
+                        alert('Please enter a valid email address');
+                    }
                     return;
                 }
                 
@@ -308,14 +325,14 @@
                     UI.showToast('Sending OTP...', 'info');
                 }
                 
-                const result = await Auth.forgotPassword(email.trim());
+                const result = await Auth.forgotPassword(trimmedEmail);
                 
                 if (result.success) {
                     if (typeof UI !== 'undefined' && UI.showToast) {
                         UI.showToast(result.message, 'success');
                     }
                     // Redirect to forgot password page
-                    window.location.href = 'forgot-password.html?email=' + encodeURIComponent(email.trim());
+                    window.location.href = 'forgot-password.html?email=' + encodeURIComponent(trimmedEmail);
                 } else {
                     if (typeof UI !== 'undefined' && UI.showToast) {
                         UI.showToast(result.message, 'error');

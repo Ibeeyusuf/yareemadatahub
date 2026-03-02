@@ -1,38 +1,28 @@
-// Authentication Module - CORRECTED API Integration
 const Auth = {
     
-    // Check if agent is logged in
     isLoggedIn() {
         const token = API.getToken();
         const agentData = API.getAgentData();
         return !!(token && agentData);
     },
     
-    // Get current agent data
     getAgentData() {
         return API.getAgentData();
     },
     
-    // Agent Login - CORRECTED
     async login(email, password) {
         try {
-            console.log('[Auth] Logging in agent:', email);
-            
             const response = await API.post(API_CONFIG.ENDPOINTS.AGENT_LOGIN, {
                 email,
                 password
             });
             
-            console.log('[Auth] Login response:', response);
-            
-            // Handle different response structures
             if (response.success || response.status === 'success') {
                 const token = response.token || response.data?.token;
                 const user = response.user || response.data?.user || response.data?.agent || response.data;
                 
                 if (token) {
                     API.setToken(token);
-                    console.log('[Auth] Token stored successfully');
                 }
                 
                 if (response.refreshToken) {
@@ -41,10 +31,8 @@ const Auth = {
                 
                 if (user) {
                     API.setAgentData(user);
-                    console.log('[Auth] Agent data stored successfully');
                 }
 
-                // Fetch wallet balance immediately after login so sidebar shows it
                 try {
                     const walletResp = await API.get(API_CONFIG.ENDPOINTS.WALLET_BALANCE);
                     if (walletResp && (walletResp.status === 'success' || walletResp.success)) {
@@ -65,22 +53,30 @@ const Auth = {
             throw new Error(response.message || 'Login failed');
             
         } catch (error) {
-            console.error('[Auth] Login error:', error);
+            let errorMessage = error.message;
+            
+            if (errorMessage.includes('Invalid') || errorMessage.includes('invalid')) {
+                errorMessage = 'Invalid email or password. Please try again.';
+            } else if (errorMessage.includes('not found')) {
+                errorMessage = 'Account not found. Please check your email or register.';
+            } else if (errorMessage.includes('password') && errorMessage.includes('incorrect')) {
+                errorMessage = 'Incorrect password. Please try again.';
+            } else if (errorMessage.includes('suspended') || errorMessage.includes('Suspended')) {
+                errorMessage = 'Your account has been suspended. Please contact support.';
+            } else if (errorMessage.includes('verify') || errorMessage.includes('Verify')) {
+                errorMessage = 'Please verify your email before logging in.';
+            }
+            
             return {
                 success: false,
-                message: error.message || 'Login failed. Please check your credentials and try again.'
+                message: errorMessage || 'Login failed. Please check your credentials and try again.'
             };
         }
     },
     
-    // Agent Registration - CORRECTED
     async register(formData) {
         try {
-            console.log('[Auth] Registering agent:', formData.email);
-            
             const response = await API.post(API_CONFIG.ENDPOINTS.AGENT_REGISTER, formData);
-            
-            console.log('[Auth] Registration response:', response);
             
             if (response.success || response.status === 'success') {
                 return {
@@ -93,7 +89,6 @@ const Auth = {
             throw new Error(response.message || 'Registration failed');
             
         } catch (error) {
-            console.error('[Auth] Registration error:', error);
             return {
                 success: false,
                 message: error.message || 'Registration failed. Please try again.'
@@ -101,11 +96,8 @@ const Auth = {
         }
     },
     
-    // Forgot Password - Uses general auth endpoint
     async forgotPassword(email) {
         try {
-            console.log('[Auth] Requesting password reset for:', email);
-            
             const response = await API.post(API_CONFIG.ENDPOINTS.AUTH_FORGOT_PASSWORD, {
                 email
             });
@@ -121,7 +113,6 @@ const Auth = {
             throw new Error(response.message || 'Failed to send OTP');
             
         } catch (error) {
-            console.error('[Auth] Forgot password error:', error);
             return {
                 success: false,
                 message: error.message || 'Failed to send OTP. Please try again.'
@@ -129,7 +120,6 @@ const Auth = {
         }
     },
     
-    // Verify OTP
     async verifyOTP(email, otp) {
         try {
             const response = await API.post(API_CONFIG.ENDPOINTS.AUTH_VERIFY_OTP, {
@@ -149,7 +139,6 @@ const Auth = {
             throw new Error(response.message || 'Invalid OTP');
             
         } catch (error) {
-            console.error('[Auth] OTP verification error:', error);
             return {
                 success: false,
                 message: error.message || 'OTP verification failed. Please try again.'
@@ -157,7 +146,6 @@ const Auth = {
         }
     },
     
-    // Reset Password
     async resetPassword(token, newPassword) {
         try {
             const response = await API.post(API_CONFIG.ENDPOINTS.AUTH_RESET_PASSWORD.replace(':token', token), {
@@ -175,7 +163,6 @@ const Auth = {
             throw new Error(response.message || 'Password reset failed');
             
         } catch (error) {
-            console.error('[Auth] Reset password error:', error);
             return {
                 success: false,
                 message: error.message || 'Password reset failed. Please try again.'
@@ -183,57 +170,39 @@ const Auth = {
         }
     },
     
-    // Logout
     logout() {
-        console.log('[Auth] Logging out agent');
         API.removeToken();
         window.location.href = 'index.html';
     },
     
-    // Protect page - redirect to login if not authenticated
     protectPage() {
         if (!this.isLoggedIn()) {
-            console.log('[Auth] Not logged in, redirecting to login');
             window.location.href = 'index.html';
             return false;
         }
         return true;
     },
     
-    // Initialize auth state on page load
     init() {
-        // Check if on login/register pages
         const publicPages = ['index.html', 'register.html', 'forgot-password.html'];
         const currentPage = window.location.pathname.split('/').pop() || 'index.html';
         
-        console.log('[Auth] Initializing on page:', currentPage);
-        
-        // If logged in and on public page, redirect to dashboard
         if (this.isLoggedIn() && publicPages.includes(currentPage)) {
-            console.log('[Auth] Already logged in, redirecting to dashboard');
             window.location.href = 'dashboard.html';
             return;
         }
         
-        // If not logged in and on protected page, redirect to login
         if (!this.isLoggedIn() && !publicPages.includes(currentPage)) {
-            console.log('[Auth] Not logged in, redirecting to login');
             this.protectPage();
         }
     }
 };
 
-// Agent Dashboard API
 const AgentDashboard = {
     
-    // Get dashboard data
     async getDashboardData() {
         try {
-            console.log('[Dashboard] Fetching dashboard data');
-            
             const response = await API.get(API_CONFIG.ENDPOINTS.AGENT_DASHBOARD);
-            
-            console.log('[Dashboard] Response:', response);
             
             if (response.success || response.status === 'success') {
                 return {
@@ -245,7 +214,6 @@ const AgentDashboard = {
             throw new Error(response.message || 'Failed to load dashboard');
             
         } catch (error) {
-            console.error('[Dashboard] Error:', error);
             return {
                 success: false,
                 message: error.message || 'Failed to load dashboard data'
@@ -253,7 +221,6 @@ const AgentDashboard = {
         }
     },
     
-    // Load and display dashboard
     async loadDashboard() {
         try {
             const result = await this.getDashboardData();
@@ -269,7 +236,6 @@ const AgentDashboard = {
             if (recentTransactions) this.updateRecentTransactions(recentTransactions);
             if (serviceBreakdown) this.updateServiceBreakdown(serviceBreakdown);
 
-            // Charts — render with real data if Chart.js is available
             if (typeof Chart !== 'undefined' && typeof Charts !== 'undefined') {
                 if (weeklyEarnings && weeklyEarnings.length > 0) {
                     Charts.renderEarningsChart(weeklyEarnings);
@@ -291,28 +257,22 @@ const AgentDashboard = {
             }
 
         } catch (error) {
-            console.error('[Dashboard] Load error:', error);
             UI.showToast('Failed to load dashboard', 'error');
         }
     },
     
-    // Update stats cards
     updateStats(stats) {
-        // Store wallet balance persistently so sidebar always shows it
         const walletBalance = stats.walletBalance || 0;
         localStorage.setItem('agentWalletBalance', walletBalance.toString());
 
-        // Today's earnings
         const todayEarnings = document.getElementById('today-earnings');
         const todayCount = document.getElementById('today-count');
         if (todayEarnings) todayEarnings.textContent = UI.formatCurrency(stats.today?.commission || 0);
         if (todayCount) todayCount.textContent = UI.formatNumber(stats.today?.count || 0);
 
-        // Monthly stats
         const monthlyCount = document.getElementById('monthly-count');
         if (monthlyCount) monthlyCount.textContent = UI.formatNumber(stats.monthly?.count || 0);
 
-        // Total stats
         const totalEarnings = document.getElementById('total-earnings');
         const totalCount = document.getElementById('total-count');
         const totalAmount = document.getElementById('total-amount');
@@ -320,7 +280,6 @@ const AgentDashboard = {
         if (totalCount) totalCount.textContent = UI.formatNumber(stats.total?.count || 0);
         if (totalAmount) totalAmount.textContent = UI.formatCurrency(stats.total?.amount || 0);
 
-        // Referrals & Commission
         const referralsCount = document.getElementById('referrals-count');
         const availableCommission = document.getElementById('available-commission');
         const totalCommissionEarned = document.getElementById('total-commission-earned');
@@ -328,19 +287,16 @@ const AgentDashboard = {
         if (availableCommission) availableCommission.textContent = UI.formatCurrency(stats.availableCommission || 0);
         if (totalCommissionEarned) totalCommissionEarned.textContent = UI.formatCurrency(stats.totalCommissionEarned || 0);
 
-        // Update all balance displays on the page
         document.querySelectorAll('[data-wallet-balance]').forEach(el => {
             el.textContent = UI.formatCurrency(walletBalance);
         });
 
-        // Update sidebar wallet balance
         const sidebarBal = document.getElementById('walletBalance');
         if (sidebarBal) {
             sidebarBal.textContent = parseFloat(walletBalance).toLocaleString('en-NG', { minimumFractionDigits: 2 });
         }
     },
     
-    // Update recent transactions
     updateRecentTransactions(transactions) {
         const container = document.getElementById('recent-transactions-table');
         if (!container) return;
@@ -384,7 +340,6 @@ const AgentDashboard = {
         container.innerHTML = transactionsHTML;
     },
     
-    // Helper: Get service icon HTML for table
     getServiceIconHTML(service) {
         const serviceLower = (service || '').toLowerCase();
         
@@ -405,7 +360,6 @@ const AgentDashboard = {
         }
     },
     
-    // Helper: Get status badge HTML
     getStatusBadge(status) {
         const statusLower = (status || 'pending').toLowerCase();
         
@@ -420,7 +374,6 @@ const AgentDashboard = {
         }
     },
     
-    // Update service breakdown
     updateServiceBreakdown(services) {
         const container = document.getElementById('service-breakdown');
         if (!container) return;
@@ -450,7 +403,6 @@ const AgentDashboard = {
         container.innerHTML = servicesHTML;
     },
     
-    // Helper: Get service icon SVG
     getServiceIcon(service) {
         const serviceLower = (service || '').toLowerCase();
         
@@ -471,7 +423,6 @@ const AgentDashboard = {
         return '<svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>';
     },
     
-    // Helper: Get service color
     getServiceColor(service) {
         const serviceLower = (service || '').toLowerCase();
         
@@ -485,7 +436,6 @@ const AgentDashboard = {
         return 'bg-slate-100';
     },
     
-    // Helper: Get status class
     getStatusClass(status) {
         const statusLower = (status || '').toLowerCase();
         const classes = {
@@ -500,17 +450,11 @@ const AgentDashboard = {
     }
 };
 
-// Agent Profile API
 const AgentProfile = {
     
-    // Get profile data
     async getProfileData() {
         try {
-            console.log('[Profile] Fetching profile data');
-            
             const response = await API.get(API_CONFIG.ENDPOINTS.AGENT_PROFILE);
-            
-            console.log('[Profile] Response:', response);
             
             if (response.success || response.status === 'success') {
                 return {
@@ -522,7 +466,6 @@ const AgentProfile = {
             throw new Error(response.message || 'Failed to load profile');
             
         } catch (error) {
-            console.error('[Profile] Error:', error);
             return {
                 success: false,
                 message: error.message || 'Failed to load profile data'
@@ -530,7 +473,6 @@ const AgentProfile = {
         }
     },
     
-    // Populate profile UI
     async populateProfile() {
         try {
             const result = await this.getProfileData();
@@ -543,29 +485,24 @@ const AgentProfile = {
             const agent = result.data.agent || result.data;
             const agentInfo = agent.agentInfo || {};
             
-            // Update localStorage so sidebar/header always shows fresh data
             API.setAgentData(agent);
             window.dispatchEvent(new Event('agentDataUpdated'));
             
-            // Basic Info
             this.updateElement('profile-name', agent.fullName || `${agent.firstName} ${agent.lastName}`);
             this.updateElement('profile-email', agent.email);
             this.updateElement('profile-phone', agent.phoneNumber);
             this.updateElement('profile-agent-id', agentInfo.agentId);
             this.updateElement('profile-referral-code', agentInfo.referralCode);
             
-            // Status
             this.updateElement('profile-kyc-status', agent.kycStatus);
             this.updateElement('profile-is-verified', agentInfo.isVerified ? 'Verified' : 'Not Verified');
             this.updateElement('profile-is-active', agent.isActive ? 'Active' : 'Inactive');
             
-            // Assigned Area
             if (agentInfo.assignedArea) {
                 this.updateElement('profile-state', agentInfo.assignedArea.state);
                 this.updateElement('profile-city', agentInfo.assignedArea.city);
             }
             
-            // Bank Details
             if (agentInfo.bankDetails) {
                 this.updateElement('profile-bank-name', agentInfo.bankDetails.bankName);
                 this.updateElement('profile-account-number', agentInfo.bankDetails.accountNumber);
@@ -573,7 +510,6 @@ const AgentProfile = {
                 this.updateElement('profile-bank-verified', agentInfo.bankDetails.isVerified ? 'Verified' : 'Not Verified');
             }
             
-            // Commission & Performance
             this.updateElement('profile-commission-rate', `${agentInfo.commissionRate || 0}%`);
             this.updateElement('profile-total-commission', UI.formatCurrency(agentInfo.totalCommissionEarned || 0));
             this.updateElement('profile-available-commission', UI.formatCurrency(agentInfo.availableCommission || 0));
@@ -583,12 +519,10 @@ const AgentProfile = {
             this.updateElement('profile-activation-date', UI.formatDate(agentInfo.activationDate));
             
         } catch (error) {
-            console.error('[Profile] Population error:', error);
             UI.showToast('Failed to load profile', 'error');
         }
     },
     
-    // Helper: Update element text content
     updateElement(id, value) {
         const element = document.getElementById(id);
         if (element) {
@@ -597,14 +531,12 @@ const AgentProfile = {
     }
 };
 
-// Global logout handler
 function handleLogout() {
     if (confirm('Are you sure you want to logout?')) {
         Auth.logout();
     }
 }
 
-// Initialize auth on page load
 document.addEventListener('DOMContentLoaded', () => {
     Auth.init();
 });

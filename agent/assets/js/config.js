@@ -1,75 +1,58 @@
-
 const API_CONFIG = {
-    // Base URL - UPDATED to actual API
     BASE_URL: 'https://vtu-api-d3q2.onrender.com/api/v1',
     
-    // Endpoints - VERIFIED from Postman collection
     ENDPOINTS: {
-        // Agent Authentication (VERIFIED)
         AGENT_LOGIN: '/agent/login',
         AGENT_REGISTER: '/agent/register',
         
-        // Auth endpoints (for forgot password, etc.)
         AUTH_FORGOT_PASSWORD: '/auth/forgot-password',
         AUTH_VERIFY_OTP: '/auth/verify-otp',
         AUTH_RESET_PASSWORD: '/auth/reset-password',
         AUTH_CHANGE_PASSWORD: '/auth/change-password',
         AUTH_PROFILE: '/auth/profile',
         
-        // Agent Dashboard & Profile (VERIFIED)
         AGENT_DASHBOARD: '/agent/dashboard',
         AGENT_PROFILE: '/agent/profile',
         AGENT_SERVICES: '/agent/services',
         AGENT_VERIFY_CUSTOMER: '/agent/verify-customer',
         
-        // Agent Purchases (VERIFIED)
         AGENT_PURCHASE_AIRTIME: '/agent/purchase/airtime',
         AGENT_PURCHASE_DATA: '/agent/purchase/data',
         AGENT_PAY_BILL: '/agent/pay-bill',
         
-        // Wallet & Transactions (GENERAL endpoints - agents use these)
         WALLET_BALANCE: '/wallet/balance',
         WALLET_TRANSACTIONS: '/wallet/transactions',
         WALLET_FUND: '/wallet/fund',
         WALLET_WITHDRAW: '/wallet/withdraw',
         WALLET_TRANSFER: '/wallet/transfer',
         
-        // Bills & Services
         DATA_PLANS: '/telecom/data/plans',
         CABLE_PLANS: '/bills/cable/plans',
         ELECTRICITY_VERIFY: '/bills/electricity/verify',
         CABLE_VERIFY: '/bills/cable/verify',
         
-        // Payment endpoints
         PAYMENT_INITIATE: '/payment/initiate',
         PAYMENT_VERIFY: '/payment/verify',
         
-        // Transaction
         TRANSACTION_STATUS: '/transaction/status',
         
-        // Webhooks
         WEBHOOK_REMITA: '/webhook/remita',
         WEBHOOK_PROVIDER: '/webhook/provider'
     },
     
-    // Remita Configuration
     REMITA: {
-        PUBLIC_KEY: 'REMITA_PUBLIC_KEY', // Replace with actual key from dashboard
-        MERCHANT_ID: 'MERCHANT_ID', // Replace with actual merchant ID
-        API_BASE: 'https://remitademo.net/remita', // Demo environment
-        // For production: 'https://login.remita.net/remita'
+        PUBLIC_KEY: 'REMITA_PUBLIC_KEY',
+        MERCHANT_ID: 'MERCHANT_ID',
+        API_BASE: 'https://remitademo.net/remita',
     },
     
-    // Payment Gateways
     PAYMENT_GATEWAYS: {
         REMITA: 'remita',
         WALLET: 'wallet'
     },
     
-    // Request timeout (30 seconds)
     TIMEOUT: 30000,
     
-    // Storage keys
     STORAGE_KEYS: {
         TOKEN: 'agentToken',
         AGENT_DATA: 'agentData',
@@ -77,43 +60,35 @@ const API_CONFIG = {
     }
 };
 
-// API Helper Functions - IMPROVED ERROR HANDLING
 const API = {
-    // Get auth token
     getToken() {
         return localStorage.getItem(API_CONFIG.STORAGE_KEYS.TOKEN);
     },
     
-    // Set auth token
     setToken(token) {
         localStorage.setItem(API_CONFIG.STORAGE_KEYS.TOKEN, token);
     },
     
-    // Remove auth token
     removeToken() {
         localStorage.removeItem(API_CONFIG.STORAGE_KEYS.TOKEN);
         localStorage.removeItem(API_CONFIG.STORAGE_KEYS.AGENT_DATA);
         localStorage.removeItem(API_CONFIG.STORAGE_KEYS.REFRESH_TOKEN);
     },
     
-    // Get stored agent data
     getAgentData() {
         try {
             const data = localStorage.getItem(API_CONFIG.STORAGE_KEYS.AGENT_DATA);
             return data ? JSON.parse(data) : null;
         } catch (e) {
-            console.warn('[API] Corrupted agentData in localStorage, clearing.');
             localStorage.removeItem(API_CONFIG.STORAGE_KEYS.AGENT_DATA);
             return null;
         }
     },
     
-    // Set agent data
     setAgentData(data) {
         localStorage.setItem(API_CONFIG.STORAGE_KEYS.AGENT_DATA, JSON.stringify(data));
     },
     
-    // Make API request - ENHANCED ERROR HANDLING
     async request(endpoint, options = {}) {
         const url = `${API_CONFIG.BASE_URL}${endpoint}`;
         const token = this.getToken();
@@ -137,11 +112,8 @@ const API = {
         }
         
         try {
-            // Abort controller for timeout
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
-            
-            console.log(`[API] ${config.method} ${url}`, options.body || '');
             
             const response = await fetch(url, {
                 ...config,
@@ -150,9 +122,6 @@ const API = {
             
             clearTimeout(timeoutId);
             
-            console.log(`[API] Response status: ${response.status}`);
-            
-            // Parse response
             const contentType = response.headers.get('content-type');
             let data;
             
@@ -160,7 +129,6 @@ const API = {
                 data = await response.json();
             } else {
                 const text = await response.text();
-                // Try to parse as JSON anyway
                 try {
                     data = JSON.parse(text);
                 } catch {
@@ -168,13 +136,14 @@ const API = {
                 }
             }
             
-            console.log('[API] Response data:', data);
-            
-            // Handle HTTP errors
             if (!response.ok) {
-                // Handle 401 Unauthorized - session expired
+                const isLoginRequest = endpoint.includes('/login');
+                const errorMessage = data.message || data.error || data.msg || `Error: ${response.status}`;
+                
                 if (response.status === 401) {
-                    console.error('[API] 401 Unauthorized - clearing tokens');
+                    if (isLoginRequest) {
+                        throw new Error(errorMessage);
+                    }
                     this.removeToken();
                     if (!window.location.pathname.includes('index.html') && 
                         !window.location.pathname.includes('register.html') &&
@@ -187,51 +156,36 @@ const API = {
                     throw new Error('Session expired. Please login again.');
                 }
                 
-                // Handle 403 Forbidden
                 if (response.status === 403) {
-                    console.error('[API] 403 Forbidden - access denied');
-                    throw new Error('Access denied. You do not have permission to perform this action.');
+                    throw new Error(errorMessage || 'Access denied');
                 }
                 
-                // Handle 404 Not Found
                 if (response.status === 404) {
-                    console.error('[API] 404 Not Found');
-                    throw new Error('The requested resource was not found.');
+                    throw new Error(errorMessage || 'Resource not found');
                 }
                 
-                // Handle 500 Server Error
                 if (response.status === 500) {
-                    console.error('[API] 500 Server Error');
-                    throw new Error('Server error. Please try again later.');
+                    throw new Error(errorMessage || 'Server error. Please try again.');
                 }
                 
-                // Extract error message from response
-                const errorMessage = data.message || data.error || data.msg || `HTTP Error: ${response.status}`;
-                console.error('[API] Error:', errorMessage);
                 throw new Error(errorMessage);
             }
             
             return data;
             
         } catch (error) {
-            console.error('[API] Request failed:', error);
-            
-            // Handle abort/timeout
             if (error.name === 'AbortError') {
-                throw new Error('Request timeout. Please check your internet connection and try again.');
+                throw new Error('Request timeout. Please check your internet connection.');
             }
             
-            // Handle network errors
             if (error.message === 'Failed to fetch' || error.message.includes('NetworkError')) {
-                throw new Error('Network error. Please check your internet connection and try again.');
+                throw new Error('Network error. Please check your internet connection.');
             }
             
-            // Re-throw other errors
             throw error;
         }
     },
     
-    // Convenience methods
     async get(endpoint) {
         return this.request(endpoint, { method: 'GET' });
     },
@@ -253,9 +207,7 @@ const API = {
     }
 };
 
-// UI Helper Functions - ENHANCED
 const UI = {
-    // Show loading state
     showLoading(buttonId, spinnerId) {
         const button = document.getElementById(buttonId);
         const spinner = document.getElementById(spinnerId);
@@ -268,7 +220,6 @@ const UI = {
         }
     },
     
-    // Hide loading state
     hideLoading(buttonId, spinnerId) {
         const button = document.getElementById(buttonId);
         const spinner = document.getElementById(spinnerId);
@@ -281,7 +232,6 @@ const UI = {
         }
     },
     
-    // Show error message - ENHANCED
     showError(elementId, message) {
         const element = document.getElementById(elementId);
         if (element) {
@@ -296,13 +246,10 @@ const UI = {
             element.style.display = 'block';
             element.classList.add('error-message');
             element.classList.remove('success-message');
-            
-            // Scroll into view
             element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
     },
     
-    // Show success message - ENHANCED
     showSuccess(elementId, message) {
         const element = document.getElementById(elementId);
         if (element) {
@@ -317,13 +264,10 @@ const UI = {
             element.style.display = 'block';
             element.classList.add('success-message');
             element.classList.remove('error-message');
-            
-            // Scroll into view
             element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
     },
     
-    // Hide message
     hideMessage(elementId) {
         const element = document.getElementById(elementId);
         if (element) {
@@ -332,17 +276,14 @@ const UI = {
         }
     },
     
-    // Format currency
     formatCurrency(amount) {
         return `₦${parseFloat(amount).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     },
     
-    // Format number
     formatNumber(number) {
         return parseFloat(number).toLocaleString('en-NG');
     },
     
-    // Format date
     formatDate(dateString) {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-NG', { 
@@ -354,17 +295,13 @@ const UI = {
         });
     },
     
-    // Show toast notification - ENHANCED
     showToast(message, type = 'info', duration = 5000) {
-        // Remove existing toasts
         const existingToasts = document.querySelectorAll('.toast-notification');
         existingToasts.forEach(toast => toast.remove());
         
-        // Create toast element
         const toast = document.createElement('div');
         toast.className = `toast-notification fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-xl text-white max-w-md animate-slide-in`;
         
-        // Set background color based on type
         const colors = {
             success: 'bg-green-500',
             error: 'bg-red-500',
@@ -394,7 +331,6 @@ const UI = {
         
         document.body.appendChild(toast);
         
-        // Auto remove
         setTimeout(() => {
             toast.style.opacity = '0';
             toast.style.transform = 'translateX(100%)';
@@ -403,28 +339,22 @@ const UI = {
     }
 };
 
-// Utility Functions
 const Utils = {
-    // Validate email
     isValidEmail(email) {
         const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return re.test(email);
     },
     
-    // Validate phone number (Nigerian format)
     isValidPhone(phone) {
         const re = /^0[789][01]\d{8}$/;
         return re.test(phone);
     },
     
-    // Validate password strength
     isStrongPassword(password) {
-        // At least 8 characters, 1 uppercase, 1 lowercase, 1 number, 1 special char
         const re = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
         return re.test(password);
     },
     
-    // Debounce function
     debounce(func, wait) {
         let timeout;
         return function executedFunction(...args) {
@@ -438,7 +368,6 @@ const Utils = {
     }
 };
 
-// Add animation styles
 if (!document.getElementById('toast-styles')) {
     const style = document.createElement('style');
     style.id = 'toast-styles';
