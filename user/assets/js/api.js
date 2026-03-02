@@ -20,74 +20,42 @@ class YareemaUserAPI {
     async request(endpoint, options = {}) {
         const url = `${this.baseURL}${endpoint}`;
         const headers = { 'Content-Type': 'application/json', ...options.headers };
-    
-        if (this.token && !options.skipAuth) {
-            headers['Authorization'] = `Bearer ${this.token}`;
+
+        // Always re-read token from storage (in case it was saved after construction)
+        const currentToken = localStorage.getItem('user_token') || sessionStorage.getItem('user_token') || this.token;
+        if (currentToken && !options.skipAuth) {
+            headers['Authorization'] = `Bearer ${currentToken}`;
         }
-    
+
         const config = { method: options.method || 'GET', headers };
-    
+
         if (options.body) {
             config.body = JSON.stringify(options.body);
         }
-    
+
         try {
             const response = await fetch(url, config);
             let data;
             try { 
                 data = await response.json(); 
             } catch(e) { 
-                throw new Error('Invalid server response');
+                throw new Error('Invalid server response'); 
             }
-    
-            // Handle 401 Unauthorized - but check if it's actually a PIN error
-            if (response.status === 401) {
-                // Check the error message to determine if it's PIN-related
-                const errorMsg = (data.message || data.error || '').toLowerCase();
-                
-                // If the error is about PIN, don't clear the session
-                if (errorMsg.includes('pin') || 
-                    errorMsg.includes('transaction pin') || 
-                    errorMsg.includes('invalid pin')) {
-                    
-                    // This is a PIN error, not a session error
-                    throw new Error(data.message || 'Invalid transaction PIN');
-                }
-                
-                // If it's about token/session, then clear and redirect
-                if (errorMsg.includes('token') || 
-                    errorMsg.includes('session') || 
-                    errorMsg.includes('unauthorized') ||
-                    errorMsg.includes('expired')) {
-                    
-                    this.clearToken();
-                    throw new Error('Your session has expired. Please login again.');
-                }
-                
-                throw new Error(data.message || 'You are not authorized to perform this action');
+
+            // Handle 401 Unauthorized - but ONLY for authenticated requests
+            if (response.status === 401 && !options.skipAuth) {
+                this.clearToken();
+                window.location.href = '/login.html';
+                throw new Error('Session expired. Please login again.');
             }
-    
+
+            // For login/signup endpoints, don't treat 401 as session expired
             if (!response.ok) {
-                switch (response.status) {
-                    case 400:
-                        throw new Error(data.message || 'Invalid request. Please check your input.');
-                    case 403:
-                        throw new Error(data.message || 'You don\'t have permission to perform this action');
-                    case 404:
-                        throw new Error(data.message || 'Service temporarily unavailable');
-                    case 422:
-                        throw new Error(data.message || 'Validation failed. Please check your input.');
-                    case 429:
-                        throw new Error('Too many attempts. Please try again later');
-                    case 500:
-                    case 502:
-                    case 503:
-                        throw new Error('Service temporarily unavailable. Please try again');
-                    default:
-                        throw new Error(data.message || data.error || 'Request failed');
-                }
+                // Extract error message from response
+                const errorMessage = data.message || data.error || data.msg || 'Request failed';
+                throw new Error(errorMessage);
             }
-    
+
             return data;
         } catch (error) {
             console.error('API Error:', error);
@@ -98,30 +66,70 @@ class YareemaUserAPI {
     // ==================== AUTH ====================
 
     async login(email, password) {
-        const response = await this.request('/api/v1/auth/login', {
-            method: 'POST',
-            body: { email, password },
-            skipAuth: true
-        });
+        try {
+            const response = await this.request('/api/v1/auth/login', {
+                method: 'POST',
+                body: { email, password },
+                skipAuth: true
+            });
 
-        // token is at response.token, user is at response.data.user
-        const token = response.token;
-        const user  = response.data?.user || {};
+            console.log('Login response:', response); // For debugging
 
-        if (token) {
-            this.setToken(token);
-            localStorage.setItem('user_data', JSON.stringify(user));
+            // Extract token - try different possible paths
+            const token = response.token || response.data?.token || response.accessToken;
+            
+            // Extract user data - try different possible paths
+            let user = {};
+            if (response.data?.user) {
+                user = response.data.user;
+            } else if (response.user) {
+                user = response.user;
+            } else if (response.data) {
+                user = response.data;
+            }
+
+            if (token) {
+                this.setToken(token);
+                if (Object.keys(user).length > 0) {
+                    localStorage.setItem('user_data', JSON.stringify(user));
+                }
+            }
+
+            return {
+                success: true,
+                token,
+                user,
+                wallet: response.data?.wallet ?? null,
+                message: response.message || 'Login successful'
+            };
+        } catch (error) {
+            console.error('Login error:', error);
+            return {
+                success: false,
+                message: error.message || 'Login failed. Please check your credentials.'
+            };
         }
-
-        return response;
     }
 
     async register(data) {
-        return await this.request('/api/v1/auth/register', {
-            method: 'POST',
-            body: data,
-            skipAuth: true
-        });
+        try {
+            const response = await this.request('/api/v1/auth/register', {
+                method: 'POST',
+                body: data,
+                skipAuth: true
+            });
+            
+            return {
+                success: true,
+                ...response
+            };
+        } catch (error) {
+            console.error('Registration error:', error);
+            return {
+                success: false,
+                message: error.message || 'Registration failed. Please try again.'
+            };
+        }
     }
 
     async verifyOTP(email, otp, verificationType = 'email') {
@@ -156,7 +164,6 @@ class YareemaUserAPI {
         });
     }
 
-    // Profile is at /api/v1/auth/profile → response.data.user
     async getProfile() {
         return await this.request('/api/v1/auth/profile');
     }
@@ -236,9 +243,8 @@ class YareemaUserAPI {
 
     // ==================== TELECOM ====================
 
-    async getDataPlans(network = null) {
-        const query = network ? `?network=${network}` : '';
-        return await this.request(`/api/v1/telecom/data/plans${query}`);
+    async getDataPlans(network) {
+        return await this.request(`/api/v1/telecom/data/plans?network=${network.toLowerCase()}`);
     }
 
     async purchaseData(phoneNumber, network, planId, transactionPin) {
@@ -251,22 +257,21 @@ class YareemaUserAPI {
     async purchaseAirtime(phoneNumber, network, amount, transactionPin) {
         return await this.request('/api/v1/telecom/airtime/purchase', {
             method: 'POST',
-            body: { phoneNumber, network: network.toLowerCase(), amount: parseInt(amount), transactionPin }
+            body: { phoneNumber, network: network.toLowerCase(), amount, transactionPin }
         });
     }
 
     async swapAirtime(phoneNumber, network, airtimeAmount, transactionPin) {
         return await this.request('/api/v1/telecom/airtime/swap', {
             method: 'POST',
-            body: { phoneNumber, network: network.toLowerCase(), airtimeAmount: parseInt(airtimeAmount), transactionPin }
+            body: { phoneNumber, network: network.toLowerCase(), airtimeAmount, transactionPin }
         });
     }
 
-    // pinType is the denomination: "500", "1000" etc
     async purchaseRechargePIN(network, pinType, quantity, transactionPin) {
         return await this.request('/api/v1/telecom/recharge-pin/purchase', {
             method: 'POST',
-            body: { network: network.toLowerCase(), pinType: String(pinType), quantity: parseInt(quantity), transactionPin }
+            body: { network: network.toLowerCase(), pinType, quantity, transactionPin }
         });
     }
 
@@ -282,27 +287,25 @@ class YareemaUserAPI {
     async purchaseElectricity(meterNumber, disco, amount, phoneNumber, transactionPin) {
         return await this.request('/api/v1/bills/electricity/purchase', {
             method: 'POST',
-            body: { meterNumber, disco: disco.toLowerCase(), amount: parseInt(amount), phoneNumber, transactionPin }
+            body: { meterNumber, disco: disco.toLowerCase(), amount, phoneNumber, transactionPin }
         });
     }
 
-  
-    async getCablePlans() {
-        return await this.request('/api/v1/bills/cable/plans');
+    async getCablePlans(provider) {
+        return await this.request(`/api/v1/bills/cable/plans?provider=${provider.toLowerCase()}`);
     }
 
     async purchaseCableTV(smartCardNumber, provider, planId, months, transactionPin) {
         return await this.request('/api/v1/bills/cable/purchase', {
             method: 'POST',
-            body: { smartCardNumber, provider: provider.toLowerCase(), planId, months: parseInt(months), transactionPin }
+            body: { smartCardNumber, provider: provider.toLowerCase(), planId, months, transactionPin }
         });
     }
 
-    
     async purchaseEducationPIN(examType, quantity, transactionPin) {
         return await this.request('/api/v1/bills/education/purchase', {
             method: 'POST',
-            body: { examType: examType.toUpperCase(), quantity: parseInt(quantity), transactionPin }
+            body: { examType, quantity, transactionPin }
         });
     }
 

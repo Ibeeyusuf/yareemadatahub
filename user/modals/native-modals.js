@@ -248,37 +248,43 @@ async function submitDataPurchase() {
     const phone = document.getElementById('dataPhone').value.trim();
     const planIndex = document.getElementById('dataPlan').value;
     const pin = document.getElementById('dataPin').value.trim();
-    
-    // Validate PIN format
-    if (!pin || pin.length !== 4) {
-        showError('Please enter your 4-digit transaction PIN');
-        return;
+
+    if (!phone || !/^\d{11}$/.test(phone)) {
+        showError('Please enter a valid 11-digit phone number'); return;
     }
-    if (!/^\d+$/.test(pin)) {
-        showError('Transaction PIN must contain only numbers');
-        return;
+    if (planIndex === '' || planIndex === null || planIndex === undefined) {
+        showError('Please select a data plan'); return;
     }
-    
-    // ... other validations ...
-    
+    if (!currentDataPlans || currentDataPlans.length === 0) {
+        showError('No plans loaded. Please close and try again.'); return;
+    }
+    const selectedPlan = currentDataPlans[planIndex];
+    if (!selectedPlan) {
+        showError('Invalid plan selected. Please try again.'); return;
+    }
+    const planId = selectedPlan._id || selectedPlan.id || selectedPlan.planId || selectedPlan.planCode;
+    if (!planId) {
+        showError('Could not identify selected plan. Please try again.'); return;
+    }
+    if (!pin || !/^\d{4}$/.test(pin)) {
+        showError('Please enter your 4-digit transaction PIN'); return;
+    }
+
     try {
         showLoading('Purchasing data...');
         const response = await api.purchaseData(phone, selectedNetwork, planId, pin);
-        
         closeModal();
         setTimeout(() => {
-            showSuccess('Data purchased successfully!');
+            const planName = selectedPlan.size || selectedPlan.planName || 'Data';
+            showSuccess(planName + ' purchased successfully for ' + phone + '! ✅');
         }, 300);
     } catch (error) {
         closeModal();
         setTimeout(() => {
-            const errorMsg = error.message || '';
-            
-            if (errorMsg.toLowerCase().includes('pin')) {
-                showError('Invalid transaction PIN. Please try again.');
-            } else {
-                showError(errorMsg || 'Purchase failed. Please try again.');
-            }
+            const msg = (error.message || '').toLowerCase();
+            if (msg.includes('pin')) showError('Invalid transaction PIN. Please try again.');
+            else if (msg.includes('balance') || msg.includes('insufficient')) showError('Insufficient wallet balance. Please fund your wallet.');
+            else showError(error.message || 'Purchase failed. Please try again.');
         }, 300);
     }
 }
@@ -1107,12 +1113,47 @@ function _fundStep(show) {
     });
 }
 
+function _walletCacheKey() {
+    try {
+        const u = JSON.parse(localStorage.getItem('user_data') || '{}');
+        const uid = u._id || u.id || '';
+        return uid ? 'wallet_accounts_' + uid : null;
+    } catch(e) { return null; }
+}
+
 function _saveWalletAccounts(accounts) {
-    try { localStorage.setItem('wallet_accounts', JSON.stringify(accounts)); } catch(e) {}
+    try {
+        const key = _walletCacheKey();
+        if (key) localStorage.setItem(key, JSON.stringify(accounts));
+        // Also save legacy key for set-pin.html compatibility
+        localStorage.setItem('wallet_accounts', JSON.stringify(accounts));
+    } catch(e) {}
 }
 
 function _loadWalletAccounts() {
-    try { return JSON.parse(localStorage.getItem('wallet_accounts') || 'null'); } catch(e) { return null; }
+    try {
+        // Prefer user-specific key
+        const key = _walletCacheKey();
+        if (key) {
+            const data = localStorage.getItem(key);
+            if (data) return JSON.parse(data);
+        }
+        // Fallback: only use generic cache if it belongs to current user
+        const generic = localStorage.getItem('wallet_accounts');
+        if (!generic) return null;
+        const accounts = JSON.parse(generic);
+        // Validate: account name should match current user's name
+        const u = JSON.parse(localStorage.getItem('user_data') || '{}');
+        const userName = (u.firstName || '').toLowerCase();
+        if (userName && accounts[0]?.accountName) {
+            if (!accounts[0].accountName.toLowerCase().includes(userName)) {
+                // This cache belongs to a different user — clear it
+                localStorage.removeItem('wallet_accounts');
+                return null;
+            }
+        }
+        return accounts;
+    } catch(e) { return null; }
 }
 
 function showFundModal() {
@@ -1125,47 +1166,7 @@ function showFundModal() {
                 <p style="color:#1e3d5c;font-weight:600;font-size:15px;" id="fundLoadingText">Checking your wallet...</p>
             </div>
 
-            <!-- Step: NIN/BVN Verification (first time) -->
-            <div id="fundVerifyStep" style="display:none;">
-                <div style="background:linear-gradient(135deg,#eff6ff,#dbeafe);padding:16px;border-radius:12px;margin-bottom:20px;display:flex;gap:12px;align-items:flex-start;">
-                    <div style="width:36px;height:36px;background:#1e3d5c;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                    </div>
-                    <div>
-                        <p style="color:#1e3d5c;font-size:14px;font-weight:700;margin:0 0 3px;">One-time Account Setup</p>
-                        <p style="color:#475569;font-size:12px;margin:0;line-height:1.5;">We need your NIN or BVN to create your dedicated virtual bank account for funding.</p>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label style="font-size:13px;color:#64748b;margin-bottom:8px;display:block;">Choose Verification Method</label>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                        <button type="button" id="ninBtn" onclick="selectIdType('nin')"
-                            style="padding:14px;border:2px solid #1e3d5c;border-radius:10px;background:#1e3d5c;color:white;cursor:pointer;font-weight:700;font-size:14px;transition:all 0.2s;">
-                            🪪 NIN
-                        </button>
-                        <button type="button" id="bvnBtn" onclick="selectIdType('bvn')"
-                            style="padding:14px;border:2px solid #e2e8f0;border-radius:10px;background:white;color:#64748b;cursor:pointer;font-weight:700;font-size:14px;transition:all 0.2s;">
-                            🏦 BVN
-                        </button>
-                    </div>
-                </div>
-
-                <div class="form-group" style="margin-top:16px;">
-                    <label id="idInputLabel" style="font-weight:600;">NIN (11 digits)</label>
-                    <input type="tel" id="idNumberInput" placeholder="Enter your NIN" maxlength="11" class="form-input"
-                        style="letter-spacing:2px;font-size:18px;font-weight:600;text-align:center;"
-                        oninput="this.value=this.value.replace(/[^0-9]/g,'')">
-                    <div style="display:flex;align-items:center;gap:6px;margin-top:8px;">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                        <small style="color:#94a3b8;font-size:11px;">256-bit encrypted · used only for account verification</small>
-                    </div>
-                </div>
-
-                <button onclick="submitIdVerification()" class="btn-primary" style="width:100%;margin-top:4px;padding:14px;font-size:15px;" id="verifySubmitBtn">
-                    Create My Wallet Account →
-                </button>
-            </div>
+                        <div id="fundVerifyStep" style="display:none;"></div>
 
             <!-- Step: Account Details -->
             <div id="fundAccountStep" style="display:none;">
@@ -1174,7 +1175,9 @@ function showFundModal() {
                 </p>
                 <div id="fundAccountsList"></div>
 
-                
+                <div style="background:#fef3c7;padding:12px 14px;border-radius:8px;border-left:3px solid #f59e0b;margin-bottom:16px;">
+                    <p style="color:#92400e;font-size:12px;margin:0;line-height:1.5;">⚡ <strong>Instant funding</strong> — funds reflect within 1–5 minutes of transfer</p>
+                </div>
 
                 <button onclick="closeModal()" class="btn-primary" style="width:100%;margin-top:4px;">Close</button>
             </div>
@@ -1186,14 +1189,14 @@ function showFundModal() {
 }
 
 async function _initFundModal() {
-    // 1. Check localStorage first — instant display if we have cached accounts
+    // 1. Check localStorage cache first — instant, no API call
     const cached = _loadWalletAccounts();
     if (cached && cached.length > 0) {
         _renderFundAccounts(cached);
         return;
     }
 
-    // 2. No cache — check wallet balance API (never call createWalletAccount on load)
+    // 2. No cache — fetch from wallet balance endpoint
     _fundStep('fundLoadingStep');
     try {
         const response = await api.getWalletBalance();
@@ -1204,13 +1207,41 @@ async function _initFundModal() {
             _saveWalletAccounts(accounts);
             _renderFundAccounts(accounts);
         } else {
-            // Wallet exists but no virtual accounts — show NIN/BVN setup
-            _fundStep('fundVerifyStep');
+            // Wallet exists but accounts not ready yet — try creating
+            _fundStep('fundLoadingStep');
+            document.getElementById('fundLoadingText').textContent = 'Setting up your accounts...';
+            try {
+                const createResp = await api.createWalletAccount({});
+                const w = createResp.data?.wallet || createResp.data || {};
+                const accs = w.accounts || [];
+                if (accs.length > 0) {
+                    _saveWalletAccounts(accs);
+                    _renderFundAccounts(accs);
+                } else {
+                    _showFundError('Your wallet accounts are being prepared. Please try again in a few minutes.');
+                }
+            } catch (e) {
+                _showFundError(e.message || 'Could not load account details. Please try again.');
+            }
         }
     } catch (err) {
-        // API error — show setup form
-        _fundStep('fundVerifyStep');
+        _showFundError(err.message || 'Could not connect. Please check your connection and try again.');
     }
+}
+
+function _showFundError(message) {
+    const body = document.getElementById('modalBody');
+    if (!body) return;
+    body.innerHTML = `
+        <div style="text-align:center;padding:40px 20px;">
+            <div style="width:56px;height:56px;background:#fee2e2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <p style="font-weight:600;color:#0f172a;margin-bottom:6px;">Unable to Load Account</p>
+            <p style="font-size:13px;color:#64748b;line-height:1.5;">${message}</p>
+            <button onclick="closeModal()" class="btn-primary" style="margin-top:20px;padding:10px 24px;">Close</button>
+        </div>
+    `;
 }
 
 function _renderFundAccounts(accounts) {
@@ -1374,7 +1405,9 @@ function _showWalletCreatedSuccess(wallet, accounts) {
             `).join('')}
         </div>
 
-        
+        <div style="background:#fef3c7;padding:12px 14px;border-radius:8px;border-left:3px solid #f59e0b;">
+            <p style="color:#92400e;font-size:12px;margin:0;">⚡ <strong>Instant funding</strong> — funds reflect within 1–5 minutes</p>
+        </div>
     `;
     document.getElementById('modalFooter').innerHTML = `
         <button onclick="closeModal()" class="btn-secondary" style="flex:1;">Close</button>
@@ -1396,7 +1429,9 @@ function _goToFundAccountStep() {
             <div id="fundAccountStep" style="display:none;">
                 <p style="color:#64748b;margin-bottom:14px;font-size:13px;font-weight:500;">Transfer to any account below:</p>
                 <div id="fundAccountsList"></div>
-                
+                <div style="background:#fef3c7;padding:12px 14px;border-radius:8px;border-left:3px solid #f59e0b;margin-bottom:16px;">
+                    <p style="color:#92400e;font-size:12px;margin:0;">⚡ <strong>Instant funding</strong> — funds reflect within 1–5 minutes</p>
+                </div>
                 <button onclick="closeModal()" class="btn-primary" style="width:100%;margin-top:4px;">Close</button>
             </div>
         </div>

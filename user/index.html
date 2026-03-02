@@ -202,8 +202,18 @@
         }
 
         function logout() {
+            // Clear user-specific wallet cache before removing user_data
+            try {
+                const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+                const userId = userData._id || userData.id || '';
+                if (userId) {
+                    localStorage.removeItem('wallet_accounts_' + userId);
+                    localStorage.removeItem('pin_set_' + userId);
+                }
+            } catch(e) {}
             localStorage.removeItem('user_token');
             localStorage.removeItem('user_data');
+            localStorage.removeItem('wallet_accounts');
             sessionStorage.removeItem('user_token');
             sessionStorage.removeItem('user_data');
             window.location.href = '../login.html';
@@ -403,11 +413,22 @@
             console.log('Current Page:', window.location.href);
             
             if (!token) {
-                console.log('No token found - redirecting to login');
-                // Use relative path that works everywhere
                 window.location.href = '../login.html';
             } else {
-                console.log('Token found - loading dashboard');
+                // Check if PIN/wallet has been set up
+                const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+                const userId = userData._id || userData.id || '';
+                const pinSetLocally = localStorage.getItem('pin_set_' + userId) === 'true';
+                const userWalletKey = userId ? 'wallet_accounts_' + userId : null;
+                const hasWalletCache = userWalletKey 
+                    ? !!localStorage.getItem(userWalletKey)
+                    : !!localStorage.getItem('wallet_accounts');
+
+                if (!hasWalletCache && !pinSetLocally) {
+                    window.location.href = '../set-pin.html';
+                    return;
+                }
+
                 loadData();
             }
         }

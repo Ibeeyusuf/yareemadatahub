@@ -230,7 +230,22 @@
         lucide.createIcons();
 
         // Redirect if already authenticated
-        AuthGuard.redirectIfAuthenticated('user/index.html');
+        // If already logged in, check if they've set PIN
+        if (AuthGuard.isAuthenticated()) {
+            const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+            const userId = userData._id || userData.id || '';
+            const pinSetLocally = localStorage.getItem('pin_set_' + userId) === 'true';
+            const userWalletKey = userId ? 'wallet_accounts_' + userId : null;
+            const hasWallet = userWalletKey
+                ? !!localStorage.getItem(userWalletKey)
+                : !!localStorage.getItem('wallet_accounts');
+
+            if (!hasWallet && !pinSetLocally) {
+                window.location.href = 'set-pin.html';
+            } else {
+                window.location.href = 'user/index.html';
+            }
+        }
 
         // Password visibility toggle
         const toggleLoginPassword = document.getElementById('toggle-login-password');
@@ -295,23 +310,43 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
             const savedToken = localStorage.getItem('user_token') || sessionStorage.getItem('user_token');
             console.log('Token verification after login:', savedToken ? 'SAVED' : 'NOT SAVED');
             
-            Swal.fire({
-                icon: 'success',
-                title: 'Login Successful!',
-                html: `<span>Welcome back, <strong>${userName}</strong>!</span>`,
-                timer: 1500,
-                showConfirmButton: false,
-                didClose: () => {
-                    // Successful login - redirect
-                    const redirectUrl = sessionStorage.getItem('redirect_after_login') || '/user/index.html';
-                    sessionStorage.removeItem('redirect_after_login');
-                    sessionStorage.removeItem('registration_success');
-                    sessionStorage.removeItem('registered_email');
-                    
-                    console.log('Login successful - redirecting to:', redirectUrl);
-                    window.location.href = redirectUrl;
-                }
-            });
+            // Check if wallet exists — null means first time, PIN not set yet
+            // Based on login response: data.wallet === null for new users
+            const userId = response.user?._id || response.user?.id || '';
+            const walletExists = response.wallet !== null && response.wallet !== undefined;
+            const pinSetLocally = localStorage.getItem('pin_set_' + userId) === 'true';
+            const hasPinSet = walletExists || pinSetLocally;
+
+            if (!hasPinSet) {
+                // First time — must set PIN (also creates wallet)
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Welcome to Yareema!',
+                    text: 'One last step set your transaction PIN to secure your account.',
+                    timer: 1800,
+                    showConfirmButton: false,
+                    didClose: () => {
+                        sessionStorage.removeItem('registration_success');
+                        sessionStorage.removeItem('registered_email');
+                        window.location.href = 'set-pin.html';
+                    }
+                });
+            } else {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Login Successful!',
+                    html: `<span>Welcome back, <strong>${userName}</strong>!</span>`,
+                    timer: 1500,
+                    showConfirmButton: false,
+                    didClose: () => {
+                        const redirectUrl = sessionStorage.getItem('redirect_after_login') || 'user/index.html';
+                        sessionStorage.removeItem('redirect_after_login');
+                        sessionStorage.removeItem('registration_success');
+                        sessionStorage.removeItem('registered_email');
+                        window.location.href = redirectUrl;
+                    }
+                });
+            }
         } else {
             showError('login-error', response.message || 'Login failed. Please check your credentials.');
             resetButton();
