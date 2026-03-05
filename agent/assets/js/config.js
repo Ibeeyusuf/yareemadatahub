@@ -71,8 +71,14 @@ const API = {
     
     removeToken() {
         localStorage.removeItem(API_CONFIG.STORAGE_KEYS.TOKEN);
-        localStorage.removeItem(API_CONFIG.STORAGE_KEYS.AGENT_DATA);
         localStorage.removeItem(API_CONFIG.STORAGE_KEYS.REFRESH_TOKEN);
+        // NOTE: keep agentData so pin status persists across logout/login
+        // Only clear sensitive fields
+        try {
+            const d = JSON.parse(localStorage.getItem(API_CONFIG.STORAGE_KEYS.AGENT_DATA) || '{}');
+            const safe = { _id: d._id, id: d.id, pin: d.pin };
+            localStorage.setItem(API_CONFIG.STORAGE_KEYS.AGENT_DATA, JSON.stringify(safe));
+        } catch(e) {}
     },
     
     getAgentData() {

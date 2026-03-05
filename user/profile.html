@@ -191,7 +191,7 @@
                 <div class="profile-item" onclick="showSetPIN()" style="cursor: pointer;">
                     <div class="profile-item-left">
                         <i data-lucide="shield" style="width:20px;height:20px;color:#1e3d5c;"></i>
-                        <span>Set Transaction PIN</span>
+                        <span>Change Transaction PIN</span>
                     </div>
                     <i data-lucide="chevron-right" style="width:20px;height:20px;color:#94a3b8;"></i>
                 </div>
@@ -562,15 +562,16 @@
             });
         }
 
-        // Set Transaction PIN
+        // Change Transaction PIN
         function showSetPIN() {
             Swal.fire({
-                title: 'Set Transaction PIN',
+                title: 'Change Transaction PIN',
                 html: `
-                    <input type="password" id="pin_val" class="swal2-input" placeholder="Enter 4-digit PIN" maxlength="4" inputmode="numeric">
-                    <input type="password" id="pin_confirm" class="swal2-input" placeholder="Confirm PIN" maxlength="4" inputmode="numeric">
+                    <input type="password" id="pin_current" class="swal2-input" placeholder="Current PIN" maxlength="4" inputmode="numeric">
+                    <input type="password" id="pin_val" class="swal2-input" placeholder="New 4-digit PIN" maxlength="4" inputmode="numeric">
+                    <input type="password" id="pin_confirm" class="swal2-input" placeholder="Confirm New PIN" maxlength="4" inputmode="numeric">
                 `,
-                confirmButtonText: 'Set PIN',
+                confirmButtonText: 'Change PIN',
                 confirmButtonColor: '#1e3d5c',
                 showCancelButton: true,
                 cancelButtonText: 'Cancel',
@@ -579,7 +580,7 @@
                     const confirm = document.getElementById('pin_confirm').value;
                     
                     if (!pin || pin.length !== 4 || !/^\d+$/.test(pin)) {
-                        Swal.showValidationMessage('PIN must be exactly 4 digits');
+                        Swal.showValidationMessage('New PIN must be exactly 4 digits');
                         return false;
                     }
                     if (pin !== confirm) {
@@ -599,8 +600,8 @@
                 if (r.isConfirmed) {
                     Swal.fire({ 
                         icon: 'success', 
-                        title: 'PIN Set!', 
-                        text: 'Your transaction PIN has been set.',
+                        title: 'PIN Changed!', 
+                        text: 'Your transaction PIN has been updated.',
                         timer: 1500, 
                         showConfirmButton: false 
                     });

@@ -209,41 +209,31 @@
         try {
             await callAPI('/api/v1/auth/set-transaction-pin', { transactionPin: p1, confirmPin: p2 });
 
-            // Save pin flag
+            // Save pin flag and update user_data.pin so re-login check works
             try {
                 var u = JSON.parse(localStorage.getItem('user_data') || '{}');
                 var uid = u._id || u.id || '';
                 if (uid) localStorage.setItem('pin_set_' + uid, 'true');
+                u.pin = true;
+                localStorage.setItem('user_data', JSON.stringify(u));
             } catch(e){}
 
-            // Create wallet — no NIN/BVN required
+            // Create wallet
             setLoading('Creating your wallet...', 'Setting up your virtual bank accounts');
             try {
                 var wr = await callAPI('/api/v1/wallet/create', {});
-                var wallet = (wr && wr.data && wr.data.wallet) ? wr.data.wallet
-                           : (wr && wr.data) ? wr.data
-                           : (wr || {});
+                var wallet = (wr.data && wr.data.wallet) ? wr.data.wallet : (wr.data || {});
                 var accounts = wallet.accounts || [];
-
                 if (accounts.length > 0) {
-                    // Save with user-specific key so Fund Wallet modal finds it
                     try {
                         var u2 = JSON.parse(localStorage.getItem('user_data') || '{}');
                         var uid2 = u2._id || u2.id || '';
-                        if (uid2) {
-                            localStorage.setItem('wallet_accounts_' + uid2, JSON.stringify(accounts));
-                        }
+                        if (uid2) localStorage.setItem('wallet_accounts_' + uid2, JSON.stringify(accounts));
                     } catch(e){}
-                    // Also save generic fallback
                     localStorage.setItem('wallet_accounts', JSON.stringify(accounts));
-                } else {
-                    // Wallet was created but accounts array was empty in response.
-                    // The fund modal will fetch them fresh from /api/v1/wallet/balance on next open.
-                    console.info('Wallet created, accounts will be fetched on first Fund Wallet open.');
                 }
             } catch(we) {
-                // Wallet creation is non-fatal — user can still log in, fund modal will retry
-                console.warn('Wallet create non-fatal:', we.message);
+                console.warn('Wallet non-fatal:', we.message);
             }
 
             hideLoading();

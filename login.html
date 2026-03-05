@@ -235,8 +235,8 @@
             const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
             const userId = userData._id || userData.id || '';
             const pinFromStored = userData.pin;
-            const pinSetLocally = localStorage.getItem('pin_set_' + userId) === 'true';
-            const hasPinSet = (pinFromStored === true) || (pinFromStored === undefined && pinSetLocally);
+            const pinSetLocally = userId ? localStorage.getItem('pin_set_' + userId) === 'true' : false;
+            const hasPinSet = (pinFromStored === true) || pinSetLocally;
 
             if (!hasPinSet) {
                 window.location.href = 'set-pin.html';
@@ -308,12 +308,11 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
             const savedToken = localStorage.getItem('user_token') || sessionStorage.getItem('user_token');
             console.log('Token verification after login:', savedToken ? 'SAVED' : 'NOT SAVED');
             
-            // Use backend pin field — true means PIN set, false means go to set-pin
+            // Check pin: trust backend OR local flag — whichever says true wins
             const userId = response.user?._id || response.user?.id || '';
             const pinFromBackend = response.pin;
-            // Fall back to local flag only if backend didn't send pin field
-            const pinSetLocally = localStorage.getItem('pin_set_' + userId) === 'true';
-            const hasPinSet = (pinFromBackend === true) || (pinFromBackend === undefined && pinSetLocally);
+            const pinSetLocally = userId ? localStorage.getItem('pin_set_' + userId) === 'true' : false;
+            const hasPinSet = (pinFromBackend === true) || pinSetLocally;
 
             if (!hasPinSet) {
                 // First time — must set PIN (also creates wallet)

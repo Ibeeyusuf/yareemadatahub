@@ -21,10 +21,8 @@ class YareemaUserAPI {
         const url = `${this.baseURL}${endpoint}`;
         const headers = { 'Content-Type': 'application/json', ...options.headers };
 
-        // Always re-read token from storage (in case it was saved after construction)
-        const currentToken = localStorage.getItem('user_token') || sessionStorage.getItem('user_token') || this.token;
-        if (currentToken && !options.skipAuth) {
-            headers['Authorization'] = `Bearer ${currentToken}`;
+        if (this.token && !options.skipAuth) {
+            headers['Authorization'] = `Bearer ${this.token}`;
         }
 
         const config = { method: options.method || 'GET', headers };
@@ -99,8 +97,7 @@ class YareemaUserAPI {
                 success: true,
                 token,
                 user,
-                wallet: response.data?.wallet ?? null,
-                pin: user?.pin,   // true / false from backend
+                pin: user?.pin,
                 message: response.message || 'Login successful'
             };
         } catch (error) {

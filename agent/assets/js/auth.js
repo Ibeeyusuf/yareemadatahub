@@ -185,14 +185,24 @@ const Auth = {
     },
     
     init() {
-        const publicPages = ['index.html', 'register.html', 'forgot-password.html'];
+        const publicPages = ['index.html', 'register.html', 'forgot-password.html', 'set-pin.html'];
         const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-        
-        if (this.isLoggedIn() && publicPages.includes(currentPage)) {
-            window.location.href = 'dashboard.html';
+
+        if (this.isLoggedIn() && publicPages.includes(currentPage) && currentPage !== 'set-pin.html') {
+            // Check pin before redirecting — use backend value OR persistent local flag
+            try {
+                const agentData = JSON.parse(localStorage.getItem('agentData') || '{}');
+                const uid = agentData._id || agentData.id || '';
+                const pinBackend = agentData.pin;
+                const pinLocal = uid ? localStorage.getItem('agent_pin_set_' + uid) === 'true' : false;
+                const hasPinSet = (pinBackend === true) || pinLocal;
+                window.location.href = hasPinSet ? 'dashboard.html' : 'set-pin.html';
+            } catch(e) {
+                window.location.href = 'dashboard.html';
+            }
             return;
         }
-        
+
         if (!this.isLoggedIn() && !publicPages.includes(currentPage)) {
             this.protectPage();
         }

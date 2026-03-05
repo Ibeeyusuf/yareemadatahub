@@ -279,19 +279,17 @@
                 UI.hideLoading('login-btn', 'login-spinner');
                 
                 if (result.success) {
-                    // Show success message
                     UI.showToast('Login successful! Redirecting...', 'success');
-                    
-                    // Check backend pin field from login response
-                    const loginResp = result.data || {};
-                    const user = loginResp.user || loginResp.agent || {};
-                    const userId = user._id || user.id || '';
-                    const pinFromBackend = result.pin ?? loginResp.user?.pin ?? loginResp.pin;
-                    const pinSetLocally = localStorage.getItem('agent_pin_set_' + userId) === 'true';
-                    const hasPinSet = (pinFromBackend === true) || (pinFromBackend === undefined && pinSetLocally);
+
+                    // Check pin: trust backend OR persistent local flag — whichever says true
+                    const _agentData = JSON.parse(localStorage.getItem('agentData') || '{}');
+                    const _uid = _agentData._id || _agentData.id || '';
+                    const _pinBackend = _agentData.pin;
+                    const _pinLocal = _uid ? localStorage.getItem('agent_pin_set_' + _uid) === 'true' : false;
+                    const _hasPinSet = (_pinBackend === true) || _pinLocal;
 
                     setTimeout(() => {
-                        window.location.href = hasPinSet ? 'dashboard.html' : 'set-pin.html';
+                        window.location.href = _hasPinSet ? 'dashboard.html' : 'set-pin.html';
                     }, 1500);
                 } else {
                     // Show specific error message from backend

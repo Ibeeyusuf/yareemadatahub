@@ -204,6 +204,8 @@
                 var agent = JSON.parse(localStorage.getItem('agentData') || '{}');
                 var uid = agent._id || agent.id || '';
                 if (uid) localStorage.setItem('agent_pin_set_' + uid, 'true');
+                agent.pin = true;
+                localStorage.setItem('agentData', JSON.stringify(agent));
             } catch(e){}
 
             // Create wallet — no NIN/BVN required

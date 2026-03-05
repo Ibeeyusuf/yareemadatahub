@@ -387,7 +387,6 @@ async function handleAddCustomer(e) {
 
 async function handleChangePIN(e) {
     e.preventDefault();
-    const current = document.getElementById('currentPIN')?.value;
     const newPin  = document.getElementById('newPIN')?.value;
     const confirm = document.getElementById('confirmPIN')?.value;
 
@@ -399,10 +398,10 @@ async function handleChangePIN(e) {
     }
     _modalBtnLoading('changePINSubmitBtn', true, 'Update PIN');
     try {
-        const result = await API.put('/agent/change-pin', { currentPin: current, newPin });
+        const result = await API.post(API_CONFIG.ENDPOINTS.AUTH_SET_PIN, { transactionPin: newPin, confirmPin: confirm });
         if (result.success || result.status === 'success') {
             _modalMsg('changePINMsg', result.message || 'PIN updated successfully!', 'success');
-            ['currentPIN', 'newPIN', 'confirmPIN'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+            ['newPIN', 'confirmPIN'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
             setTimeout(() => closeModal('changePINModal'), 2000);
         } else {
             _modalMsg('changePINMsg', result.message || 'Failed to update PIN.', 'error');

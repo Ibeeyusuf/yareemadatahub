@@ -208,7 +208,7 @@
                 const userId = userData._id || userData.id || '';
                 if (userId) {
                     localStorage.removeItem('wallet_accounts_' + userId);
-                    localStorage.removeItem('pin_set_' + userId);
+                    // NOTE: intentionally keep pin_set_<userId> so re-login works correctly
                 }
             } catch(e) {}
             localStorage.removeItem('user_token');
