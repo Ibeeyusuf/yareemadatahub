@@ -1,7 +1,6 @@
-<aside id="sidebar" class="w-64 bg-slate-900 text-white flex flex-col transition-transform duration-300 transform -translate-x-full lg:translate-x-0 fixed lg:static top-0 left-0 h-full z-50 lg:z-auto shadow-xl lg:shadow-none">
+<aside id="sidebar" class="w-64 bg-slate-900 text-white flex flex-col transition-transform duration-300 transform -translate-x-full lg:translate-x-0 fixed top-0 left-0 h-screen z-50 shadow-xl overflow-hidden">
     <div class="p-6 flex items-center justify-between border-b border-slate-800">
         <div class="flex items-center gap-3">
-            <!-- <div class="w-8 h-8 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center text-white font-bold text-lg">N</div> -->
             <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-lg p-2">
                 <img src="../assets/images/logo.png" alt="Yareema Logo" class="w-full h-full object-contain">
             </div>
@@ -53,7 +52,6 @@
             <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
             Reports
         </a>
-        
         <a href="settings.html" class="nav-item flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 mb-1 mx-2 transition-colors">
             <i data-lucide="settings" class="w-5 h-5"></i>
             Settings
@@ -62,26 +60,14 @@
 
     <div class="p-4 border-t border-slate-800">
         <div class="flex items-center gap-3">
-            <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt="Admin" class="w-10 h-10 rounded-full border-2 border-slate-700">
+            <div class="w-10 h-10 rounded-full bg-slate-700 border-2 border-slate-600 flex items-center justify-center text-white font-bold text-sm" id="sidebarAdminAvatar">A</div>
             <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-white truncate">Musa Aliyu</p>
+                <p class="text-sm font-medium text-white truncate" id="sidebarAdminName">Admin</p>
                 <p class="text-xs text-slate-400 truncate">Super Admin</p>
             </div>
-            <button class="text-slate-400 hover:text-white">
+            <button onclick="adminLogout()" title="Logout" class="text-slate-400 hover:text-red-400 transition-colors p-1 rounded">
                 <i data-lucide="log-out" class="w-5 h-5"></i>
             </button>
         </div>
     </div>
 </aside>
-
-<script>
-    // Set active navigation item based on current page
-    document.addEventListener('DOMContentLoaded', function() {
-        const currentPage = window.location.pathname.split('/').pop() || 'dashboard.html';
-        document.querySelectorAll('.nav-item').forEach(link => {
-            if (link.getAttribute('href') === currentPage) {
-                link.classList.remove('text-slate-400', 'hover:text-white', 'hover:bg-slate-800');
-                link.classList.add('bg-primary/10', 'text-primary', 'active');
-            }
-        });
-    });

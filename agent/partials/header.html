@@ -14,76 +14,28 @@
                 <i data-lucide="globe" class="w-5 h-5"></i>
                 <span class="hidden sm:inline text-sm font-medium" id="langToggle">EN</span>
             </button>
+
+            <!-- Notification Bell -->
             <div class="relative">
-                <button onclick="toggleNotifications()" class="relative p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors" id="notificationBtn">
+                <button onclick="agentToggleNotifications()" id="agentNotifBtn"
+                    class="relative p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
                     <i data-lucide="bell" class="w-5 h-5"></i>
-                    <span class="notification-badge hidden" id="notifBadge">0</span>
+                    <span id="agentNotifBadge"
+                        style="position:absolute;top:-2px;right:-2px;width:18px;height:18px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #fff">3</span>
                 </button>
 
-                <div id="notificationDropdown" class="hidden absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-slate-200 z-50">
-                    <div class="p-4 border-b border-slate-200 flex items-center justify-between">
-                        <h3 class="font-bold text-slate-900">Notifications</h3>
-                        <button onclick="markAllAsRead()" class="text-xs text-blue-600 hover:underline">Mark all as read</button>
+                <div id="agentNotifDropdown"
+                    style="display:none;position:absolute;right:0;top:calc(100% + 8px);width:320px;background:#fff;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,0.15);border:1px solid #e2e8f0;z-index:9999;overflow:hidden">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #f1f5f9;background:#f8fafc">
+                        <span style="font-size:14px;font-weight:700;color:#1e293b">Notifications</span>
+                        <button onclick="agentMarkAllRead()" style="font-size:12px;color:#2563eb;background:none;border:none;cursor:pointer;font-weight:500">Mark all read</button>
                     </div>
-                    <div class="max-h-96 overflow-y-auto" id="notificationsBody">
-                        <div class="p-8 text-center text-slate-400 text-sm">
-                            <i data-lucide="bell-off" class="w-8 h-8 mx-auto mb-2 opacity-40"></i>
-                            <p>No notifications yet</p>
-                        </div>
-                    </div>
-                    <div class="p-3 border-t border-slate-200 text-center">
-                        <a href="reports.html" class="text-sm text-blue-600 hover:underline font-medium">View all activity</a>
+                    <div id="agentNotifList" style="max-height:320px;overflow-y:auto"></div>
+                    <div style="padding:10px 16px;border-top:1px solid #f1f5f9;background:#f8fafc;text-align:center">
+                        <a href="wallet.html" style="font-size:12px;color:#2563eb;font-weight:500;text-decoration:none">View wallet →</a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </header>
-
-<script>
-// Called explicitly by each page after this header partial is injected
-function initHeader() {
-    try {
-        var agent = (typeof API !== 'undefined') ? API.getAgentData() : null;
-        if (!agent) {
-            try { agent = JSON.parse(localStorage.getItem('agentData')); } catch(e) {}
-        }
-        if (agent) {
-            var name = agent.fullName || agent.name ||
-                (agent.firstName ? agent.firstName : null);
-            var subtitle = document.getElementById('pageSubtitle');
-            if (subtitle && name) {
-                subtitle.textContent = 'Welcome back, ' + name.split(' ')[0] + '!';
-            }
-        }
-    } catch(e) { console.warn('[initHeader] error:', e); }
-}
-
-function toggleNotifications() {
-    var dropdown = document.getElementById('notificationDropdown');
-    dropdown.classList.toggle('hidden');
-    if (!dropdown.classList.contains('hidden')) {
-        setTimeout(function() {
-            document.addEventListener('click', closeNotificationsOnClickOutside);
-        }, 100);
-    }
-}
-
-function closeNotificationsOnClickOutside(e) {
-    var dropdown = document.getElementById('notificationDropdown');
-    var btn = document.getElementById('notificationBtn');
-    if (dropdown && btn && !dropdown.contains(e.target) && !btn.contains(e.target)) {
-        dropdown.classList.add('hidden');
-        document.removeEventListener('click', closeNotificationsOnClickOutside);
-    }
-}
-
-function markAllAsRead() {
-    document.querySelectorAll('.notif-dot').forEach(function(dot) {
-        dot.classList.add('hidden');
-    });
-    var badge = document.getElementById('notifBadge');
-    if (badge) badge.classList.add('hidden');
-    if (typeof showToast === 'function') showToast('All notifications marked as read', 'success');
-}
-</script>

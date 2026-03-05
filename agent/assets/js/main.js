@@ -459,3 +459,96 @@ window.openModal = function openModal(modalId, data) {
         }).catch(() => {});
     }
 };
+
+
+// ==================== NOTIFICATIONS (DEMO) ====================
+// Defined here (not in header partial) because innerHTML won't execute <script> tags.
+// Swap DEMO array for a real fetch when backend endpoint is ready.
+
+(function () {
+    var DEMO = [
+        { id: '1', icon: 'arrow-down-circle', bg: 'bg-green-100',  color: 'text-green-600',  title: 'Wallet funded — ₦10,000',   sub: 'Your wallet has been credited',      time: '5m ago',  unread: true  },
+        { id: '2', icon: 'wifi',              bg: 'bg-blue-100',   color: 'text-blue-600',   title: 'Data purchase successful',  sub: 'MTN 1GB — 08031234567',              time: '28m ago', unread: true  },
+        { id: '3', icon: 'phone',             bg: 'bg-purple-100', color: 'text-purple-600', title: 'Airtime sent — ₦500',       sub: 'Glo — 08121234567',                  time: '1h ago',  unread: true  },
+        { id: '4', icon: 'x-circle',          bg: 'bg-red-100',    color: 'text-red-600',    title: 'Transaction failed',        sub: 'Airtel airtime — please retry',      time: '2h ago',  unread: false },
+        { id: '5', icon: 'zap',               bg: 'bg-yellow-100', color: 'text-yellow-600', title: 'Electricity bill paid',     sub: 'AEDC prepaid — ₦2,000',             time: '3h ago',  unread: false },
+        { id: '6', icon: 'tv',                bg: 'bg-pink-100',   color: 'text-pink-600',   title: 'Cable TV subscription',     sub: 'GOtv Jolli — 0987654321',           time: '5h ago',  unread: false },
+        { id: '7', icon: 'trending-up',       bg: 'bg-indigo-100', color: 'text-indigo-600', title: 'Commission earned — ₦250', sub: 'From data sale to customer',         time: '1d ago',  unread: false },
+    ];
+
+    var _read = [];
+    try { _read = JSON.parse(localStorage.getItem('agent_notif_read') || '[]'); } catch(e) {}
+    function _save() { try { localStorage.setItem('agent_notif_read', JSON.stringify(_read)); } catch(e) {} }
+    function _unreadCount() { return DEMO.filter(function(n){ return _read.indexOf(n.id) === -1; }).length; }
+
+    function _updateBadge() {
+        var badge = document.getElementById('agentNotifBadge');
+        if (!badge) return;
+        var c = _unreadCount();
+        badge.textContent = c > 9 ? '9+' : c;
+        badge.style.display = c > 0 ? 'flex' : 'none';
+    }
+
+    function _render() {
+        var list = document.getElementById('agentNotifList');
+        if (!list) return;
+        list.innerHTML = DEMO.map(function(n) {
+            var isRead = _read.indexOf(n.id) !== -1;
+            return '<div onclick="agentMarkOneRead(\'' + n.id + '\')" ' +
+                'style="display:flex;align-items:flex-start;gap:12px;padding:12px 16px;cursor:pointer;background:' + (isRead ? 'transparent' : '#eff6ff') + '" ' +
+                'onmouseover="this.style.background=\'' + (isRead ? '#f8fafc' : '#dbeafe') + '\'" onmouseout="this.style.background=\'' + (isRead ? 'transparent' : '#eff6ff') + '\'">' +
+                '<div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px" class="' + n.bg + '">' +
+                    '<i data-lucide="' + n.icon + '" style="width:16px;height:16px" class="' + n.color + '"></i>' +
+                '</div>' +
+                '<div style="flex:1;min-width:0">' +
+                    '<p style="font-size:13px;font-weight:600;color:#1e293b;margin:0 0 2px">' + n.title + '</p>' +
+                    '<p style="font-size:11px;color:#64748b;margin:0 0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + n.sub + '</p>' +
+                    '<p style="font-size:11px;color:#94a3b8;margin:0">' + n.time + '</p>' +
+                '</div>' +
+                (!isRead ? '<span style="width:8px;height:8px;background:#3b82f6;border-radius:50%;flex-shrink:0;margin-top:6px"></span>' : '') +
+            '</div>';
+        }).join('');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        _updateBadge();
+    }
+
+    window.agentToggleNotifications = function () {
+        var dd = document.getElementById('agentNotifDropdown');
+        if (!dd) return;
+        var opening = dd.style.display === 'none' || dd.style.display === '' || dd.classList.contains('hidden');
+        if (opening) {
+            dd.style.display = 'block';
+            dd.classList.remove('hidden');
+            _render();
+            setTimeout(function () { document.addEventListener('click', _outside); }, 50);
+        } else {
+            dd.style.display = 'none';
+            document.removeEventListener('click', _outside);
+        }
+    };
+
+    function _outside(e) {
+        var dd  = document.getElementById('agentNotifDropdown');
+        var btn = document.getElementById('agentNotifBtn');
+        if (dd && btn && !dd.contains(e.target) && !btn.contains(e.target)) {
+            dd.style.display = 'none';
+            document.removeEventListener('click', _outside);
+        }
+    }
+
+    window.agentMarkAllRead = function () {
+        DEMO.forEach(function(n) { if (_read.indexOf(n.id) === -1) _read.push(n.id); });
+        _save(); _render();
+        if (typeof showToast === 'function') showToast('All notifications marked as read', 'success');
+    };
+
+    window.agentMarkOneRead = function (id) {
+        if (_read.indexOf(id) === -1) _read.push(id);
+        _save(); _render();
+    };
+
+    // Re-run badge update after header partial is injected
+    document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(_updateBadge, 800);
+    });
+})();

@@ -281,22 +281,17 @@
                 if (result.success) {
                     // Show success message
                     UI.showToast('Login successful! Redirecting...', 'success');
+                    
+                    // Check backend pin field from login response
+                    const loginResp = result.data || {};
+                    const user = loginResp.user || loginResp.agent || {};
+                    const userId = user._id || user.id || '';
+                    const pinFromBackend = result.pin ?? loginResp.user?.pin ?? loginResp.pin;
+                    const pinSetLocally = localStorage.getItem('agent_pin_set_' + userId) === 'true';
+                    const hasPinSet = (pinFromBackend === true) || (pinFromBackend === undefined && pinSetLocally);
 
-                    // Check if agent has already set their PIN
                     setTimeout(() => {
-                        try {
-                            const agent = JSON.parse(localStorage.getItem('agentData') || '{}');
-                            const uid = agent._id || agent.id || '';
-                            const pinSet = uid ? localStorage.getItem('agent_pin_set_' + uid) : null;
-                            if (!pinSet) {
-                                window.location.href = 'set-pin.html';
-                            } else {
-                                window.location.href = 'dashboard.html';
-                            }
-                        } catch(e) {
-                            window.location.href = 'dashboard.html';
-                        }
-                    }, 1500);
+                        window.location.href = hasPinSet ? 'dashboard.html' : 'set-pin.html';
                     }, 1500);
                 } else {
                     // Show specific error message from backend

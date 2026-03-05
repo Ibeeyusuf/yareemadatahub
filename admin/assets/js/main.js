@@ -1,4 +1,3 @@
-
 // Helper to extract data from response (handles different structures)
 function extractData(response) {
     // If response has data property, use it
@@ -60,6 +59,18 @@ async function loadPartials() {
             }
         }
     }
+
+    // Populate admin name/avatar after sidebar loads
+    try {
+        var adminUser = JSON.parse(localStorage.getItem('admin_user') || 'null');
+        if (adminUser) {
+            var name = adminUser.firstName || adminUser.name || adminUser.email || 'Admin';
+            var nameEl = document.getElementById('sidebarAdminName');
+            var avatarEl = document.getElementById('sidebarAdminAvatar');
+            if (nameEl) nameEl.textContent = name;
+            if (avatarEl) avatarEl.textContent = name.charAt(0).toUpperCase();
+        }
+    } catch(e) {}
 }
 
 // Sidebar Toggle
@@ -822,3 +833,107 @@ if (document.readyState === 'loading') {
 } else {
     initializePage();
 }
+
+
+// ==================== NOTIFICATIONS (DEMO) ====================
+// Move here from header.html because innerHTML does NOT execute <script> tags.
+// Swap DEMO array for a real fetch when the backend endpoint is ready.
+
+(function () {
+    var DEMO = [
+        { id: '1', icon: 'users',             bg: 'bg-blue-100',   color: 'text-blue-600',   title: 'New user registered',       sub: 'Amina Bello just signed up',         time: '2m ago',  unread: true  },
+        { id: '2', icon: 'arrow-down-circle', bg: 'bg-green-100',  color: 'text-green-600',  title: 'Wallet funded — ₦5,000',    sub: 'User: john.doe@gmail.com',           time: '14m ago', unread: true  },
+        { id: '3', icon: 'wifi',              bg: 'bg-purple-100', color: 'text-purple-600', title: 'Data purchase successful',  sub: 'MTN 2GB — 08031234567',              time: '32m ago', unread: true  },
+        { id: '4', icon: 'x-circle',          bg: 'bg-red-100',    color: 'text-red-600',    title: 'Transaction failed',        sub: 'Airtel airtime ₦500 — 08121234567', time: '1h ago',  unread: false },
+        { id: '5', icon: 'zap',               bg: 'bg-yellow-100', color: 'text-yellow-600', title: 'Electricity bill paid',     sub: 'AEDC prepaid — ₦3,000',             time: '2h ago',  unread: false },
+        { id: '6', icon: 'tv',                bg: 'bg-pink-100',   color: 'text-pink-600',   title: 'Cable TV subscription',     sub: 'DSTV Compact — 1234567890',         time: '3h ago',  unread: false },
+        { id: '7', icon: 'shield-alert',      bg: 'bg-orange-100', color: 'text-orange-600', title: 'Admin login detected',      sub: 'New device — Lagos, NG',            time: '5h ago',  unread: false },
+    ];
+
+    var _read = [];
+    try { _read = JSON.parse(localStorage.getItem('admin_notif_read') || '[]'); } catch(e) {}
+    function _save() { try { localStorage.setItem('admin_notif_read', JSON.stringify(_read)); } catch(e) {} }
+    function _unreadCount() { return DEMO.filter(function(n){ return _read.indexOf(n.id) === -1; }).length; }
+
+    function _updateBadge() {
+        var badge = document.getElementById('adminNotifBadge');
+        if (!badge) return;
+        var c = _unreadCount();
+        badge.textContent = c > 9 ? '9+' : c;
+        badge.style.display = c > 0 ? 'flex' : 'none';
+    }
+
+    function _render() {
+        var list = document.getElementById('adminNotifList');
+        if (!list) return;
+        list.innerHTML = DEMO.map(function(n) {
+            var isRead = _read.indexOf(n.id) !== -1;
+            return '<div onclick="adminMarkOneRead(\'' + n.id + '\')" ' +
+                'style="display:flex;align-items:flex-start;gap:12px;padding:12px 16px;cursor:pointer;background:' + (isRead ? 'transparent' : '#eff6ff') + '" ' +
+                'onmouseover="this.style.background=\'' + (isRead ? '#f8fafc' : '#dbeafe') + '\'" onmouseout="this.style.background=\'' + (isRead ? 'transparent' : '#eff6ff') + '\'">' +
+                '<div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px" class="' + n.bg + '">' +
+                    '<i data-lucide="' + n.icon + '" style="width:16px;height:16px" class="' + n.color + '"></i>' +
+                '</div>' +
+                '<div style="flex:1;min-width:0">' +
+                    '<p style="font-size:13px;font-weight:600;color:#1e293b;margin:0 0 2px">' + n.title + '</p>' +
+                    '<p style="font-size:11px;color:#64748b;margin:0 0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + n.sub + '</p>' +
+                    '<p style="font-size:11px;color:#94a3b8;margin:0">' + n.time + '</p>' +
+                '</div>' +
+                (!isRead ? '<span style="width:8px;height:8px;background:#3b82f6;border-radius:50%;flex-shrink:0;margin-top:6px"></span>' : '') +
+            '</div>';
+        }).join('');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        _updateBadge();
+    }
+
+    window.adminToggleNotifications = function () {
+        var dd = document.getElementById('adminNotifDropdown');
+        if (!dd) return;
+        var opening = dd.style.display === 'none' || dd.style.display === '' || dd.classList.contains('hidden');
+        if (opening) {
+            dd.style.display = 'block';
+            dd.classList.remove('hidden');
+            _render();
+            setTimeout(function () { document.addEventListener('click', _outside); }, 50);
+        } else {
+            dd.style.display = 'none';
+            document.removeEventListener('click', _outside);
+        }
+    };
+
+    function _outside(e) {
+        var dd  = document.getElementById('adminNotifDropdown');
+        var btn = document.getElementById('adminNotifBtn');
+        if (dd && btn && !dd.contains(e.target) && !btn.contains(e.target)) {
+            dd.style.display = 'none';
+            document.removeEventListener('click', _outside);
+        }
+    }
+
+    window.adminMarkAllRead = function () {
+        DEMO.forEach(function(n) { if (_read.indexOf(n.id) === -1) _read.push(n.id); });
+        _save(); _render();
+        if (typeof showToast === 'function') showToast('All notifications marked as read', 'success');
+    };
+
+    window.adminMarkOneRead = function (id) {
+        if (_read.indexOf(id) === -1) _read.push(id);
+        _save(); _render();
+    };
+
+    // Re-run badge update after partials load (sidebar/header injected via fetch)
+    document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(_updateBadge, 800);
+    });
+})();
+
+
+// ==================== ADMIN LOGOUT ====================
+// Defined here (not in sidebar partial) because innerHTML won't execute <script> tags.
+window.adminLogout = function () {
+    ['admin_token', 'admin_refresh_token', 'admin_user'].forEach(function (key) {
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
+    });
+    window.location.href = 'login.html';
+};

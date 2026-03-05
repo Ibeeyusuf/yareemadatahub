@@ -46,7 +46,8 @@ const Auth = {
                 return {
                     success: true,
                     message: 'Login successful',
-                    data: response.data || response
+                    data: response.data || response,
+                    pin: response.data?.user?.pin ?? response.data?.pin ?? response.pin
                 };
             }
             
@@ -184,20 +185,10 @@ const Auth = {
     },
     
     init() {
-        const publicPages = ['index.html', 'register.html', 'forgot-password.html', 'set-pin.html'];
+        const publicPages = ['index.html', 'register.html', 'forgot-password.html'];
         const currentPage = window.location.pathname.split('/').pop() || 'index.html';
         
-        if (this.isLoggedIn() && (currentPage === 'index.html' || currentPage === 'register.html')) {
-            // Logged in but haven't set PIN yet — go to set-pin
-            try {
-                const agent = JSON.parse(localStorage.getItem('agentData') || '{}');
-                const uid = agent._id || agent.id || '';
-                const pinSet = uid ? localStorage.getItem('agent_pin_set_' + uid) : null;
-                if (!pinSet) {
-                    window.location.href = 'set-pin.html';
-                    return;
-                }
-            } catch(e) {}
+        if (this.isLoggedIn() && publicPages.includes(currentPage)) {
             window.location.href = 'dashboard.html';
             return;
         }
