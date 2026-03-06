@@ -802,10 +802,36 @@ async function submitRechargePIN() {
         
         closeModal();
         setTimeout(() => {
+            // Parse backend response: { TXN_EPIN: [{ pin, amount, mobilenetwork, sno, ... }] }
+            const data = response.data || response;
+            const epins = data.TXN_EPIN || data.pins || data.pin || null;
+            const pinList = epins ? (Array.isArray(epins) ? epins : [epins]) : [];
+
+            let pinsHTML = '';
+            if (pinList.length > 0) {
+                pinsHTML = `
+                    <div style="margin-top:16px;text-align:left;">
+                        <p style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:10px;">Your PIN Code${pinList.length > 1 ? 's' : ''}</p>
+                        ${pinList.map(p => {
+                            const code = p.pin || p.code || p;
+                            const serial = p.sno ? `<span style="font-size:10px;color:#94a3b8;">S/N: ${p.sno}</span>` : '';
+                            return `<div style="background:#f0fdf4;border:2px solid #86efac;border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+                                <div style="display:flex;align-items:center;justify-content:space-between;">
+                                    <span style="font-size:17px;font-weight:800;color:#16a34a;letter-spacing:2px;">${code}</span>
+                                    <button onclick="navigator.clipboard.writeText('${code}').then(()=>this.textContent='Copied ✓')" style="font-size:11px;color:#16a34a;font-weight:600;background:none;border:1px solid #86efac;border-radius:6px;padding:3px 8px;cursor:pointer;">Copy</button>
+                                </div>
+                                ${serial}
+                            </div>`;
+                        }).join('')}
+                        <p style="font-size:11px;color:#64748b;margin-top:6px;text-align:center;">📱 Dial *555*PIN# to recharge your line</p>
+                    </div>`;
+            }
+
             showSuccess(`
                 <div style="text-align: center;">
-                    <p style="font-size: 16px; margin-bottom: 8px;">PIN Purchase Successful! 🔐</p>
-                    <p style="font-size: 14px; color: #64748b;">${quantity} x ₦${pinType} ${network.toUpperCase()} PIN(s) purchased</p>
+                    <p style="font-size: 16px; margin-bottom: 4px; font-weight:700;">PIN Purchase Successful! 🔐</p>
+                    <p style="font-size: 14px; color: #64748b;">${quantity} x ₦${pinType} ${network.toUpperCase()} PIN(s)</p>
+                    ${pinsHTML}
                 </div>
             `);
         }, 300);

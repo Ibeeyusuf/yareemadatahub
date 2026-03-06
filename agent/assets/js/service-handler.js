@@ -127,6 +127,13 @@ const ServiceHandler = {
                 name: 'Bulk SMS',
                 providers: [],
                 commissionRate: 0
+            },
+            'airtimepin': {
+                type: 'airtimepin',
+                name: 'Airtime PIN',
+                providers: ['MTN', 'Airtel', 'Glo', '9mobile'],
+                denominations: [100, 200, 500, 1000],
+                commissionRate: 4
             }
         };
         
@@ -172,6 +179,8 @@ const ServiceHandler = {
             html += this.generateEducationFields(service);
         } else if (service.type === 'sms') {
             html += this.generateSMSFields(service);
+        } else if (service.type === 'airtimepin') {
+            html += this.generateAirtimePINFields(service);
         } else {
             html += this.generateGenericFields(service);
         }
@@ -325,7 +334,46 @@ const ServiceHandler = {
         `;
     },
     
-    // Generate generic fields
+
+    // Generate Airtime PIN fields
+    generateAirtimePINFields(service) {
+        const providers = service.providers || ['MTN', 'Airtel', 'Glo', '9mobile'];
+        const denominations = service.denominations || [100, 200, 500, 1000];
+
+        return `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">Select Network</label>
+                    <select id="provider" required class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full">
+                        <option value="">Choose network...</option>
+                        ${providers.map(p => `<option value="${p.toLowerCase()}">${p}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">Denomination (₦)</label>
+                    <select id="denomination" required class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full">
+                        <option value="">Choose amount...</option>
+                        ${denominations.map(d => `<option value="${d}">₦${d.toLocaleString()}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">Quantity</label>
+                    <input type="number" id="quantity" placeholder="1" min="1" max="50" value="1" required class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full">
+                </div>
+                <div id="total-cost-preview" class="hidden flex items-center justify-center bg-fuchsia-50 border-2 border-fuchsia-200 rounded-xl p-4">
+                    <div class="text-center">
+                        <p class="text-xs text-slate-500 font-semibold uppercase mb-1">Total Cost</p>
+                        <p class="text-2xl font-bold text-fuchsia-700" id="total-cost-value">₦0</p>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-1 p-4 bg-fuchsia-50 border border-fuchsia-200 rounded-xl">
+                <p class="text-xs text-fuchsia-700 font-medium">📱 PINs will be displayed after purchase. Customer loads them via USSD (e.g. *555*PIN#)</p>
+            </div>
+        `;
+    },
+
+        // Generate generic fields
     generateGenericFields(service) {
         return `
             <div class="grid grid-cols-1 gap-6">
@@ -360,6 +408,22 @@ const ServiceHandler = {
         if (amountEl) {
             amountEl.addEventListener('input', () => this.showCommissionPreview());
         }
+
+        // Airtime PIN total cost preview
+        const denomEl = document.getElementById('denomination');
+        const qtyEl = document.getElementById('quantity');
+        const updateAirtimePINTotal = () => {
+            const denom = parseFloat(denomEl?.value || 0);
+            const qty = parseInt(qtyEl?.value || 0);
+            const preview = document.getElementById('total-cost-preview');
+            const valueEl = document.getElementById('total-cost-value');
+            if (denom && qty && preview && valueEl) {
+                valueEl.textContent = '₦' + (denom * qty).toLocaleString();
+                preview.classList.remove('hidden');
+            }
+        };
+        if (denomEl) denomEl.addEventListener('change', updateAirtimePINTotal);
+        if (qtyEl) qtyEl.addEventListener('input', updateAirtimePINTotal);
     },
     
     // Handle provider change
@@ -517,6 +581,8 @@ const ServiceHandler = {
             } else if (service.type === 'electricity' || service.type === 'cable' || service.type === 'education') {
                 // Bill payments
                 result = await AgentServices.payBill(formData);
+            } else if (service.type === 'airtimepin') {
+                result = await AgentServices.purchaseAirtimePin(formData);
             } else {
                 result = await AgentServices.payBill(formData);
             }
@@ -578,11 +644,23 @@ const ServiceHandler = {
                     <button onclick="navigator.clipboard.writeText('${details.token}').then(()=>UI.showToast('Token copied!','success'))" class="mt-2 text-xs text-amber-600 hover:text-amber-800 underline">Copy Token</button>
                 </div>`;
             }
-            if (details.pin) {
-                detailsHTML += `<div class="mt-4 p-4 bg-blue-50 border-2 border-blue-300 rounded-xl text-center">
-                    <p class="text-xs text-slate-500 mb-1 font-semibold uppercase tracking-wide">PIN</p>
-                    <p class="text-2xl font-bold text-blue-700 tracking-widest" id="txn-pin">${details.pin}</p>
-                    <button onclick="navigator.clipboard.writeText('${details.pin}').then(()=>UI.showToast('PIN copied!','success'))" class="mt-2 text-xs text-blue-600 hover:text-blue-800 underline">Copy PIN</button>
+            // Parse backend response: { TXN_EPIN: [{ pin, amount, mobilenetwork, sno, ... }] }
+            const epins = details.TXN_EPIN || details.pins || (details.pin ? (Array.isArray(details.pin) ? details.pin : [details.pin]) : null);
+            if (epins && epins.length > 0) {
+                detailsHTML += `<div class="mt-4">
+                    <p class="text-xs text-slate-500 mb-2 font-semibold uppercase tracking-wide text-center">PIN Code${epins.length > 1 ? 's' : ''}</p>
+                    ${epins.map(p => {
+                        const code = p.pin || p.code || p;
+                        const serial = p.sno ? `<p class="text-xs text-slate-400 mt-1">S/N: ${p.sno}</p>` : '';
+                        return `<div class="p-3 bg-blue-50 border-2 border-blue-300 rounded-xl mb-2">
+                            <div class="flex items-center justify-between">
+                                <span class="text-lg font-bold text-blue-700 tracking-widest">${code}</span>
+                                <button onclick="navigator.clipboard.writeText('${code}').then(()=>UI.showToast('Copied!','success'))" class="text-xs text-blue-600 border border-blue-300 rounded px-2 py-1 hover:bg-blue-100">Copy</button>
+                            </div>
+                            ${serial}
+                        </div>`;
+                    }).join('')}
+                    <p class="text-xs text-slate-500 text-center mt-2">📱 Dial *555*PIN# to recharge</p>
                 </div>`;
             }
             if (details.units) {
@@ -667,6 +745,14 @@ const ServiceHandler = {
         
         const amount = document.getElementById('amount')?.value;
         if (amount) data.amount = parseFloat(amount);
+
+        // Transaction PIN — always required
+        const txPin = document.getElementById('transactionPin')?.value;
+        if (!txPin || txPin.length !== 4 || !/^\d{4}$/.test(txPin)) {
+            UI.showToast('Please enter your 4-digit transaction PIN', 'error');
+            return null;
+        }
+        data.transactionPin = txPin;
         
         // Service-specific fields based on type
         if (service.type === 'data') {
@@ -736,6 +822,11 @@ const ServiceHandler = {
             data.serviceType = 'sms';
             data.phoneNumbers = document.getElementById('phoneNumbers')?.value;
             data.message = document.getElementById('message')?.value;
+        } else if (service.type === 'airtimepin') {
+            data.network = provider;
+            data.denomination = document.getElementById('denomination')?.value;
+            data.quantity = parseInt(document.getElementById('quantity')?.value || 1);
+            data.amount = parseFloat(data.denomination) * data.quantity;
         }
         
         console.log('[ServiceHandler] Collected data:', data);

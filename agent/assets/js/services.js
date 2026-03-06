@@ -1,4 +1,3 @@
-
 // Agent Services API
 const AgentServices = {
     
@@ -325,6 +324,33 @@ const AgentServices = {
             data: plans,
             fallback: true
         };
+    },
+
+    // Purchase Airtime PIN (ePIN / Recharge Card)
+    async purchaseAirtimePin(formData) {
+        try {
+            const response = await API.post('/api/v1/telecom/recharge-pin/purchase', {
+                network: formData.network,
+                pinType: formData.denomination,
+                quantity: formData.quantity,
+                transactionPin: formData.transactionPin
+            });
+
+            if (response.success || response.status === 'success') {
+                // Flatten TXN_EPIN to top-level data so showSuccessMessage can find it
+                const respData = response.data || {};
+                return {
+                    success: true,
+                    message: response.message || `${formData.quantity} x ₦${formData.denomination} ${(formData.network || '').toUpperCase()} PIN(s) purchased`,
+                    data: respData.TXN_EPIN ? respData : { TXN_EPIN: respData.TXN_EPIN || [], ...respData }
+                };
+            }
+
+            throw new Error(response.message || 'Purchase failed');
+        } catch (error) {
+            console.error('[AirtimePin] Purchase error:', error);
+            return { success: false, message: error.message };
+        }
     }
 };
 
