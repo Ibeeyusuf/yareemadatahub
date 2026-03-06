@@ -208,7 +208,7 @@
                 const userId = userData._id || userData.id || '';
                 if (userId) {
                     localStorage.removeItem('wallet_accounts_' + userId);
-                    // NOTE: intentionally keep pin_set_<userId> so re-login works correctly
+                    localStorage.removeItem('pin_set_' + userId);
                 }
             } catch(e) {}
             localStorage.removeItem('user_token');
@@ -269,21 +269,28 @@
                     if (!hideBalance) {
                         document.getElementById('walletBalance').textContent = `₦${actualBalance.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
                     }
-                    // Show primary account number on dashboard if it exists
-                    const primary = walletData.primaryAccount;
-                    // Also check localStorage for saved accounts
-                    let savedAccounts = null;
-                    try { savedAccounts = JSON.parse(localStorage.getItem('wallet_accounts') || 'null'); } catch(e) {}
+                    // Normalize: backend returns either accounts[] or virtualAccount{}
+                    let accounts = [];
+                    if (walletData.accounts?.length > 0) {
+                        accounts = walletData.accounts;
+                    } else if (walletData.virtualAccount?.accountNumber) {
+                        accounts = [{ ...walletData.virtualAccount, isDefault: true }];
+                    }
 
-                    if (primary?.accountNumber) {
-                        document.getElementById('walletAccount').textContent = `Account: ${primary.accountNumber}`;
-                        // Save to localStorage if not already there
-                        if (!savedAccounts && walletData.accounts?.length) {
-                            try { localStorage.setItem('wallet_accounts', JSON.stringify(walletData.accounts)); } catch(e) {}
-                        }
-                    } else if (savedAccounts?.length) {
+                    // Save to localStorage for offline use
+                    if (accounts.length > 0) {
+                        try { localStorage.setItem('wallet_accounts', JSON.stringify(accounts)); } catch(e) {}
+                    }
+
+                    // Also check localStorage cache
+                    let savedAccounts = accounts;
+                    if (!savedAccounts.length) {
+                        try { savedAccounts = JSON.parse(localStorage.getItem('wallet_accounts') || '[]'); } catch(e) {}
+                    }
+
+                    if (savedAccounts.length > 0) {
                         const def = savedAccounts.find(a => a.isDefault) || savedAccounts[0];
-                        document.getElementById('walletAccount').textContent = `Account: ${def.accountNumber} · ${def.bankName}`;
+                        document.getElementById('walletAccount').textContent = `${def.bankName} · ${def.accountNumber}`;
                     } else {
                         document.getElementById('walletAccount').textContent = 'Tap "Fund Wallet" to set up bank transfer';
                     }

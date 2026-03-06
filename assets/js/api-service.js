@@ -98,6 +98,7 @@ class YareemaUserAPI {
                 token,
                 user,
                 pin: user?.pin,
+                wallet: response.data?.wallet ?? null,
                 message: response.message || 'Login successful'
             };
         } catch (error) {
