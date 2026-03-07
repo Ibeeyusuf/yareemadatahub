@@ -1202,32 +1202,28 @@ async function _initFundModal() {
         const response = await api.getWalletBalance();
         const wallet = response.data?.wallet || response.data || {};
 
-        // Normalize: backend returns either wallet.accounts[] or wallet.virtualAccount{}
+        // Backend returns wallet.virtualAccount{} OR wallet.accounts[]
         let accounts = [];
-        if (wallet.accounts && wallet.accounts.length > 0) {
+        if (wallet.accounts?.length > 0) {
             accounts = wallet.accounts;
-        } else if (wallet.virtualAccount && wallet.virtualAccount.accountNumber) {
-            // Single virtual account — wrap in array for uniform rendering
-            accounts = [{ 
-                ...wallet.virtualAccount, 
-                isDefault: true 
-            }];
+        } else if (wallet.virtualAccount?.accountNumber) {
+            accounts = [{ ...wallet.virtualAccount, isDefault: true }];
         }
 
         if (accounts.length > 0) {
             _saveWalletAccounts(accounts);
             _renderFundAccounts(accounts);
         } else {
-            // Wallet exists but accounts not ready yet — try creating
+            // No accounts yet — try wallet create
             _fundStep('fundLoadingStep');
             document.getElementById('fundLoadingText').textContent = 'Setting up your accounts...';
             try {
                 const createResp = await api.createWalletAccount({});
                 const w = createResp.data?.wallet || createResp.data || {};
                 let accs = [];
-                if (w.accounts && w.accounts.length > 0) {
+                if (w.accounts?.length > 0) {
                     accs = w.accounts;
-                } else if (w.virtualAccount && w.virtualAccount.accountNumber) {
+                } else if (w.virtualAccount?.accountNumber) {
                     accs = [{ ...w.virtualAccount, isDefault: true }];
                 }
                 if (accs.length > 0) {

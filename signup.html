@@ -326,6 +326,7 @@
                                 <i data-lucide="eye" class="w-5 h-5"></i>
                             </button>
                         </div>
+                        <p class="text-xs text-slate-500 mt-1">Minimum 8 characters</p>
                         <div id="password-error" class="error-message"></div>
                     </div>
 
@@ -539,8 +540,8 @@
             if (!passwordValue) {
                 showError('password-error', 'Please create a password');
                 hasError = true;
-            } else if (passwordValue.length < 6) {
-                showError('password-error', 'Password must be at least 6 characters');
+            } else if (passwordValue.length < 8) {
+                showError('password-error', 'Password must be at least 8 characters');
                 hasError = true;
             }
             

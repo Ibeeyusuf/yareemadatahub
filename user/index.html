@@ -269,30 +269,33 @@
                     if (!hideBalance) {
                         document.getElementById('walletBalance').textContent = `₦${actualBalance.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
                     }
-                    // Normalize: backend returns either accounts[] or virtualAccount{}
-                    let accounts = [];
-                    if (walletData.accounts?.length > 0) {
-                        accounts = walletData.accounts;
-                    } else if (walletData.virtualAccount?.accountNumber) {
-                        accounts = [{ ...walletData.virtualAccount, isDefault: true }];
+                    // Backend returns wallet.virtualAccount{} — normalize to array
+                    const va = walletData.virtualAccount;
+                    const accs = walletData.accounts?.length
+                        ? walletData.accounts
+                        : (va?.accountNumber ? [va] : []);
+
+                    // Cache so Fund modal can use it instantly
+                    if (accs.length > 0) {
+                        try { localStorage.setItem('wallet_accounts', JSON.stringify(accs)); } catch(e) {}
                     }
 
-                    // Save to localStorage for offline use
-                    if (accounts.length > 0) {
-                        try { localStorage.setItem('wallet_accounts', JSON.stringify(accounts)); } catch(e) {}
-                    }
-
-                    // Also check localStorage cache
-                    let savedAccounts = accounts;
-                    if (!savedAccounts.length) {
-                        try { savedAccounts = JSON.parse(localStorage.getItem('wallet_accounts') || '[]'); } catch(e) {}
-                    }
-
-                    if (savedAccounts.length > 0) {
-                        const def = savedAccounts.find(a => a.isDefault) || savedAccounts[0];
-                        document.getElementById('walletAccount').textContent = `${def.bankName} · ${def.accountNumber}`;
+                    const acctEl = document.getElementById('walletAccount');
+                    if (accs.length > 0) {
+                        const acc = accs[0];
+                        acctEl.style.cursor = 'pointer';
+                        acctEl.title = 'Tap to copy account number';
+                        acctEl.innerHTML = `${acc.bankName} &middot; <b>${acc.accountNumber}</b> &#x274F;`;
+                        acctEl.onclick = function() {
+                            navigator.clipboard.writeText(acc.accountNumber).then(function() {
+                                acctEl.innerHTML = '&#10003; Copied!';
+                                setTimeout(function() {
+                                    acctEl.innerHTML = acc.bankName + ' &middot; <b>' + acc.accountNumber + '</b> &#x274F;';
+                                }, 2000);
+                            });
+                        };
                     } else {
-                        document.getElementById('walletAccount').textContent = 'Tap "Fund Wallet" to set up bank transfer';
+                        acctEl.textContent = 'Tap "Fund Wallet" to set up bank transfer';
                     }
                 } catch(e) {
                     document.getElementById('walletBalance').textContent = '₦0.00';
