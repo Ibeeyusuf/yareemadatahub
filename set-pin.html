@@ -138,6 +138,16 @@
             body: JSON.stringify(body)
         });
         var data = await res.json();
+        if (res.status === 401 || res.status === 403) {
+            // Stale/invalid token — clear everything and go to login
+            localStorage.removeItem('user_token');
+            localStorage.removeItem('user_data');
+            localStorage.removeItem('wallet_accounts');
+            sessionStorage.removeItem('user_token');
+            sessionStorage.removeItem('user_data');
+            window.location.href = 'login.html';
+            return;
+        }
         if (!res.ok) throw new Error(data.message || data.error || 'Request failed');
         return data;
     }
@@ -209,13 +219,11 @@
         try {
             await callAPI('/api/v1/auth/set-transaction-pin', { transactionPin: p1, confirmPin: p2 });
 
-            // Save pin flag and update user_data.pin so re-login check works
+            // Save pin flag
             try {
                 var u = JSON.parse(localStorage.getItem('user_data') || '{}');
                 var uid = u._id || u.id || '';
                 if (uid) localStorage.setItem('pin_set_' + uid, 'true');
-                u.pin = true;
-                localStorage.setItem('user_data', JSON.stringify(u));
             } catch(e){}
 
             // Create wallet

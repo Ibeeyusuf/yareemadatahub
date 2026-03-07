@@ -229,21 +229,10 @@
         // Initialize Lucide icons
         lucide.createIcons();
 
-        // Redirect if already authenticated
-        // If already logged in, check pin from stored user data
+        // Only redirect if token is present — but don't redirect to set-pin
+        // (stale tokens from a wiped DB would trap users; let login handle routing)
         if (AuthGuard.isAuthenticated()) {
-            const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
-            const userId = userData._id || userData.id || '';
-            const pinFromStored = userData.pin;
-            const pinSetLocally = userId ? localStorage.getItem('pin_set_' + userId) === 'true' : false;
-            const hasPinSet = (pinFromStored === true) || pinSetLocally;
-            // Note: on new device, if backend returns pin:true we're fine; if not, user must login fresh
-
-            if (!hasPinSet) {
-                window.location.href = 'set-pin.html';
-            } else {
-                window.location.href = 'user/index.html';
-            }
+            window.location.href = 'user/index.html';
         }
 
         // Password visibility toggle
@@ -309,15 +298,12 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
             const savedToken = localStorage.getItem('user_token') || sessionStorage.getItem('user_token');
             console.log('Token verification after login:', savedToken ? 'SAVED' : 'NOT SAVED');
             
-            // Check pin: trust backend pin field OR wallet existence OR local flag
+            // Check if wallet exists — null means first time, PIN not set yet
+            // Based on login response: data.wallet === null for new users
             const userId = response.user?._id || response.user?.id || '';
-            const pinFromBackend = response.pin;
-            const pinSetLocally = userId ? localStorage.getItem('pin_set_' + userId) === 'true' : false;
-            // If wallet exists in login response, user has already completed set-pin
-            const walletExists = !!(response.wallet?.virtualAccount?.accountNumber || response.wallet?.accounts?.length);
-            const hasPinSet = (pinFromBackend === true) || walletExists || pinSetLocally;
-            // Save pin status to localStorage so already-auth check works on this device too
-            if (hasPinSet && userId) localStorage.setItem('pin_set_' + userId, 'true');
+            const walletExists = response.wallet !== null && response.wallet !== undefined;
+            const pinSetLocally = localStorage.getItem('pin_set_' + userId) === 'true';
+            const hasPinSet = walletExists || pinSetLocally;
 
             if (!hasPinSet) {
                 // First time — must set PIN (also creates wallet)
