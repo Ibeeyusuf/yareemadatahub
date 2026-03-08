@@ -229,11 +229,8 @@
         // Initialize Lucide icons
         lucide.createIcons();
 
-        // Only redirect if token is present — but don't redirect to set-pin
-        // (stale tokens from a wiped DB would trap users; let login handle routing)
-        if (AuthGuard.isAuthenticated()) {
-            window.location.href = 'user/index.html';
-        }
+        // No auto-redirect from login page — always show the login form.
+        // Routing (dashboard vs set-pin) is decided AFTER a fresh login using the backend response.
 
         // Password visibility toggle
         const toggleLoginPassword = document.getElementById('toggle-login-password');
@@ -298,12 +295,12 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
             const savedToken = localStorage.getItem('user_token') || sessionStorage.getItem('user_token');
             console.log('Token verification after login:', savedToken ? 'SAVED' : 'NOT SAVED');
             
-            // Check if wallet exists — null means first time, PIN not set yet
-            // Based on login response: data.wallet === null for new users
+            // Backend pin field is the ONLY source of truth — true = has pin, anything else = set-pin
             const userId = response.user?._id || response.user?.id || '';
-            const walletExists = response.wallet !== null && response.wallet !== undefined;
-            const pinSetLocally = localStorage.getItem('pin_set_' + userId) === 'true';
-            const hasPinSet = walletExists || pinSetLocally;
+            const pinFromBackend = response.pin;
+            const hasPinSet = (pinFromBackend === true);
+            // Save locally so dashboard auth check works on this device
+            if (hasPinSet && userId) localStorage.setItem('pin_set_' + userId, 'true');
 
             if (!hasPinSet) {
                 // First time — must set PIN (also creates wallet)
