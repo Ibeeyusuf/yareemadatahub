@@ -281,12 +281,15 @@
                 if (result.success) {
                     UI.showToast('Login successful! Redirecting...', 'success');
 
-                    // Check pin: trust backend OR persistent local flag — whichever says true
-                    const _agentData = JSON.parse(localStorage.getItem('agentData') || '{}');
-                    const _uid = _agentData._id || _agentData.id || '';
-                    const _pinBackend = _agentData.pin;
-                    const _pinLocal = _uid ? localStorage.getItem('agent_pin_set_' + _uid) === 'true' : false;
-                    const _hasPinSet = (_pinBackend === true) || _pinLocal;
+                    // Backend pin field is the ONLY source of truth
+                    const _hasPinSet = (result.pin === true);
+
+                    // Save locally so this device remembers
+                    if (_hasPinSet) {
+                        const _agentData = JSON.parse(localStorage.getItem('agentData') || '{}');
+                        const _uid = _agentData._id || _agentData.id || '';
+                        if (_uid) localStorage.setItem('agent_pin_set_' + _uid, 'true');
+                    }
 
                     setTimeout(() => {
                         window.location.href = _hasPinSet ? 'dashboard.html' : 'set-pin.html';

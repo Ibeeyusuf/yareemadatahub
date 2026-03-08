@@ -23,8 +23,6 @@
         .icon-wrap { width: 60px; height: 60px; border-radius: 14px; background: linear-gradient(135deg, #eff6ff, #dbeafe); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
         h2 { font-size: 21px; font-weight: 800; color: #0f172a; text-align: center; margin-bottom: 6px; }
         .subtitle { font-size: 13px; color: #64748b; text-align: center; margin-bottom: 20px; line-height: 1.5; }
-        .info-box { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 10px; padding: 11px 13px; display: flex; gap: 9px; align-items: flex-start; margin-bottom: 20px; }
-        .info-box p { font-size: 12px; color: #0369a1; line-height: 1.5; }
         .pin-label { font-size: 13px; font-weight: 600; color: #0f172a; text-align: center; margin-bottom: 10px; }
         .pin-row { display: flex; justify-content: center; gap: 10px; margin-bottom: 6px; }
         .pin-box { width: 54px; height: 58px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 22px; font-weight: 700; text-align: center; color: #1e3d5c; background: #f8fafc; outline: none; transition: border-color 0.2s, background 0.2s; }
@@ -44,6 +42,11 @@
         .success-wrap { display: none; text-align: center; }
         .success-wrap.show { display: block; animation: fadeUp 0.4s ease-out; }
         .success-icon { width: 76px; height: 76px; background: linear-gradient(135deg, #dcfce7, #bbf7d0); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; box-shadow: 0 0 0 8px #f0fdf4; }
+        .acct-box { background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 14px 16px; margin-top: 12px; }
+        .acct-box p { font-size: 11px; color: #16a34a; font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .acct-number { font-size: 22px; font-weight: 800; color: #15803d; letter-spacing: 2px; }
+        .acct-bank { font-size: 12px; color: #16a34a; margin-top: 2px; }
+        .copy-btn { margin-top: 8px; background: #dcfce7; border: none; border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 700; color: #16a34a; cursor: pointer; }
         @media (max-width: 400px) { .card { padding: 28px 18px; } .pin-box { width: 46px; height: 52px; font-size: 18px; } }
     </style>
 </head>
@@ -114,29 +117,41 @@
         </div>
         <h2 style="color:#16a34a;">You're All Set! &#127881;</h2>
         <p class="subtitle">Your PIN is set and your wallet is ready.<br>Taking you to your dashboard...</p>
-        <div style="background:#f0fdf4;border-radius:10px;padding:13px;margin-top:8px;">
-            <p style="font-size:13px;color:#16a34a;font-weight:600;text-align:center;">&#10003; Wallet &amp; virtual accounts created</p>
+        <div id="acctDisplay" style="display:none;">
+            <div class="acct-box">
+                <p>Your Virtual Account</p>
+                <div class="acct-number" id="acctNum">—</div>
+                <div class="acct-bank" id="acctBank"></div>
+                <button class="copy-btn" onclick="copyAcct()">&#x274F; Copy Account Number</button>
+            </div>
+        </div>
+        <div style="background:#f0fdf4;border-radius:10px;padding:13px;margin-top:10px;">
+            <p style="font-size:13px;color:#16a34a;font-weight:600;text-align:center;">&#10003; Wallet &amp; virtual account created</p>
         </div>
     </div>
 </div>
 
 <script>
-    // Agent uses 'agentToken' — not 'user_token'
     var TOKEN = localStorage.getItem('agentToken') || sessionStorage.getItem('agentToken');
     if (!TOKEN) { window.location.href = 'index.html'; }
 
     var BASE_URL = 'https://vtu-api-d3q2.onrender.com';
+    var savedAcctNumber = null;
 
     async function callAPI(endpoint, body) {
         var res = await fetch(BASE_URL + endpoint, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + TOKEN
-            },
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
             body: JSON.stringify(body)
         });
         var data = await res.json();
+        if (res.status === 401 || res.status === 403) {
+            localStorage.removeItem('agentToken');
+            localStorage.removeItem('agentData');
+            localStorage.removeItem('agent_wallet_accounts');
+            window.location.href = 'index.html';
+            return;
+        }
         if (!res.ok) throw new Error(data.message || data.error || 'Request failed');
         return data;
     }
@@ -154,12 +169,9 @@
                     this.value = '';
                     this.classList.remove('filled');
                     if (i > 0) boxes[i-1].focus();
-                    updateBtn();
-                    return;
+                    updateBtn(); return;
                 }
-                if (e.key.length === 1 && !/[0-9]/.test(e.key)) {
-                    e.preventDefault();
-                }
+                if (e.key.length === 1 && !/[0-9]/.test(e.key)) e.preventDefault();
             });
             box.addEventListener('input', function() {
                 var v = this.value.replace(/[^0-9]/g, '');
@@ -179,15 +191,13 @@
 
     function updateBtn() {
         var btn = document.getElementById('submitBtn');
-        var ready = getPin(row1).length === 4 && getPin(row2).length === 4;
-        btn.classList.toggle('inactive', !ready);
+        btn.classList.toggle('inactive', getPin(row1).length !== 4 || getPin(row2).length !== 4);
     }
 
     function submitSetup() {
         var btn = document.getElementById('submitBtn');
         if (btn.classList.contains('inactive')) return;
-        var p1 = getPin(row1);
-        var p2 = getPin(row2);
+        var p1 = getPin(row1), p2 = getPin(row2);
         if (p1.length !== 4) { showErr(row1, 'err1', 'Please enter all 4 digits'); return; }
         if (p2.length !== 4) { showErr(row2, 'err2', 'Please enter all 4 digits'); return; }
         if (p1 !== p2) { showErr(row2, 'err2', 'PINs do not match — try again'); clearRow(row2); updateBtn(); return; }
@@ -199,7 +209,7 @@
         try {
             await callAPI('/api/v1/auth/set-transaction-pin', { transactionPin: p1, confirmPin: p2 });
 
-            // Save pin flag using agent-specific key
+            // Save pin flag
             try {
                 var agent = JSON.parse(localStorage.getItem('agentData') || '{}');
                 var uid = agent._id || agent.id || '';
@@ -208,14 +218,20 @@
                 localStorage.setItem('agentData', JSON.stringify(agent));
             } catch(e){}
 
-            // Create wallet — no NIN/BVN required
-            setLoading('Creating your wallet...', 'Setting up your virtual bank accounts');
+            // Create wallet
+            setLoading('Creating your wallet...', 'Setting up your virtual bank account');
             try {
                 var wr = await callAPI('/api/v1/wallet/create', {});
                 var wallet = (wr && wr.data && wr.data.wallet) ? wr.data.wallet
-                           : (wr && wr.data) ? wr.data
-                           : (wr || {});
-                var accounts = wallet.accounts || [];
+                           : (wr && wr.data) ? wr.data : (wr || {});
+
+                // Handle virtualAccount{} OR accounts[]
+                var accounts = [];
+                if (wallet.accounts && wallet.accounts.length > 0) {
+                    accounts = wallet.accounts;
+                } else if (wallet.virtualAccount && wallet.virtualAccount.accountNumber) {
+                    accounts = [{ ...wallet.virtualAccount, isDefault: true }];
+                }
 
                 if (accounts.length > 0) {
                     try {
@@ -224,12 +240,15 @@
                         if (uid2) localStorage.setItem('agent_wallet_accounts_' + uid2, JSON.stringify(accounts));
                     } catch(e){}
                     localStorage.setItem('agent_wallet_accounts', JSON.stringify(accounts));
-                } else {
-                    // Accounts will be provisioned — fund modal will fetch on first open
-                    console.info('Wallet created, accounts will be fetched on first Fund Wallet open.');
+
+                    // Show account number on success screen
+                    var acc = accounts[0];
+                    savedAcctNumber = acc.accountNumber;
+                    document.getElementById('acctNum').textContent = acc.accountNumber;
+                    document.getElementById('acctBank').textContent = acc.bankName || '';
+                    document.getElementById('acctDisplay').style.display = 'block';
                 }
             } catch(we) {
-                // Wallet creation is non-fatal — agent can still log in
                 console.warn('Wallet create non-fatal:', we.message);
             }
 
@@ -239,13 +258,22 @@
             document.getElementById('step3Circle').textContent = '✓';
             document.getElementById('line2').className = 'step-line line-done';
             document.getElementById('successWrap').classList.add('show');
-            setTimeout(function(){ window.location.href = 'dashboard.html'; }, 2200);
+            setTimeout(function(){ window.location.href = 'dashboard.html'; }, 3500);
 
         } catch(err) {
             hideLoading();
             showErr(row1, 'err1', err.message || 'Something went wrong. Please try again.');
             clearRow(row1); clearRow(row2); updateBtn();
         }
+    }
+
+    function copyAcct() {
+        if (!savedAcctNumber) return;
+        navigator.clipboard.writeText(savedAcctNumber).then(function() {
+            var btn = document.querySelector('.copy-btn');
+            btn.textContent = '✓ Copied!';
+            setTimeout(function(){ btn.textContent = '\u274F Copy Account Number'; }, 2000);
+        });
     }
 
     function setLoading(t, s) {

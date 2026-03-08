@@ -43,11 +43,23 @@ const Auth = {
                     console.warn('[Auth] Could not pre-fetch wallet balance:', walletErr.message);
                 }
 
+                // Extract pin from every possible response location
+                const pinValue = response.data?.user?.pin ?? response.data?.agent?.pin ?? response.data?.pin ?? response.pin ?? undefined;
+
+                // Persist pin onto agentData in localStorage so this device remembers it
+                if (pinValue !== undefined) {
+                    try {
+                        const stored = JSON.parse(localStorage.getItem('agentData') || '{}');
+                        stored.pin = pinValue;
+                        localStorage.setItem('agentData', JSON.stringify(stored));
+                    } catch(e) {}
+                }
+
                 return {
                     success: true,
                     message: 'Login successful',
                     data: response.data || response,
-                    pin: response.data?.user?.pin ?? response.data?.pin ?? response.pin
+                    pin: pinValue
                 };
             }
             
@@ -188,18 +200,10 @@ const Auth = {
         const publicPages = ['index.html', 'register.html', 'forgot-password.html', 'set-pin.html'];
         const currentPage = window.location.pathname.split('/').pop() || 'index.html';
 
-        if (this.isLoggedIn() && publicPages.includes(currentPage) && currentPage !== 'set-pin.html') {
-            // Check pin before redirecting — use backend value OR persistent local flag
-            try {
-                const agentData = JSON.parse(localStorage.getItem('agentData') || '{}');
-                const uid = agentData._id || agentData.id || '';
-                const pinBackend = agentData.pin;
-                const pinLocal = uid ? localStorage.getItem('agent_pin_set_' + uid) === 'true' : false;
-                const hasPinSet = (pinBackend === true) || pinLocal;
-                window.location.href = hasPinSet ? 'dashboard.html' : 'set-pin.html';
-            } catch(e) {
-                window.location.href = 'dashboard.html';
-            }
+        // On login page: don't auto-redirect — stale tokens cause set-pin loops.
+        // The login form handles routing via the fresh backend response.
+        if (this.isLoggedIn() && currentPage === 'index.html') {
+            window.location.href = 'dashboard.html';
             return;
         }
 

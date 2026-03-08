@@ -95,11 +95,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            if (!Utils.isStrongPassword(password)) {
-                UI.showError('registration-error', 'Password must contain uppercase, lowercase, number and special character');
-                return;
-            }
-            
             if (password !== confirmPassword) {
                 UI.showError('registration-error', 'Passwords do not match');
                 return;
@@ -136,10 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 UI.hideLoading('submit-btn', 'submit-spinner');
                 
                 if (result.success) {
-                    UI.showSuccess('registration-error', result.message || 'Registration successful! Please log in to continue setup.');
-                    
-                    // Flag that this is a new registration — login page will redirect to set-pin
-                    sessionStorage.setItem('agent_new_registration', '1');
+                    UI.showSuccess('registration-error', result.message || 'Registration successful! Please check your email for verification.');
                     
                     setTimeout(() => {
                         window.location.href = 'index.html';

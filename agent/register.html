@@ -394,7 +394,7 @@
                                         <i data-lucide="eye" id="toggle-reg-password" class="w-5 h-5"></i>
                                     </button>
                                 </div>
-                                <p class="text-xs text-slate-500 mt-1">Minimum 8 characters, include uppercase, lowercase, number and special character</p>
+                                <p class="text-xs text-slate-500 mt-1">Minimum 8 characters</p>
                             </div>
 
                             <div>
@@ -528,30 +528,6 @@
                 const accountNumber = document.getElementById('account-number').value.trim();
                 if (accountNumber.length !== 10 || isNaN(accountNumber)) {
                     showError('registration-error', 'Account number must be exactly 10 digits');
-                    return false;
-                }
-            }
-
-            // Additional validation for step 3 (password)
-            if (step === 3) {
-                const password = document.getElementById('reg-password').value;
-                const confirmPassword = document.getElementById('confirm-password').value;
-                const terms = document.getElementById('terms').checked;
-
-                if (password.length < 8) {
-                    showError('registration-error', 'Password must be at least 8 characters');
-                    document.getElementById('reg-password').focus();
-                    return false;
-                }
-
-                if (password !== confirmPassword) {
-                    showError('registration-error', 'Passwords do not match');
-                    document.getElementById('confirm-password').focus();
-                    return false;
-                }
-
-                if (!terms) {
-                    showError('registration-error', 'Please agree to the Terms and Conditions');
                     return false;
                 }
             }
