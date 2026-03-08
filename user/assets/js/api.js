@@ -21,8 +21,10 @@ class YareemaUserAPI {
         const url = `${this.baseURL}${endpoint}`;
         const headers = { 'Content-Type': 'application/json', ...options.headers };
 
-        if (this.token && !options.skipAuth) {
-            headers['Authorization'] = `Bearer ${this.token}`;
+        // Always re-read token from storage (in case it was saved after construction)
+        const currentToken = localStorage.getItem('user_token') || sessionStorage.getItem('user_token') || this.token;
+        if (currentToken && !options.skipAuth) {
+            headers['Authorization'] = `Bearer ${currentToken}`;
         }
 
         const config = { method: options.method || 'GET', headers };
@@ -40,11 +42,25 @@ class YareemaUserAPI {
                 throw new Error('Invalid server response'); 
             }
 
-            // Handle 401 Unauthorized - but ONLY for authenticated requests
+            // Handle 401 — only treat as session expired if it's a token error,
+            // NOT a wrong PIN / wrong password error from a service endpoint
             if (response.status === 401 && !options.skipAuth) {
-                this.clearToken();
-                window.location.href = '/login.html';
-                throw new Error('Session expired. Please login again.');
+                const msg = (data.message || data.error || data.msg || '').toLowerCase();
+                const isTokenError = msg.includes('token') || msg.includes('jwt') ||
+                                     msg.includes('expired') || msg.includes('unauthorized') ||
+                                     msg.includes('not authenticated') || msg.includes('no token') ||
+                                     msg === '' || msg === 'unauthorized';
+                const isPinError  = msg.includes('pin') || msg.includes('incorrect') ||
+                                    msg.includes('wrong') || msg.includes('invalid pin') ||
+                                    msg.includes('transaction');
+
+                if (isTokenError && !isPinError) {
+                    this.clearToken();
+                    window.location.href = '/login.html';
+                    throw new Error('Session expired. Please login again.');
+                }
+                // Wrong PIN or other 401 — just throw the message so the UI can show it
+                throw new Error(data.message || data.error || data.msg || 'Invalid credentials');
             }
 
             // For login/signup endpoints, don't treat 401 as session expired
@@ -97,7 +113,7 @@ class YareemaUserAPI {
                 success: true,
                 token,
                 user,
-                pin: user?.pin,
+                wallet: response.data?.wallet ?? null,
                 message: response.message || 'Login successful'
             };
         } catch (error) {
