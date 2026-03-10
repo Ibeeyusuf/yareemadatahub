@@ -82,34 +82,49 @@
             </div>
         </div>
 
-        <!-- Wallet Card -->
-        <div class="wallet-card">
-            <div style="display: flex; justify-content: space-between; align-items: start;">
-                <div style="flex: 1;">
-                    <div class="wallet-label">Available Balance</div>
-                    <div class="wallet-balance" id="walletBalance">₦0.00</div>
-                    <div class="wallet-account" id="walletAccount">Account: Loading...</div>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <button onclick="toggleBalance()" title="Toggle Balance Visibility" style="background: rgba(255,255,255,0.2); border: none; padding: 8px; border-radius: 8px; cursor: pointer;">
+        <!-- Wallet Card (enhanced with package badge + embedded accounts) -->
+        <div class="wallet-card" style="padding: 0; overflow: hidden;">
+
+            <!-- Top gradient section: balance + package -->
+            <div style="background: linear-gradient(135deg, #1e3d5c 0%, #2d5a8a 100%); padding: 28px 28px 20px; color: #fff;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div style="flex: 1;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+                            <div class="wallet-label" style="margin-bottom: 0;">Available Balance</div>
+                            <!-- Package Status Badge -->
+                            <span id="packageBadge" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: 0.5px; text-transform: uppercase; display: none;">
+                                Smart Earner
+                            </span>
+                        </div>
+                        <div class="wallet-balance" id="walletBalance">₦0.00</div>
+                    </div>
+                    <button onclick="toggleBalance()" title="Toggle Balance Visibility" style="background: rgba(255,255,255,0.15); border: none; padding: 8px; border-radius: 8px; cursor: pointer; flex-shrink: 0;">
                         <i data-lucide="eye" id="eyeIcon" style="width: 20px; height: 20px; color: #fff;"></i>
                     </button>
                 </div>
             </div>
-            <div class="wallet-actions">
-                <button class="wallet-btn" onclick="openModal('fund')">
-                    <i data-lucide="plus-circle" style="width: 20px; height: 20px;"></i>
-                    <span>Fund Wallet</span>
-                </button>
-                <!-- <button class="wallet-btn" onclick="openModal('transfer')">
-                    <i data-lucide="send" style="width: 20px; height: 20px;"></i>
-                    <span>Transfer</span>
-                </button> -->
-                <!-- <button class="wallet-btn" onclick="openModal('withdraw')">
-                    <i data-lucide="download" style="width: 20px; height: 20px;"></i>
-                    <span>Withdraw</span>
-                </button> -->
+
+            <!-- Embedded Virtual Accounts Section -->
+            <div style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 16px 20px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 7px;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1e3d5c" stroke-width="2.5"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                        <span style="font-size: 12px; font-weight: 700; color: #1e3d5c; letter-spacing: 0.4px; text-transform: uppercase;">Fund via Bank Transfer</span>
+                    </div>
+                    <span style="background: #dcfce7; color: #16a34a; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px;">Instant</span>
+                </div>
+
+                <!-- Accounts List (populated by JS) -->
+                <div id="dashboardAccountsList">
+                    <div style="text-align: center; padding: 18px; color: #94a3b8; font-size: 13px;">
+                        <div style="width: 24px; height: 24px; border: 3px solid #e2e8f0; border-top-color: #1e3d5c; border-radius: 50%; animation: spin 0.9s linear infinite; margin: 0 auto 8px;"></div>
+                        Loading accounts...
+                    </div>
+                </div>
+
+                
             </div>
+
         </div>
 
         <!-- Referral Code Card -->
@@ -261,7 +276,7 @@
                 const referralCode = user.referralCode || user.referral_code || user.refCode || null;
                 document.getElementById('referralCode').textContent = referralCode || 'N/A';
 
-                // Load wallet balance
+                // Load wallet balance + embedded accounts + package badge
                 try {
                     const wallet = await api.getWalletBalance();
                     const walletData = wallet.data?.wallet || wallet.data || {};
@@ -269,27 +284,38 @@
                     if (!hideBalance) {
                         document.getElementById('walletBalance').textContent = `₦${actualBalance.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
                     }
-                    // Show primary account number on dashboard if it exists
-                    const primary = walletData.primaryAccount;
-                    // Also check localStorage for saved accounts
+
+                    // Package / subscription badge
+                    const pkg = user.package || user.plan || user.subscription || walletData.package || null;
+                    if (pkg) {
+                        const badge = document.getElementById('packageBadge');
+                        badge.textContent = pkg;
+                        badge.style.display = 'inline-block';
+                    }
+
+                    // Resolve accounts from API or cache
+                    let accounts = [];
+                    if (walletData.accounts?.length > 0) {
+                        accounts = walletData.accounts;
+                    } else if (walletData.virtualAccount?.accountNumber) {
+                        accounts = [{ ...walletData.virtualAccount, isDefault: true }];
+                    }
+                    // Save + render
                     let savedAccounts = null;
                     try { savedAccounts = JSON.parse(localStorage.getItem('wallet_accounts') || 'null'); } catch(e) {}
-
-                    if (primary?.accountNumber) {
-                        document.getElementById('walletAccount').textContent = `Account: ${primary.accountNumber}`;
-                        // Save to localStorage if not already there
-                        if (!savedAccounts && walletData.accounts?.length) {
-                            try { localStorage.setItem('wallet_accounts', JSON.stringify(walletData.accounts)); } catch(e) {}
-                        }
+                    if (accounts.length > 0) {
+                        try { localStorage.setItem('wallet_accounts', JSON.stringify(accounts)); } catch(e) {}
+                        renderDashboardAccounts(accounts);
                     } else if (savedAccounts?.length) {
-                        const def = savedAccounts.find(a => a.isDefault) || savedAccounts[0];
-                        document.getElementById('walletAccount').textContent = `Account: ${def.accountNumber} · ${def.bankName}`;
+                        renderDashboardAccounts(savedAccounts);
                     } else {
-                        document.getElementById('walletAccount').textContent = 'Tap "Fund Wallet" to set up bank transfer';
+                        document.getElementById('dashboardAccountsList').innerHTML =
+                            `<div style="text-align:center;padding:14px;color:#94a3b8;font-size:13px;">No accounts found. <a href="wallet.html" style="color:#1e3d5c;font-weight:600;">Go to Wallet →</a></div>`;
                     }
                 } catch(e) {
                     document.getElementById('walletBalance').textContent = '₦0.00';
-                    document.getElementById('walletAccount').textContent = 'Could not load balance';
+                    document.getElementById('dashboardAccountsList').innerHTML =
+                        `<div style="text-align:center;padding:14px;color:#94a3b8;font-size:13px;">Could not load accounts.</div>`;
                 }
 
                 // Load recent transactions
@@ -388,9 +414,77 @@
             }
         }
 
+        // Bank charge map — shown per account on dashboard
+        const BANK_CHARGES = {
+            'palmpay':    { label: 'PalmPay',    charge: 'Free',    color: '#16a34a' },
+            'wema':       { label: 'Wema Bank',   charge: '₦10/txn', color: '#d97706' },
+            'sterling':   { label: 'Sterling',    charge: '₦10/txn', color: '#d97706' },
+            'providus':   { label: 'Providus',    charge: '₦10/txn', color: '#d97706' },
+            'moniepoint': { label: 'Moniepoint',  charge: 'Free',    color: '#16a34a' },
+            'opay':       { label: 'OPay',        charge: 'Free',    color: '#16a34a' },
+        };
+
+        function getBankCharge(bankName) {
+            if (!bankName) return null;
+            const key = bankName.toLowerCase().replace(/\s+/g, '');
+            for (const [k, v] of Object.entries(BANK_CHARGES)) {
+                if (key.includes(k)) return v;
+            }
+            return { label: bankName, charge: '₦10/txn', color: '#d97706' };
+        }
+
+        function renderDashboardAccounts(accounts) {
+            const container = document.getElementById('dashboardAccountsList');
+            if (!container) return;
+            if (!accounts || accounts.length === 0) {
+                container.innerHTML = `<div style="text-align:center;padding:14px;color:#94a3b8;font-size:13px;">No accounts yet. <a href="wallet.html" style="color:#1e3d5c;font-weight:600;">Set up wallet →</a></div>`;
+                return;
+            }
+            container.innerHTML = accounts.map((acc, i) => {
+                const chargeInfo = getBankCharge(acc.bankName);
+                const isDefault = acc.isDefault;
+                return `
+                <div style="background:${isDefault ? '#fff' : '#fff'};border:${isDefault ? '1.5px solid #7dd3fc' : '1px solid #e2e8f0'};border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+                    <!-- Bank icon -->
+                    <div style="width:38px;height:38px;flex-shrink:0;background:${isDefault ? 'linear-gradient(135deg,#1e3d5c,#2d5a8a)' : '#f1f5f9'};border-radius:9px;display:flex;align-items:center;justify-content:center;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${isDefault ? '#fff' : '#1e3d5c'}" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                    </div>
+                    <!-- Bank info -->
+                    <div style="flex:1;min-width:0;">
+                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+                            <span style="font-size:13px;font-weight:700;color:#0f172a;">${acc.bankName || 'Bank'}</span>
+                            ${isDefault ? `<span style="background:#0284c7;color:white;font-size:9px;font-weight:700;padding:1px 7px;border-radius:10px;">PRIMARY</span>` : ''}
+                        </div>
+                        <div style="font-size:16px;font-weight:700;color:#1e3d5c;letter-spacing:2px;" id="dashAccNum_${i}">${acc.accountNumber}</div>
+                        <div style="font-size:11px;color:#64748b;margin-top:1px;">${acc.accountName || ''}</div>
+                    </div>
+                    <!-- Charge badge + copy -->
+                    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
+                        ${chargeInfo ? `<span style="background:${chargeInfo.color === '#16a34a' ? '#dcfce7' : '#fef3c7'};color:${chargeInfo.color};font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;">${chargeInfo.charge}</span>` : ''}
+                        <button onclick="copyDashAccount('dashAccNum_${i}', this)"
+                            style="background:#1e3d5c;color:white;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px;">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            Copy
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function copyDashAccount(elemId, btn) {
+            const num = document.getElementById(elemId)?.textContent?.trim();
+            if (!num) return;
+            navigator.clipboard.writeText(num).then(() => {
+                const orig = btn.innerHTML;
+                btn.innerHTML = '✓ Copied!';
+                btn.style.background = '#16a34a';
+                setTimeout(() => { btn.innerHTML = orig; btn.style.background = '#1e3d5c'; }, 2000);
+            });
+        }
+
         function showAccountDetails() {
-            // Trigger the fund modal which shows account details
-            openModal('fund');
+            // Legacy — now accounts are embedded
         }
 
         function clearAuthAndRedirect() {
