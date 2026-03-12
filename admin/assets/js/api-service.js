@@ -1,4 +1,3 @@
-
 class YareemaAPI {
     constructor() {
         this.baseURL = API_CONFIG?.BASE_URL || 'https://vtu-api-d3q2.onrender.com';
@@ -249,6 +248,124 @@ class YareemaAPI {
         });
     }
 
+    // ==================== AGENT MANAGEMENT ====================
+
+    // Dedicated agents endpoint — supports commission filters, state, isVerified
+    async getAgents(params = {}) {
+        const queryString = new URLSearchParams(
+            Object.entries(params).filter(([_, v]) => v != null && v !== '')
+        ).toString();
+        return await this.request(`/api/v1/agents/agents${queryString ? '?' + queryString : ''}`);
+    }
+
+    async getAgentDetails(agentId) {
+        return await this.request(`/api/v1/agents/agents/${agentId}`);
+    }
+
+    async createAgent(agentData) {
+        return await this.request('/api/v1/agents/agents', {
+            method: 'POST',
+            body: agentData
+        });
+    }
+
+    async updateAgent(agentId, updates) {
+        return await this.request(`/api/v1/agents/agents/${agentId}`, {
+            method: 'PUT',
+            body: updates
+        });
+    }
+
+    async verifyAgentDocuments(agentId, documentType, status, remarks) {
+        return await this.request(`/api/v1/agents/agents/${agentId}/verify-documents`, {
+            method: 'POST',
+            body: { documentType, status, remarks }
+        });
+    }
+
+    async getAgentPerformance(agentId, period = 'monthly') {
+        return await this.request(`/api/v1/agents/agents/${agentId}/performance?period=${period}`);
+    }
+
+    async getAgentCommissionReport(agentId, params = {}) {
+        const queryString = new URLSearchParams(
+            Object.entries(params).filter(([_, v]) => v != null && v !== '')
+        ).toString();
+        return await this.request(`/api/v1/agents/agents/${agentId}/commission-report${queryString ? '?' + queryString : ''}`);
+    }
+
+    async processCommissionWithdrawal(agentId, amount, paymentMethod, reference) {
+        return await this.request(`/api/v1/agents/agents/${agentId}/withdraw-commission`, {
+            method: 'POST',
+            body: { amount, paymentMethod, reference }
+        });
+    }
+
+    async suspendAgent(agentId, reason) {
+        return await this.request(`/api/v1/admin/users/${agentId}/suspend`, {
+            method: 'PUT',
+            body: { reason }
+        });
+    }
+
+    async activateAgent(agentId) {
+        return await this.request(`/api/v1/admin/users/${agentId}/activate`, {
+            method: 'PUT',
+            body: {}
+        });
+    }
+
+    // ==================== PENDING AGENTS & ROLE ACTIONS ====================
+
+    async getPendingAgents(params = {}) {
+        const queryString = new URLSearchParams(
+            Object.entries(params).filter(([_, v]) => v != null && v !== '')
+        ).toString();
+        return await this.request(`/api/v1/admin/pending-agents${queryString ? '?' + queryString : ''}`);
+    }
+
+    async approveAgent(userId) {
+        return await this.request(`/api/v1/admin/users/${userId}/approve-agent`, {
+            method: 'PUT',
+            body: {}
+        });
+    }
+
+    async rejectAgent(userId, reason) {
+        return await this.request(`/api/v1/admin/users/${userId}/reject-agent`, {
+            method: 'PUT',
+            body: { reason }
+        });
+    }
+
+    async assignRole(userId, roles) {
+        // roles is an array e.g. ["client", "agent"]
+        return await this.request(`/api/v1/admin/users/${userId}/assign-role`, {
+            method: 'PUT',
+            body: { roles }
+        });
+    }
+
+    async lockAccount(userId, reason) {
+        return await this.request(`/api/v1/admin/users/${userId}/lock`, {
+            method: 'PUT',
+            body: { reason }
+        });
+    }
+
+    async unlockAccount(userId) {
+        return await this.request(`/api/v1/admin/users/${userId}/unlock`, {
+            method: 'PUT',
+            body: {}
+        });
+    }
+
+    // ==================== PROVIDER HEALTH ====================
+
+    async checkProviderHealth(providerName) {
+        return await this.request(`/api/v1/admin/check-provider/${providerName}`);
+    }
+
     // ==================== WALLET MANAGEMENT ====================
     
     async getWallets(params = {}) {
@@ -399,6 +516,66 @@ class YareemaAPI {
         return await this.request('/api/v1/admin/export', {
             method: 'POST',
             body: exportParams
+        });
+    }
+
+    // ==================== REPORTS ====================
+
+    async getReportsDashboard() {
+        return await this.request('/api/v1/admin/dashboard');
+    }
+
+    async getTransactionReport(type = 'monthly') {
+        return await this.request(`/api/v1/reports/transactions?type=${type}`);
+    }
+
+    async getFinancialReport(type = 'monthly') {
+        return await this.request(`/api/v1/reports/financial?type=${type}`);
+    }
+
+    async getUserReport(type = 'monthly') {
+        return await this.request(`/api/v1/reports/users?type=${type}`);
+    }
+
+    async getAgentReport(type = 'monthly') {
+        return await this.request(`/api/v1/reports/agents?type=${type}`);
+    }
+
+    async getServiceReport(type = 'monthly') {
+        return await this.request(`/api/v1/reports/services?type=${type}`);
+    }
+
+    // ==================== NOTIFICATIONS ====================
+
+    async getNotifications() {
+        return await this.request('/api/v1/notifications');
+    }
+
+    async getUnreadNotificationCount() {
+        return await this.request('/api/v1/notifications/unread-count');
+    }
+
+    async markNotificationRead(notificationId) {
+        return await this.request(`/api/v1/notifications/${notificationId}/read`, {
+            method: 'PUT'
+        });
+    }
+
+    async markAllNotificationsRead() {
+        return await this.request('/api/v1/notifications/mark-all-read', {
+            method: 'PUT'
+        });
+    }
+
+    async deleteNotification(notificationId) {
+        return await this.request(`/api/v1/notifications/${notificationId}`, {
+            method: 'DELETE'
+        });
+    }
+
+    async deleteAllNotifications() {
+        return await this.request('/api/v1/notifications', {
+            method: 'DELETE'
         });
     }
 }

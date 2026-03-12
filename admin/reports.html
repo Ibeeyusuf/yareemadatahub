@@ -8,67 +8,141 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/style.css">
+    <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{primary:'#2563eb',secondary:'#7c3aed',success:'#10b981',warning:'#f59e0b',error:'#ef4444',dark:'#0f172a',light:'#f8fafc'}}}}</script>
+    <style>
+        .tab-btn{transition:all 0.2s;border:none;cursor:pointer}
+        .tab-btn.active{background:#1E3D5C;color:#fff}
+        .tab-btn:not(.active){background:#f1f5f9;color:#475569}
+        .tab-btn:not(.active):hover{background:#e2e8f0}
+        .skeleton{background:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:12px}
+        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    </style>
 </head>
-<body class="bg-gray-50">
+<body class="text-slate-800 antialiased">
+
+    <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+
     <div class="w-full">
         <div id="sidebar-placeholder"></div>
-        <main class="lg:ml-64 min-h-screen bg-slate-50 overflow-y-auto">
+        <main class="lg:ml-64 flex flex-col min-h-screen bg-slate-50">
             <div id="header-placeholder"></div>
-            <div class="p-6">
-                <div class="mb-6">
-                    <h1 class="text-3xl font-bold text-gray-900">Reports & Analytics</h1>
-                    <p class="text-gray-600 mt-1">Comprehensive business intelligence and reporting</p>
-                </div>
 
-                <!-- Key Metrics -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                    <div class="bg-white rounded-lg shadow p-6">
-                        <p class="text-sm font-medium text-gray-600">Total Revenue</p>
-                        <h3 id="report-total-revenue" class="text-2xl font-bold text-gray-900 mt-2">₦0.00</h3>
+            <div class="p-4 lg:p-8 flex-1 overflow-y-auto">
+
+                <!-- Page Header -->
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-900">Reports & Analytics</h2>
+                        <p class="text-slate-500 text-sm mt-1">Business intelligence across all modules</p>
                     </div>
-                    <div class="bg-white rounded-lg shadow p-6">
-                        <p class="text-sm font-medium text-gray-600">Total Users</p>
-                        <h3 id="report-total-users" class="text-2xl font-bold text-gray-900 mt-2">0</h3>
-                    </div>
-                    <div class="bg-white rounded-lg shadow p-6">
-                        <p class="text-sm font-medium text-gray-600">Total Transactions</p>
-                        <h3 id="report-total-transactions" class="text-2xl font-bold text-gray-900 mt-2">0</h3>
-                    </div>
-                    <div class="bg-white rounded-lg shadow p-6">
-                        <p class="text-sm font-medium text-gray-600">Success Rate</p>
-                        <h3 id="report-success-rate" class="text-2xl font-bold text-gray-900 mt-2">0.00%</h3>
+                    <div class="flex items-center gap-3">
+                        <select id="periodFilter" onchange="onPeriodChange()"
+                            class="px-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30">
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly" selected>Monthly</option>
+                            <option value="yearly">Yearly</option>
+                        </select>
+                        <button onclick="refreshAll()"
+                            class="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm">
+                            <i data-lucide="refresh-cw" class="w-4 h-4"></i> Refresh
+                        </button>
                     </div>
                 </div>
 
-                <!-- Charts -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    <div class="bg-white rounded-lg shadow p-6">
-                        <h3 class="text-lg font-semibold mb-4">User Growth Trend</h3>
-                        <div class="h-80">
-                            <canvas id="userGrowthChart"></canvas>
+                <!-- Tabs -->
+                <div class="flex flex-wrap gap-2 mb-6">
+                    <button class="tab-btn active px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2" onclick="switchTab('dashboard')"><i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard</button>
+                    <button class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2" onclick="switchTab('transactions')"><i data-lucide="arrow-left-right" class="w-4 h-4"></i> Transactions</button>
+                    <button class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2" onclick="switchTab('financial')"><i data-lucide="trending-up" class="w-4 h-4"></i> Financial</button>
+                    <button class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2" onclick="switchTab('users')"><i data-lucide="users" class="w-4 h-4"></i> Users</button>
+                    <button class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2" onclick="switchTab('agents')"><i data-lucide="user-check" class="w-4 h-4"></i> Agents</button>
+                    <button class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2" onclick="switchTab('services')"><i data-lucide="grid" class="w-4 h-4"></i> Services</button>
+                </div>
+
+                <!-- DASHBOARD TAB -->
+                <div id="tab-dashboard" class="tab-content">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <div class="flex items-center justify-between"><div><p class="text-xs font-medium text-slate-500 uppercase">Total Revenue</p><h3 id="dash-revenue" class="text-2xl font-bold text-slate-900 mt-1">—</h3><p id="dash-revenue-sub" class="text-xs text-slate-500 mt-1">Loading...</p></div><div class="p-3 bg-green-50 text-green-600 rounded-lg"><i data-lucide="banknote" class="w-6 h-6"></i></div></div>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <div class="flex items-center justify-between"><div><p class="text-xs font-medium text-slate-500 uppercase">Total Users</p><h3 id="dash-users" class="text-2xl font-bold text-slate-900 mt-1">—</h3><p id="dash-users-sub" class="text-xs text-slate-500 mt-1">Loading...</p></div><div class="p-3 bg-blue-50 text-blue-600 rounded-lg"><i data-lucide="users" class="w-6 h-6"></i></div></div>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <div class="flex items-center justify-between"><div><p class="text-xs font-medium text-slate-500 uppercase">Transactions</p><h3 id="dash-transactions" class="text-2xl font-bold text-slate-900 mt-1">—</h3><p id="dash-transactions-sub" class="text-xs text-slate-500 mt-1">Loading...</p></div><div class="p-3 bg-purple-50 text-purple-600 rounded-lg"><i data-lucide="arrow-left-right" class="w-6 h-6"></i></div></div>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <div class="flex items-center justify-between"><div><p class="text-xs font-medium text-slate-500 uppercase">Success Rate</p><h3 id="dash-success-rate" class="text-2xl font-bold text-slate-900 mt-1">—</h3><p id="dash-success-sub" class="text-xs text-slate-500 mt-1">Loading...</p></div><div class="p-3 bg-amber-50 text-amber-600 rounded-lg"><i data-lucide="check-circle" class="w-6 h-6"></i></div></div>
                         </div>
                     </div>
-                    <div class="bg-white rounded-lg shadow p-6">
-                        <h3 class="text-lg font-semibold mb-4">Transaction Volume</h3>
-                        <div class="h-80">
-                            <canvas id="transactionChart"></canvas>
-                        </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><h3 class="text-lg font-bold text-slate-900 mb-4">User Growth Trend</h3><div style="height:280px"><canvas id="userGrowthChart"></canvas></div></div>
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><h3 class="text-lg font-bold text-slate-900 mb-4">Transaction Volume</h3><div style="height:280px"><canvas id="txnVolumeChart"></canvas></div></div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><h3 class="text-lg font-bold text-slate-900 mb-4">Revenue by Service</h3><div style="height:280px"><canvas id="revenueByServiceChart"></canvas></div></div>
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><h3 class="text-lg font-bold text-slate-900 mb-4">Provider Performance</h3><div id="provider-performance" class="space-y-3"><div class="skeleton h-12"></div><div class="skeleton h-12"></div><div class="skeleton h-12"></div></div></div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div class="bg-white rounded-lg shadow p-6">
-                        <h3 class="text-lg font-semibold mb-4">Revenue by Service</h3>
-                        <div class="h-80">
-                            <canvas id="revenueByServiceChart"></canvas>
-                        </div>
+                <!-- TRANSACTIONS TAB -->
+                <div id="tab-transactions" class="tab-content hidden">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="txn-cards">
+                        <div class="skeleton h-24"></div><div class="skeleton h-24"></div><div class="skeleton h-24"></div><div class="skeleton h-24"></div>
                     </div>
-                    <div class="bg-white rounded-lg shadow p-6">
-                        <h3 class="text-lg font-semibold mb-4">Provider Performance</h3>
-                        <div id="provider-performance" class="space-y-3"></div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><h3 class="text-lg font-bold text-slate-900 mb-4">Transaction Trend</h3><div style="height:280px"><canvas id="txnTrendChart"></canvas></div></div>
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><h3 class="text-lg font-bold text-slate-900 mb-4">Status Breakdown</h3><div style="height:280px"><canvas id="txnStatusChart"></canvas></div></div>
                     </div>
                 </div>
+
+                <!-- FINANCIAL TAB -->
+                <div id="tab-financial" class="tab-content hidden">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="fin-cards">
+                        <div class="skeleton h-24"></div><div class="skeleton h-24"></div><div class="skeleton h-24"></div><div class="skeleton h-24"></div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><h3 class="text-lg font-bold text-slate-900 mb-4">Revenue vs Expenses</h3><div style="height:280px"><canvas id="finRevenueChart"></canvas></div></div>
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><h3 class="text-lg font-bold text-slate-900 mb-4">Profit Margin</h3><div style="height:280px"><canvas id="finProfitChart"></canvas></div></div>
+                    </div>
+                </div>
+
+                <!-- USERS TAB -->
+                <div id="tab-users" class="tab-content hidden">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="usr-cards">
+                        <div class="skeleton h-24"></div><div class="skeleton h-24"></div><div class="skeleton h-24"></div><div class="skeleton h-24"></div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><h3 class="text-lg font-bold text-slate-900 mb-4">New Registrations</h3><div style="height:280px"><canvas id="usrGrowthChart"></canvas></div></div>
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><h3 class="text-lg font-bold text-slate-900 mb-4">Top Active Users</h3><div id="usr-activity" class="space-y-2"><div class="skeleton h-10"></div><div class="skeleton h-10"></div><div class="skeleton h-10"></div></div></div>
+                    </div>
+                </div>
+
+                <!-- AGENTS TAB -->
+                <div id="tab-agents" class="tab-content hidden">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="agt-cards">
+                        <div class="skeleton h-24"></div><div class="skeleton h-24"></div><div class="skeleton h-24"></div><div class="skeleton h-24"></div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><h3 class="text-lg font-bold text-slate-900 mb-4">Agent Commissions</h3><div style="height:280px"><canvas id="agtCommissionChart"></canvas></div></div>
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><h3 class="text-lg font-bold text-slate-900 mb-4">Top Performing Agents</h3><div id="top-agents" class="space-y-2"><div class="skeleton h-10"></div><div class="skeleton h-10"></div><div class="skeleton h-10"></div></div></div>
+                    </div>
+                </div>
+
+                <!-- SERVICES TAB -->
+                <div id="tab-services" class="tab-content hidden">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="svc-cards">
+                        <div class="skeleton h-24"></div><div class="skeleton h-24"></div><div class="skeleton h-24"></div><div class="skeleton h-24"></div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><h3 class="text-lg font-bold text-slate-900 mb-4">Service Usage</h3><div style="height:280px"><canvas id="svcUsageChart"></canvas></div></div>
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><h3 class="text-lg font-bold text-slate-900 mb-4">Revenue by Service</h3><div style="height:280px"><canvas id="svcRevenueChart"></canvas></div></div>
+                    </div>
+                </div>
+
             </div>
         </main>
     </div>
@@ -76,114 +150,7 @@
     <script src="assets/js/config.js"></script>
     <script src="assets/js/api-service.js"></script>
     <script src="assets/js/utils.js"></script>
+    <script src="assets/js/reports.js"></script>
     <script src="assets/js/main.js"></script>
-    <script>
-        lucide.createIcons();
-        
-        // Load partials
-        fetch('partials/sidebar.html').then(r => r.text()).then(html => {
-            document.getElementById('sidebar-container').innerHTML = html;
-            lucide.createIcons();
-        });
-        fetch('partials/header.html').then(r => r.text()).then(html => {
-            document.getElementById('header-container').innerHTML = html;
-            lucide.createIcons();
-        });
-
-        // Load reports data
-        const api = new YareemaAPI();
-        
-        async function loadReports() {
-            try {
-                const response = await api.getDashboardStats();
-                const data = response.data;
-                
-                // Update metrics
-                document.getElementById('report-total-revenue').textContent = AdminUtils.formatCurrency(data.overview.totalRevenue || 0);
-                document.getElementById('report-total-users').textContent = AdminUtils.formatNumber(data.overview.totalUsers || 0);
-                document.getElementById('report-total-transactions').textContent = AdminUtils.formatNumber(data.overview.totalTransactions || 0);
-                document.getElementById('report-success-rate').textContent = `${data.overview.successRate || '0.00'}%`;
-                
-                // Render charts
-                if (data.charts.userGrowth && data.charts.userGrowth.labels.length > 0) {
-                    renderUserGrowthChart(data.charts.userGrowth);
-                }
-                
-                if (data.charts.dailyTransactions && data.charts.dailyTransactions.labels.length > 0) {
-                    renderTransactionChart(data.charts.dailyTransactions);
-                }
-                
-                if (data.charts.revenueByService && data.charts.revenueByService.labels.length > 0) {
-                    renderRevenueChart(data.charts.revenueByService);
-                }
-                
-                // Render provider performance
-                renderProviderPerformance(data.providerStatus || []);
-            } catch (error) {
-                console.error('Error loading reports:', error);
-                AdminUtils.showToast('Failed to load reports', 'error');
-            }
-        }
-        
-        function renderUserGrowthChart(chartData) {
-            new Chart(document.getElementById('userGrowthChart'), {
-                type: 'line',
-                data: chartData,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'top' } }
-                }
-            });
-        }
-        
-        function renderTransactionChart(chartData) {
-            new Chart(document.getElementById('transactionChart'), {
-                type: 'bar',
-                data: chartData,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'top' } }
-                }
-            });
-        }
-        
-        function renderRevenueChart(chartData) {
-            new Chart(document.getElementById('revenueByServiceChart'), {
-                type: 'doughnut',
-                data: chartData,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'right' } }
-                }
-            });
-        }
-        
-        function renderProviderPerformance(providers) {
-            const container = document.getElementById('provider-performance');
-            if (providers.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 text-center py-8">No provider data available</p>';
-                return;
-            }
-            
-            container.innerHTML = providers.map(p => `
-                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                        <p class="font-medium text-gray-900 uppercase">${p.name}</p>
-                        <p class="text-sm text-gray-600">${p.totalRequests || 0} requests</p>
-                    </div>
-                    <div class="text-right">
-                        <span class="text-lg font-bold text-green-600">${p.successRate}%</span>
-                        <p class="text-xs text-gray-500">${p.status}</p>
-                    </div>
-                </div>
-            `).join('');
-        }
-        
-        // Load data on page load
-        loadReports();
-    </script>
 </body>
 </html>

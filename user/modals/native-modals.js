@@ -184,37 +184,46 @@ function selectDataNetwork(network) {
     loadDataPlans(network);
 }
 
+// Maps UI network name → nellobytes MOBILE_NETWORK key
+const NELLO_NETWORK_KEY = {
+    'mtn':     'MTN',
+    'glo':     'Glo',
+    '9mobile': 'm_9mobile',
+    'airtel':  'Airtel'
+};
+
 async function loadDataPlans(network) {
     const planSelect = document.getElementById('dataPlan');
     if (!planSelect) return;
-    
+
     planSelect.innerHTML = '<option value="">Loading plans...</option>';
-    
+
     try {
         const response = await api.getDataPlans(network);
-        
-        // Fix: Check the actual response structure
-        if (response.data && response.data[network]) {
-            // Case: { data: { mtn: [...] } }
-            currentDataPlans = response.data[network];
-        } else if (response.data && response.data.plans && response.data.plans[network]) {
-            // Case: { data: { plans: { mtn: [...] } } }
-            currentDataPlans = response.data.plans[network];
-        } else if (response[network]) {
-            // Case: { mtn: [...] }
-            currentDataPlans = response[network];
-        } else if (Array.isArray(response)) {
-            // Case: Direct array
-            currentDataPlans = response;
+        console.log('[Data Plans] raw response:', response);
+
+        const nelloKey = NELLO_NETWORK_KEY[network.toLowerCase()] || network;
+        let products = [];
+
+        // Nellobytes structure: response.data.MOBILE_NETWORK.MTN[0].PRODUCT[]
+        if (response.data?.MOBILE_NETWORK) {
+            const networkData = response.data.MOBILE_NETWORK[nelloKey];
+            if (Array.isArray(networkData) && networkData[0]?.PRODUCT) {
+                products = networkData[0].PRODUCT;
+            }
+        }
+
+        if (products.length > 0) {
+            currentDataPlans = products;
         } else {
             currentDataPlans = [];
         }
-        
+
         updateDataPlanDropdown();
     } catch (error) {
-        console.error('Error loading plans:', error);
+        console.error('[Data Plans] error:', error);
         if (planSelect) {
-            planSelect.innerHTML = '<option value="">Failed to load plans. Click to retry</option>';
+            planSelect.innerHTML = '<option value="">Failed to load plans. Please try again.</option>';
         }
     }
 }
@@ -222,21 +231,13 @@ async function loadDataPlans(network) {
 function updateDataPlanDropdown() {
     const planSelect = document.getElementById('dataPlan');
     if (!planSelect) return;
-    
+
     if (currentDataPlans.length > 0) {
         planSelect.innerHTML = '<option value="">Choose a plan</option>' +
             currentDataPlans.map((plan, index) => {
-                // Handle your plan structure
-                const name = plan.planName || 'Data Plan';
-                const price = plan.price || 0;
-                const dataAmount = plan.size || '';
-                const validity = plan.validity ? ` (${plan.validity})` : '';
-                
-                let label = name;
-                if (dataAmount) label = dataAmount; // Use size as the main label
-                label += validity;
-                label += ` - ₦${Number(price).toLocaleString()}`;
-                
+                const name   = plan.PRODUCT_NAME || plan.planName || plan.name || 'Data Plan';
+                const amount = plan.PRODUCT_AMOUNT || plan.sellingPrice || plan.price || 0;
+                const label  = `${name} — ₦${Math.round(Number(amount)).toLocaleString()}`;
                 return `<option value="${index}">${label}</option>`;
             }).join('');
     } else {
@@ -262,10 +263,16 @@ async function submitDataPurchase() {
     if (!selectedPlan) {
         showError('Invalid plan selected. Please try again.'); return;
     }
-    const planId = selectedPlan._id || selectedPlan.id || selectedPlan.planId || selectedPlan.planCode;
-    if (!planId) {
+    console.log('[Data Purchase] selected plan object:', selectedPlan);
+
+    // Nellobytes PRODUCT_ID e.g. "1000.0" → send "1000" as dataPlan
+    const rawId = selectedPlan.PRODUCT_ID || selectedPlan.planId || selectedPlan.planCode || selectedPlan._id || selectedPlan.id;
+    console.log('[Data Purchase] raw PRODUCT_ID:', rawId);
+    if (!rawId) {
         showError('Could not identify selected plan. Please try again.'); return;
     }
+    // Strip trailing ".0" for whole-number IDs; keep decimals like "1000.01" intact
+    const planId = String(rawId).replace(/\.0$/, '');
     if (!pin || !/^\d{4}$/.test(pin)) {
         showError('Please enter your 4-digit transaction PIN'); return;
     }
@@ -275,7 +282,7 @@ async function submitDataPurchase() {
         const response = await api.purchaseData(phone, selectedNetwork, planId, pin);
         closeModal();
         setTimeout(() => {
-            const planName = selectedPlan.size || selectedPlan.planName || 'Data';
+            const planName = selectedPlan.PRODUCT_NAME || selectedPlan.planName || 'Data';
             showSuccess(planName + ' purchased successfully for ' + phone + '! ✅');
         }, 300);
     } catch (error) {
@@ -384,102 +391,180 @@ async function submitAirtimePurchase() {
 }
 
 // ==================== ELECTRICITY MODAL ====================
+let _elecVerified = null; // stores verified customer info
+
 function showElectricityModal() {
+    _elecVerified = null;
+
     const bodyHTML = `
-        <div class="form-group">
-            <label>Select Disco</label>
-            <select id="electricityDisco" class="form-input">
-                <option value="aedc">AEDC - Abuja</option>
-                <option value="ekedc">EKEDC - Eko</option>
-                <option value="ikedc">IKEDC - Ikeja</option>
-                <option value="phed">PHED - Port Harcourt</option>
-                <option value="ibedc">IBEDC - Ibadan</option>
-                <option value="kaedco">KAEDCO - Kaduna</option>
-            </select>
+        <div id="elecStep1">
+            <div class="form-group">
+                <label>Select Disco</label>
+                <select id="electricityDisco" class="form-input">
+                    <option value="aedc">AEDC - Abuja</option>
+                    <option value="ekedc">EKEDC - Eko</option>
+                    <option value="ikedc">IKEDC - Ikeja</option>
+                    <option value="phed">PHED - Port Harcourt</option>
+                    <option value="ibedc">IBEDC - Ibadan</option>
+                    <option value="kaedco">KAEDCO - Kaduna</option>
+                    <option value="eedc">EEDC - Enugu</option>
+                    <option value="bedc">BEDC - Benin</option>
+                    <option value="yedc">YEDC - Yola</option>
+                    <option value="jedc">JEDC - Jos</option>
+                    <option value="kedco">KEDCO - Kano</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Meter Type</label>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <button type="button" id="prepaidBtn" onclick="selectMeterType('prepaid')"
+                        style="padding:12px;border:2px solid #1e3d5c;border-radius:8px;background:#1e3d5c;color:white;font-weight:600;cursor:pointer;">
+                        Prepaid
+                    </button>
+                    <button type="button" id="postpaidBtn" onclick="selectMeterType('postpaid')"
+                        style="padding:12px;border:2px solid #e2e8f0;border-radius:8px;background:white;color:#64748b;font-weight:600;cursor:pointer;">
+                        Postpaid
+                    </button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Meter Number</label>
+                <input type="text" id="meterNumber" placeholder="Enter meter number" class="form-input">
+            </div>
+            <div id="elecVerifyResult" style="display:none;"></div>
         </div>
-        <div class="form-group">
-            <label>Meter Number</label>
-            <input type="text" id="meterNumber" placeholder="Enter meter number" class="form-input">
-        </div>
-        <div class="form-group">
-            <label>Amount</label>
-            <input type="number" id="electricityAmount" placeholder="Enter amount (min ₦1,000)" min="1000" class="form-input">
-        </div>
-        <div class="form-group">
-            <label>Phone Number</label>
-            <input type="tel" id="electricityPhone" placeholder="08012345678" maxlength="11" class="form-input">
-        </div>
-        <div class="form-group">
-            <label>Transaction PIN</label>
-            <input type="password" id="electricityPin" placeholder="Enter 4-digit PIN" maxlength="4" class="form-input">
+
+        <div id="elecStep2" style="display:none;">
+            <div id="elecCustomerInfo" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px;margin-bottom:16px;"></div>
+            <div class="form-group">
+                <label>Amount (₦)</label>
+                <input type="number" id="electricityAmount" placeholder="Min ₦500" min="500" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>Phone Number</label>
+                <input type="tel" id="electricityPhone" placeholder="08012345678" maxlength="11" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>Transaction PIN</label>
+                <input type="password" id="electricityPin" placeholder="Enter 4-digit PIN" maxlength="4" class="form-input">
+            </div>
         </div>
     `;
-    
+
     const footerHTML = `
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
-        <button onclick="submitElectricityPayment()" class="btn-primary">Pay Electricity</button>
+        <button id="elecPrimaryBtn" onclick="handleElectricityStep()" class="btn-primary">Verify Meter</button>
     `;
-    
+
     showModal('Pay Electricity', bodyHTML, footerHTML);
+    window._elecMeterType = 'prepaid';
+}
+
+function selectMeterType(type) {
+    window._elecMeterType = type;
+    const prepaidBtn  = document.getElementById('prepaidBtn');
+    const postpaidBtn = document.getElementById('postpaidBtn');
+    const activeStyle   = 'padding:12px;border:2px solid #1e3d5c;border-radius:8px;background:#1e3d5c;color:white;font-weight:600;cursor:pointer;';
+    const inactiveStyle = 'padding:12px;border:2px solid #e2e8f0;border-radius:8px;background:white;color:#64748b;font-weight:600;cursor:pointer;';
+    if (type === 'prepaid')  { prepaidBtn.style.cssText = activeStyle;  postpaidBtn.style.cssText = inactiveStyle; }
+    else                     { postpaidBtn.style.cssText = activeStyle; prepaidBtn.style.cssText  = inactiveStyle; }
+}
+
+async function handleElectricityStep() {
+    if (!_elecVerified) {
+        await verifyMeterNumber();
+    } else {
+        await submitElectricityPayment();
+    }
+}
+
+async function verifyMeterNumber() {
+    const disco      = document.getElementById('electricityDisco').value;
+    const meter      = document.getElementById('meterNumber').value.trim();
+    const meterType  = window._elecMeterType || 'prepaid';
+
+    if (!meter) { showError('Please enter meter number'); return; }
+
+    const btn = document.getElementById('elecPrimaryBtn');
+    btn.disabled = true; btn.textContent = 'Verifying...';
+
+    try {
+        const response = await api.verifyElectricityCustomer(meter, disco, meterType);
+        console.log('[Electricity] verify response:', response);
+
+        const customer = response.data?.customer || response.data || response;
+        const name     = customer.customerName || customer.name || customer.accountName || 'Customer Verified';
+        const address  = customer.customerAddress || customer.address || '';
+        const acctNum  = customer.accountNumber || customer.meterNumber || meter;
+
+        _elecVerified = { meter, disco, meterType, customerName: name };
+
+        // Show customer info
+        document.getElementById('elecCustomerInfo').innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:36px;height:36px;background:#16a34a;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div>
+                    <p style="font-weight:700;color:#15803d;font-size:14px;">${name}</p>
+                    ${address ? `<p style="color:#64748b;font-size:12px;">${address}</p>` : ''}
+                    <p style="color:#64748b;font-size:12px;">Meter: ${acctNum} · ${meterType.charAt(0).toUpperCase()+meterType.slice(1)}</p>
+                </div>
+            </div>
+        `;
+
+        // Switch to step 2
+        document.getElementById('elecStep1').style.display = 'none';
+        document.getElementById('elecStep2').style.display = 'block';
+        btn.disabled = false; btn.textContent = 'Pay Now';
+        document.getElementById('electricityAmount').focus();
+
+    } catch (error) {
+        btn.disabled = false; btn.textContent = 'Verify Meter';
+        const result = document.getElementById('elecVerifyResult');
+        result.style.display = 'block';
+        result.innerHTML = `<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:12px;color:#dc2626;font-size:13px;">
+            ❌ ${error.message || 'Could not verify meter. Please check the number and try again.'}
+        </div>`;
+    }
 }
 
 async function submitElectricityPayment() {
-    const disco = document.getElementById('electricityDisco').value;
-    const meter = document.getElementById('meterNumber').value;
     const amount = parseInt(document.getElementById('electricityAmount').value);
-    const phone = document.getElementById('electricityPhone').value;
-    const pin = document.getElementById('electricityPin').value;
-    
-    // PIN Validation
-    if (!pin || pin.length !== 4) {
-        showError('Please enter your 4-digit transaction PIN');
-        return;
-    }
-    if (!/^\d+$/.test(pin)) {
-        showError('Transaction PIN must contain only numbers');
-        return;
-    }
-    
-    if (!meter) {
-        showError('Please enter meter number');
-        return;
-    }
-    if (!amount || amount < 1000) {
-        showError('Amount must be at least ₦1,000');
-        return;
-    }
-    if (!phone || phone.length !== 11) {
-        showError('Please enter a valid phone number');
-        return;
-    }
-    
+    const phone  = document.getElementById('electricityPhone').value.trim();
+    const pin    = document.getElementById('electricityPin').value.trim();
+
+    if (!amount || amount < 500) { showError('Amount must be at least ₦500'); return; }
+    if (!phone || phone.length !== 11) { showError('Please enter a valid 11-digit phone number'); return; }
+    if (!pin || !/^\d{4}$/.test(pin)) { showError('Please enter your 4-digit transaction PIN'); return; }
+
     try {
-        showLoading('Processing electricity payment...');
-        const response = await api.purchaseElectricity(meter, disco, amount, phone, pin);
-        
+        showLoading('Processing payment...');
+        const response = await api.purchaseElectricity(
+            _elecVerified.meter, _elecVerified.disco, amount, phone, pin, _elecVerified.meterType
+        );
+        const token = response.data?.token || response.data?.purchasedToken || '';
         closeModal();
         setTimeout(() => {
             showSuccess(`
-                <div style="text-align: center;">
-                    <p style="font-size: 16px; margin-bottom: 8px;">Payment Successful! 💡</p>
-                    <p style="font-size: 14px; color: #64748b;">₦${amount} credited to meter ${meter}</p>
+                <div style="text-align:center;">
+                    <p style="font-size:16px;margin-bottom:6px;">Payment Successful! 💡</p>
+                    <p style="font-size:14px;color:#64748b;">₦${amount.toLocaleString()} credited to meter ${_elecVerified.meter}</p>
+                    ${token ? `<div style="margin-top:12px;padding:10px;background:#f0fdf4;border-radius:8px;">
+                        <p style="font-size:11px;color:#64748b;margin-bottom:4px;">TOKEN</p>
+                        <p style="font-size:18px;font-weight:700;color:#15803d;letter-spacing:2px;">${token}</p>
+                    </div>` : ''}
                 </div>
             `);
+            _elecVerified = null;
         }, 300);
     } catch (error) {
         closeModal();
         setTimeout(() => {
-            const errorMsg = error.message || '';
-            
-            if (errorMsg.toLowerCase().includes('pin')) {
-                showError('Invalid transaction PIN. Please try again.');
-            } else if (errorMsg.toLowerCase().includes('meter')) {
-                showError('Invalid meter number. Please verify and try again.');
-            } else if (errorMsg.toLowerCase().includes('balance')) {
-                showError('Insufficient wallet balance.');
-            } else {
-                showError(errorMsg || 'Payment failed. Please try again.');
-            }
+            const msg = (error.message || '').toLowerCase();
+            if (msg.includes('pin'))     showError('Invalid transaction PIN. Please try again.');
+            else if (msg.includes('balance')) showError('Insufficient wallet balance.');
+            else showError(error.message || 'Payment failed. Please try again.');
         }, 300);
     }
 }
@@ -488,176 +573,211 @@ async function submitElectricityPayment() {
 let tvPlans = [];
 
 async function showTVModal() {
+    tvPlans = [];
+
     const bodyHTML = `
         <div class="form-group">
             <label>Select Provider</label>
-            <select id="tvProvider" class="form-input" onchange="loadTVPlans(this.value)">
-                <option value="dstv">DSTV</option>
-                <option value="gotv">GOTV</option>
-                <option value="startimes">Startimes</option>
-            </select>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px;">
+                <button type="button" class="tv-provider-btn" data-provider="dstv" onclick="selectTVProvider('dstv')"
+                    style="padding:10px 6px;border:2px solid #1e3d5c;border-radius:8px;background:#1e3d5c;color:white;font-weight:700;font-size:13px;cursor:pointer;">
+                    DSTV
+                </button>
+                <button type="button" class="tv-provider-btn" data-provider="gotv" onclick="selectTVProvider('gotv')"
+                    style="padding:10px 6px;border:2px solid #e2e8f0;border-radius:8px;background:white;color:#64748b;font-weight:700;font-size:13px;cursor:pointer;">
+                    GOTV
+                </button>
+                <button type="button" class="tv-provider-btn" data-provider="startimes" onclick="selectTVProvider('startimes')"
+                    style="padding:10px 6px;border:2px solid #e2e8f0;border-radius:8px;background:white;color:#64748b;font-weight:700;font-size:13px;cursor:pointer;">
+                    Startimes
+                </button>
+            </div>
         </div>
         <div class="form-group">
-            <label>Smart Card Number</label>
+            <label>Smart Card / IUC Number</label>
             <input type="text" id="smartCard" placeholder="Enter smart card number" class="form-input">
         </div>
         <div class="form-group">
             <label>Select Package</label>
             <select id="tvPlan" class="form-input">
-                <option value="">Select provider first</option>
+                <option value="">Loading packages...</option>
+            </select>
+            <div id="tvPlanPrice" style="display:none;margin-top:6px;padding:8px 12px;background:#f0fdf4;border-radius:6px;color:#15803d;font-size:13px;font-weight:600;"></div>
+        </div>
+        <div class="form-group">
+            <label>Duration (Months)</label>
+            <select id="tvMonths" class="form-input">
+                <option value="1">1 Month</option>
+                <option value="2">2 Months</option>
+                <option value="3">3 Months</option>
+                <option value="6">6 Months</option>
+                <option value="12">12 Months</option>
             </select>
         </div>
-        <div id="tvPlansMessage"></div>
-        <div class="form-group" style="margin-top: 16px;">
+        <div class="form-group">
             <label>Transaction PIN</label>
             <input type="password" id="tvPin" placeholder="Enter 4-digit PIN" maxlength="4" class="form-input">
         </div>
     `;
-    
+
     const footerHTML = `
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
         <button onclick="submitTVSubscription()" class="btn-primary">Subscribe</button>
     `;
-    
+
     showModal('Cable TV Subscription', bodyHTML, footerHTML);
-    
-    // Load plans for default provider (DSTV)
+    window._tvProvider = 'dstv';
     await loadTVPlans('dstv');
+}
+
+function selectTVProvider(provider) {
+    window._tvProvider = provider;
+    document.querySelectorAll('.tv-provider-btn').forEach(btn => {
+        const isActive = btn.dataset.provider === provider;
+        btn.style.cssText = isActive
+            ? 'padding:10px 6px;border:2px solid #1e3d5c;border-radius:8px;background:#1e3d5c;color:white;font-weight:700;font-size:13px;cursor:pointer;'
+            : 'padding:10px 6px;border:2px solid #e2e8f0;border-radius:8px;background:white;color:#64748b;font-weight:700;font-size:13px;cursor:pointer;';
+    });
+    loadTVPlans(provider);
 }
 
 async function loadTVPlans(provider) {
     const planSelect = document.getElementById('tvPlan');
+    const priceTag   = document.getElementById('tvPlanPrice');
     if (!planSelect) return;
-    
+
     planSelect.innerHTML = '<option value="">Loading packages...</option>';
-    
+    if (priceTag) priceTag.style.display = 'none';
+
     try {
-        const response = await api.getCablePlans();
-        console.log('TV Plans response:', response); // For debugging
-        
-        // Check if plans exist in the response
-        if (response.data && response.data.plans) {
-            const plansObj = response.data.plans;
+        const response = await api.getCablePlans(provider);
+        console.log('[Cable TV] plans response:', response);
+
+        let plans = [];
+
+        // Check if the response has the expected structure
+        if (response.data?.TV_ID) {
+            // Map provider names to the keys in the response
+            const providerMap = {
+                'dstv': 'DStv',
+                'gotv': 'GOtv',
+                'startimes': 'Startimes',
+                'showmax': 'Showmax'
+            };
             
-            // Check if the provider has plans
-            if (plansObj[provider] && plansObj[provider].length > 0) {
-                tvPlans = plansObj[provider];
-                planSelect.innerHTML = '<option value="">Choose package</option>' + 
-                    tvPlans.map((plan, idx) => {
-                        const name = plan.planName || plan.name || plan.description || 'Package';
-                        const price = plan.sellingPrice || plan.price || plan.amount || 0;
-                        return `<option value="${idx}">${name} - ₦${Number(price).toLocaleString()}</option>`;
-                    }).join('');
-            } else {
-                // No plans for this provider
-                tvPlans = [];
-                planSelect.innerHTML = '<option value="">No packages available for this provider</option>';
-                
-                // Show a message
-                const parent = planSelect.parentNode;
-                const oldMessage = document.getElementById('tvPlansMessage');
-                if (oldMessage) oldMessage.remove();
-                
-                const messageDiv = document.createElement('div');
-                messageDiv.id = 'tvPlansMessage';
-                messageDiv.innerHTML = `
-                    <div style="background: #fef3c7; padding: 12px; border-radius: 8px; margin-top: 10px; text-align: center; border-left: 4px solid #f59e0b;">
-                        <p style="color: #92400e; font-size: 13px; margin: 0;">
-                            ⚡ No cable plans available at the moment. Please check back later.
-                        </p>
-                    </div>
-                `;
-                parent.appendChild(messageDiv);
+            const responseProviderKey = providerMap[provider.toLowerCase()];
+            
+            if (responseProviderKey && response.data.TV_ID[responseProviderKey]) {
+                const providerData = response.data.TV_ID[responseProviderKey];
+                if (Array.isArray(providerData) && providerData[0]?.PRODUCT) {
+                    plans = providerData[0].PRODUCT;
+                }
             }
+        }
+        
+        // Fallback: try alternative paths if the above didn't work
+        if (!plans.length) {
+            // Try other possible paths
+            const cableData = response.data?.CABLE_TV || response.data?.cable || response.data?.plans;
+            if (cableData) {
+                const providerKey = provider.toUpperCase();
+                const providerData = cableData[providerKey] || cableData[provider] || cableData[provider.toLowerCase()];
+                if (Array.isArray(providerData) && providerData[0]?.PRODUCT) {
+                    plans = providerData[0].PRODUCT;
+                } else if (Array.isArray(providerData)) {
+                    plans = providerData;
+                }
+            }
+        }
+
+        // Final fallback: flat array at response.data
+        if (!plans.length && Array.isArray(response.data)) {
+            plans = response.data;
+        }
+
+        tvPlans = plans;
+        console.log('[Cable TV] extracted plans:', plans);
+
+        if (plans.length > 0) {
+            planSelect.innerHTML = '<option value="">Choose package</option>' +
+                plans.map((plan, idx) => {
+                    // Note: In your sample, fields are PACKAGE_NAME, PACKAGE_AMOUNT, PACKAGE_ID
+                    // (not PRODUCT_NAME, PRODUCT_AMOUNT, PRODUCT_CODE)
+                    const name   = plan.PACKAGE_NAME || plan.PRODUCT_NAME || plan.planName || plan.name || 'Package';
+                    const amount = plan.PACKAGE_AMOUNT || plan.PRODUCT_AMOUNT || plan.sellingPrice || plan.price || plan.amount || 0;
+                    const planId = plan.PACKAGE_ID || plan.PRODUCT_CODE || plan.planCode || plan._id || plan.id || plan.planId;
+                    
+                    return `<option value="${idx}" data-amount="${Math.round(Number(amount))}" data-plan-id="${planId}">${name} — ₦${Math.round(Number(amount)).toLocaleString()}</option>`;
+                }).join('');
+
+            // Show price on select
+            planSelect.onchange = () => {
+                const opt = planSelect.options[planSelect.selectedIndex];
+                const amt = opt?.dataset?.amount;
+                if (amt && priceTag) {
+                    priceTag.style.display = 'block';
+                    const months = parseInt(document.getElementById('tvMonths')?.value || 1);
+                    priceTag.textContent = `Total: ₦${(parseInt(amt) * months).toLocaleString()}`;
+                } else if (priceTag) {
+                    priceTag.style.display = 'none';
+                }
+            };
         } else {
-            tvPlans = [];
-            planSelect.innerHTML = '<option value="">No packages available</option>';
+            planSelect.innerHTML = '<option value="">No packages available for this provider</option>';
         }
     } catch (error) {
-        console.error('Error loading TV plans:', error);
-        planSelect.innerHTML = '<option value="">Error loading packages</option>';
-        
-        // Show error message
-        const parent = planSelect.parentNode;
-        const oldMessage = document.getElementById('tvPlansMessage');
-        if (oldMessage) oldMessage.remove();
-        
-        const messageDiv = document.createElement('div');
-        messageDiv.id = 'tvPlansMessage';
-        messageDiv.innerHTML = `
-            <div style="background: #fee2e2; padding: 12px; border-radius: 8px; margin-top: 10px; text-align: center; border-left: 4px solid #dc2626;">
-                <p style="color: #dc2626; font-size: 13px; margin: 0;">
-                    ❌ Failed to load plans. Please try again.
-                </p>
-            </div>
-        `;
-        parent.appendChild(messageDiv);
+        console.error('[Cable TV] error:', error);
+        planSelect.innerHTML = '<option value="">Failed to load packages. Please try again.</option>';
     }
 }
 
 async function submitTVSubscription() {
-    const provider = document.getElementById('tvProvider').value;
-    const smartCard = document.getElementById('smartCard').value;
-    const planIdx = document.getElementById('tvPlan').value;
-    const pin = document.getElementById('tvPin').value;
-    
-    // PIN Validation
-    if (!pin || pin.length !== 4) {
-        showError('Please enter your 4-digit transaction PIN');
-        return;
-    }
-    if (!/^\d+$/.test(pin)) {
-        showError('Transaction PIN must contain only numbers');
-        return;
-    }
-    
-    if (!smartCard) {
-        showError('Please enter smart card number');
-        return;
-    }
-    if (!planIdx) {
-        showError('Please select a package');
-        return;
-    }
-    if (!tvPlans || tvPlans.length === 0) {
-        showError('No packages available. Please try again later.');
-        return;
-    }
-    
+    const provider  = window._tvProvider || 'dstv';
+    const smartCard = document.getElementById('smartCard').value.trim();
+    const planIdx   = document.getElementById('tvPlan').value;
+    const months    = parseInt(document.getElementById('tvMonths').value) || 1;
+    const pin       = document.getElementById('tvPin').value.trim();
+
+    if (!smartCard)                        { showError('Please enter smart card / IUC number'); return; }
+    if (planIdx === '' || planIdx === null) { showError('Please select a package'); return; }
+    if (!tvPlans.length)                   { showError('No packages loaded. Please try again.'); return; }
+    if (!pin || !/^\d{4}$/.test(pin))      { showError('Please enter your 4-digit transaction PIN'); return; }
+
     const plan = tvPlans[planIdx];
-    if (!plan) {
-        showError('Invalid package selected');
-        return;
+    if (!plan) { showError('Invalid package selected'); return; }
+
+    // Use the correct field name from your sample response
+    const planId = plan.PACKAGE_ID || plan.PRODUCT_CODE || plan.planCode || plan._id || plan.id || plan.planId;
+    if (!planId) { 
+        console.error('Plan object:', plan);
+        showError('Could not identify selected package. Please try again.'); 
+        return; 
     }
-    
+
     try {
         showLoading('Processing subscription...');
-        const planId = plan._id || plan.id || plan.planCode || plan.planId;
-        const response = await api.purchaseCableTV(smartCard, provider, planId, 1, pin);
-        
+        const response = await api.purchaseCableTV(smartCard, provider, planId, months, pin);
+
         closeModal();
         setTimeout(() => {
+            const planName = plan.PACKAGE_NAME || plan.PRODUCT_NAME || plan.planName || 'Package';
             showSuccess(`
-                <div style="text-align: center;">
-                    <p style="font-size: 16px; margin-bottom: 8px;">Subscription Successful! 📺</p>
-                    <p style="font-size: 14px; color: #64748b;">Your ${provider.toUpperCase()} subscription is now active</p>
+                <div style="text-align:center;">
+                    <p style="font-size:16px;margin-bottom:6px;">Subscription Successful! 📺</p>
+                    <p style="font-size:14px;color:#64748b;">${planName}</p>
+                    <p style="font-size:14px;color:#64748b;">${provider.toUpperCase()} · ${smartCard}</p>
                 </div>
             `);
         }, 300);
     } catch (error) {
         closeModal();
         setTimeout(() => {
-            const errorMsg = error.message || '';
-            
-            if (errorMsg.toLowerCase().includes('pin')) {
-                showError('Invalid transaction PIN. Please try again.');
-            } else if (errorMsg.toLowerCase().includes('smart card')) {
-                showError('Invalid smart card number. Please verify.');
-            } else if (errorMsg.toLowerCase().includes('balance')) {
-                showError('Insufficient wallet balance.');
-            } else {
-                showError(errorMsg || 'Subscription failed. Please try again.');
-            }
+            const msg = (error.message || '').toLowerCase();
+            if (msg.includes('pin'))          showError('Invalid transaction PIN. Please try again.');
+            else if (msg.includes('smart') || msg.includes('card') || msg.includes('iuc'))
+                                              showError('Invalid smart card number. Please verify.');
+            else if (msg.includes('balance')) showError('Insufficient wallet balance.');
+            else                              showError(error.message || 'Subscription failed. Please try again.');
         }, 300);
     }
 }
@@ -665,77 +785,101 @@ async function submitTVSubscription() {
 // ==================== EDUCATION MODAL ====================
 function showEducationModal() {
     const bodyHTML = `
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;margin-bottom:16px;">
+            <p style="color:#1d4ed8;font-size:13px;margin:0;">📚 Scratch cards will be sent to your registered email address after purchase.</p>
+        </div>
         <div class="form-group">
             <label>Exam Type</label>
-            <select id="examType" class="form-input">
-                <option value="waec">WAEC Result Checker</option>
+            <select id="examType" class="form-input" onchange="updateEduPrice()">
+                <option value="waecdirect">WAEC Result Checker</option>
                 <option value="neco">NECO Result Checker</option>
                 <option value="jamb">JAMB E-PIN</option>
+                <option value="nabteb">NABTEB Result Checker</option>
             </select>
         </div>
         <div class="form-group">
             <label>Quantity</label>
-            <input type="number" id="eduQuantity" value="1" min="1" max="10" class="form-input">
+            <select id="eduQuantity" class="form-input" onchange="updateEduPrice()">
+                <option value="1">1 PIN</option>
+                <option value="2">2 PINs</option>
+                <option value="3">3 PINs</option>
+                <option value="5">5 PINs</option>
+                <option value="10">10 PINs</option>
+            </select>
         </div>
+        <div id="eduPriceTag" style="display:none;padding:10px 14px;background:#f0fdf4;border-radius:8px;margin-bottom:4px;color:#15803d;font-size:13px;font-weight:600;"></div>
         <div class="form-group">
             <label>Transaction PIN</label>
             <input type="password" id="eduPin" placeholder="Enter 4-digit PIN" maxlength="4" class="form-input">
         </div>
     `;
-    
+
     const footerHTML = `
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
         <button onclick="submitEducationPurchase()" class="btn-primary">Purchase</button>
     `;
-    
-    showModal('Education Services', bodyHTML, footerHTML);
+
+    showModal('Education PIN', bodyHTML, footerHTML);
+}
+
+// Exam prices (approximate — backend confirms actual price)
+const EDU_PRICES = {
+    waecdirect: 3800,
+    neco:       1000,
+    jamb:       700,
+    nabteb:     900
+};
+
+function updateEduPrice() {
+    const examType = document.getElementById('examType')?.value;
+    const quantity = parseInt(document.getElementById('eduQuantity')?.value || 1);
+    const priceTag = document.getElementById('eduPriceTag');
+    if (!priceTag || !examType) return;
+    const unitPrice = EDU_PRICES[examType];
+    if (unitPrice) {
+        priceTag.style.display = 'block';
+        priceTag.textContent = `Estimated Total: ₦${(unitPrice * quantity).toLocaleString()} (${quantity} × ₦${unitPrice.toLocaleString()})`;
+    } else {
+        priceTag.style.display = 'none';
+    }
 }
 
 async function submitEducationPurchase() {
     const examType = document.getElementById('examType').value;
     const quantity = parseInt(document.getElementById('eduQuantity').value);
-    const pin = document.getElementById('eduPin').value;
-    
-    // PIN Validation
-    if (!pin || pin.length !== 4) {
-        showError('Please enter your 4-digit transaction PIN');
-        return;
+    const pin      = document.getElementById('eduPin').value.trim();
+
+    if (!pin || !/^\d{4}$/.test(pin)) {
+        showError('Please enter your 4-digit transaction PIN'); return;
     }
-    if (!/^\d+$/.test(pin)) {
-        showError('Transaction PIN must contain only numbers');
-        return;
-    }
-    
     if (!quantity || quantity < 1) {
-        showError('Please enter valid quantity');
-        return;
+        showError('Please select a valid quantity'); return;
     }
-    
+
+    const examLabels = { waecdirect: 'WAEC', neco: 'NECO', jamb: 'JAMB', nabteb: 'NABTEB' };
+    const label = examLabels[examType] || examType.toUpperCase();
+
     try {
-        showLoading('Processing purchase...');
+        showLoading(`Purchasing ${label} PIN${quantity > 1 ? 's' : ''}...`);
         const response = await api.purchaseEducationPIN(examType, quantity, pin);
-        
+
         closeModal();
         setTimeout(() => {
             showSuccess(`
-                <div style="text-align: center;">
-                    <p style="font-size: 16px; margin-bottom: 8px;">Purchase Successful! 📚</p>
-                    <p style="font-size: 14px; color: #64748b;">${quantity} ${examType.toUpperCase()} PIN(s) sent to your email</p>
+                <div style="text-align:center;">
+                    <p style="font-size:16px;margin-bottom:6px;">Purchase Successful! 📚</p>
+                    <p style="font-size:14px;color:#64748b;">${quantity} × ${label} PIN${quantity > 1 ? 's' : ''} purchased</p>
+                    <p style="font-size:13px;color:#94a3b8;margin-top:6px;">Check your email for the scratch card(s)</p>
                 </div>
             `);
         }, 300);
     } catch (error) {
         closeModal();
         setTimeout(() => {
-            const errorMsg = error.message || '';
-            
-            if (errorMsg.toLowerCase().includes('pin')) {
-                showError('Invalid transaction PIN. Please try again.');
-            } else if (errorMsg.toLowerCase().includes('balance')) {
-                showError('Insufficient wallet balance.');
-            } else {
-                showError(errorMsg || 'Purchase failed. Please try again.');
-            }
+            const msg = (error.message || '').toLowerCase();
+            if (msg.includes('pin'))          showError('Invalid transaction PIN. Please try again.');
+            else if (msg.includes('balance')) showError('Insufficient wallet balance.');
+            else                              showError(error.message || 'Purchase failed. Please try again.');
         }, 300);
     }
 }
@@ -777,7 +921,7 @@ function showRechargePINModal() {
 
 async function submitRechargePIN() {
     const network = document.getElementById('pinNetwork').value;
-    const pinType = document.getElementById('pinType').value;
+    const amount = document.getElementById('pinType').value;
     const quantity = parseInt(document.getElementById('pinQuantity').value);
     const pin = document.getElementById('pinTxPin').value;
 
@@ -796,19 +940,50 @@ async function submitRechargePIN() {
         return;
     }
 
+    // Map network names to their IDs based on the backend structure
+    const networkIdMap = {
+        'mtn': '01',
+        'glo': '02',
+        '9mobile': '03',
+        'airtel': '04'
+    };
+
+    const networkId = networkIdMap[network];
+    
+    if (!networkId) {
+        showError('Invalid network selected');
+        return;
+    }
+
     try {
         showLoading('Purchasing recharge PIN...');
-        const response = await api.purchaseRechargePIN(network, pinType, quantity, pin);
+        
+        // Use the new epin purchase endpoint with networkId
+        const response = await api.purchaseEpin(networkId, amount, quantity, pin);
         
         closeModal();
+        
+        // Handle success
         setTimeout(() => {
-            showSuccess(`
-                <div style="text-align: center;">
-                    <p style="font-size: 16px; margin-bottom: 8px;">PIN Purchase Successful! 🔐</p>
-                    <p style="font-size: 14px; color: #64748b;">${quantity} x ₦${pinType} ${network.toUpperCase()} PIN(s) purchased</p>
-                </div>
-            `);
+            if (response.TXN_EPIN && response.TXN_EPIN.length > 0) {
+                // Show success with the first PIN as example
+                showSuccess(`
+                    <div style="text-align: center;">
+                        <p style="font-size: 16px; margin-bottom: 8px;">PIN Purchase Successful! 🔐</p>
+                        <p style="font-size: 14px; color: #64748b;">${quantity} x ₦${amount} ${network.toUpperCase()} PIN(s) purchased</p>
+                        <p style="font-size: 13px; color: #94a3b8; margin-top: 8px;">PINs have been sent to your email</p>
+                    </div>
+                `);
+            } else {
+                showSuccess(`
+                    <div style="text-align: center;">
+                        <p style="font-size: 16px; margin-bottom: 8px;">PIN Purchase Successful! 🔐</p>
+                        <p style="font-size: 14px; color: #64748b;">${quantity} x ₦${amount} ${network.toUpperCase()} PIN(s) purchased</p>
+                    </div>
+                `);
+            }
         }, 300);
+        
     } catch (error) {
         closeModal();
         setTimeout(() => {
@@ -1945,20 +2120,128 @@ async function submitPINChange() {
 }
 
 function showNotificationsModal() {
-    const bodyHTML = `
-        <div style="display: flex; flex-direction: column; gap: 12px;">
-            <div class="notification-item">
-                <div><strong>Welcome to Yareema!</strong><br><small style="color: #64748b;">Your account has been created successfully</small></div>
-                <small style="color: #94a3b8;">2 hours ago</small>
-            </div>
-            <div class="notification-item">
-                <div><strong>System Update</strong><br><small style="color: #64748b;">New features available</small></div>
-                <small style="color: #94a3b8;">1 day ago</small>
-            </div>
+    showModal('Notifications', `
+        <div id="notifLoadingState" style="text-align:center;padding:40px 0;">
+            <div style="width:36px;height:36px;border:3px solid #e2e8f0;border-top-color:#1e3d5c;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px;"></div>
+            <p style="color:#64748b;font-size:14px;">Loading notifications...</p>
         </div>
-    `;
-    
-    showModal('Notifications', bodyHTML, '<button onclick="closeModal()" class="btn-primary" style="width: 100%;">Close</button>');
+        <div id="notifList" style="display:none;"></div>
+    `, `
+        <button onclick="markAllNotifsRead()" id="markAllBtn" class="btn-secondary" style="flex:1;">Mark all read</button>
+        <button onclick="closeModal()" class="btn-primary" style="flex:1;">Close</button>
+    `);
+    document.getElementById('modalFooter').style.display = 'flex';
+    document.getElementById('modalFooter').style.gap = '10px';
+    _loadNotifications();
+}
+
+async function _loadNotifications() {
+    try {
+        const response = await api.getNotifications();
+        console.log('[Notifications] response:', response);
+        const notifications = response.data?.notifications || response.data || response.notifications || [];
+        _renderNotifications(notifications);
+    } catch (err) {
+        document.getElementById('notifLoadingState').innerHTML = `
+            <p style="color:#dc2626;font-size:14px;text-align:center;padding:32px 0;">
+                Failed to load notifications
+            </p>`;
+    }
+}
+
+function _renderNotifications(notifications) {
+    const loading = document.getElementById('notifLoadingState');
+    const list    = document.getElementById('notifList');
+    if (loading) loading.style.display = 'none';
+    if (!list) return;
+
+    if (!notifications.length) {
+        list.style.display = 'block';
+        list.innerHTML = `
+            <div style="text-align:center;padding:48px 0;">
+                <div style="width:56px;height:56px;background:#f1f5f9;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                </div>
+                <p style="color:#64748b;font-size:14px;">No notifications yet</p>
+            </div>`;
+        return;
+    }
+
+    list.style.display = 'block';
+    list.innerHTML = notifications.map(n => {
+        const id       = n._id || n.id;
+        const isRead   = n.isRead || n.read || false;
+        const title    = n.title || n.subject || 'Notification';
+        const message  = n.message || n.body || n.content || '';
+        const time     = n.createdAt ? _timeAgoNotif(n.createdAt) : '';
+        const typeIcon = _notifIcon(n.type || n.category || '');
+
+        return `
+        <div id="notif_${id}" onclick="readNotif('${id}', this)"
+            style="display:flex;align-items:flex-start;gap:12px;padding:14px 0;border-bottom:1px solid #f1f5f9;cursor:pointer;
+                   background:${isRead ? 'transparent' : '#f8faff'};border-radius:8px;padding:12px;margin-bottom:4px;transition:background .15s;">
+            <div style="width:38px;height:38px;border-radius:50%;background:${isRead ? '#f1f5f9' : '#dbeafe'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                ${typeIcon}
+            </div>
+            <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                    <p style="font-weight:${isRead ? '500' : '700'};color:#0f172a;font-size:14px;margin:0;">${title}</p>
+                    ${!isRead ? '<span style="width:8px;height:8px;background:#2563eb;border-radius:50%;flex-shrink:0;"></span>' : ''}
+                </div>
+                <p style="color:#64748b;font-size:13px;margin:3px 0 0;line-height:1.4;">${message}</p>
+                <p style="color:#94a3b8;font-size:11px;margin:4px 0 0;">${time}</p>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function _notifIcon(type) {
+    const t = (type || '').toLowerCase();
+    if (t.includes('success') || t.includes('credit') || t.includes('fund'))
+        return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+    if (t.includes('fail') || t.includes('error') || t.includes('debit'))
+        return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+    if (t.includes('warn') || t.includes('pending'))
+        return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+    return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
+}
+
+function _timeAgoNotif(d) {
+    const s = (Date.now() - new Date(d)) / 1000;
+    if (s < 60)    return 'Just now';
+    if (s < 3600)  return Math.floor(s / 60) + 'm ago';
+    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+    return Math.floor(s / 86400) + 'd ago';
+}
+
+async function readNotif(id, el) {
+    if (!el.querySelector('span[style*="background:#2563eb"]')) return; // already read
+    try {
+        await api.markNotificationRead(id);
+        el.style.background = 'transparent';
+        const dot = el.querySelector('span[style*="background:#2563eb"]');
+        if (dot) dot.remove();
+        const title = el.querySelector('p');
+        if (title) title.style.fontWeight = '500';
+    } catch (e) { /* silent */ }
+}
+
+async function markAllNotifsRead() {
+    const btn = document.getElementById('markAllBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Marking...'; }
+    try {
+        await api.markAllNotificationsRead();
+        document.querySelectorAll('#notifList > div').forEach(el => {
+            el.style.background = 'transparent';
+            const dot = el.querySelector('span[style*="background:#2563eb"]');
+            if (dot) dot.remove();
+            const title = el.querySelector('p');
+            if (title) title.style.fontWeight = '500';
+        });
+        if (btn) { btn.disabled = false; btn.textContent = 'All read ✓'; }
+    } catch (e) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Mark all read'; }
+    }
 }
 
 function showDevicesModal() {

@@ -258,13 +258,13 @@ class YareemaUserAPI {
     // ==================== TELECOM ====================
 
     async getDataPlans(network) {
-        return await this.request(`/api/v1/telecom/data/plans?network=${network.toLowerCase()}`);
+        return await this.request(`/api/v1/telecom/data/plans?source=nellobytes&network=${network.toLowerCase()}`);
     }
 
-    async purchaseData(phoneNumber, network, planId, transactionPin) {
+    async purchaseData(phoneNumber, network, dataPlan, transactionPin, amount) {
         return await this.request('/api/v1/telecom/data/purchase', {
             method: 'POST',
-            body: { phoneNumber, network: network.toLowerCase(), planId, transactionPin }
+            body: { phoneNumber, network: network.toLowerCase(), dataPlan, transactionPin, amount }
         });
     }
 
@@ -282,12 +282,25 @@ class YareemaUserAPI {
         });
     }
 
-    async purchaseRechargePIN(network, pinType, quantity, transactionPin) {
-        return await this.request('/api/v1/telecom/recharge-pin/purchase', {
-            method: 'POST',
-            body: { network: network.toLowerCase(), pinType, quantity, transactionPin }
-        });
-    }
+    // async purchaseRechargePIN(network, pinType, quantity, transactionPin) {
+    //     return await this.request('/api/v1/telecom/recharge-pin/purchase', {
+    //         method: 'POST',
+    //         body: { network: network.toLowerCase(), pinType, quantity, transactionPin }
+    //     });
+    // }
+
+    // Add this method to the YareemaUserAPI class
+async purchaseEpin(network, amount, quantity, transactionPin) {
+    return await this.request('/api/v1/telecom/epin/purchase', {
+        method: 'POST',
+        body: { 
+            network,  // This will be '01', '02', '03', or '04'
+            amount, 
+            quantity, 
+            transactionPin 
+        }
+    });
+}
 
     // ==================== BILLS ====================
 
@@ -298,15 +311,15 @@ class YareemaUserAPI {
         });
     }
 
-    async purchaseElectricity(meterNumber, disco, amount, phoneNumber, transactionPin) {
+    async purchaseElectricity(meterNumber, disco, amount, phoneNumber, transactionPin, meterType = 'prepaid') {
         return await this.request('/api/v1/bills/electricity/purchase', {
             method: 'POST',
-            body: { meterNumber, disco: disco.toLowerCase(), amount, phoneNumber, transactionPin }
+            body: { meterNumber, disco: disco.toLowerCase(), meterType, amount, phoneNumber, transactionPin }
         });
     }
 
     async getCablePlans(provider) {
-        return await this.request(`/api/v1/bills/cable/plans?provider=${provider.toLowerCase()}`);
+        return await this.request(`/api/v1/bills/cable/plans?source=nellobytes&provider=${provider.toLowerCase()}`);
     }
 
     async purchaseCableTV(smartCardNumber, provider, planId, months, transactionPin) {
@@ -321,6 +334,32 @@ class YareemaUserAPI {
             method: 'POST',
             body: { examType, quantity, transactionPin }
         });
+    }
+
+    // ==================== NOTIFICATIONS ====================
+
+    async getNotifications() {
+        return await this.request('/api/v1/notifications');
+    }
+
+    async getUnreadCount() {
+        return await this.request('/api/v1/notifications/unread-count');
+    }
+
+    async markNotificationRead(id) {
+        return await this.request(`/api/v1/notifications/${id}/read`, { method: 'PUT' });
+    }
+
+    async markAllNotificationsRead() {
+        return await this.request('/api/v1/notifications/mark-all-read', { method: 'PUT' });
+    }
+
+    async deleteNotification(id) {
+        return await this.request(`/api/v1/notifications/${id}`, { method: 'DELETE' });
+    }
+
+    async deleteAllNotifications() {
+        return await this.request('/api/v1/notifications', { method: 'DELETE' });
     }
 
     // ==================== REMITA ====================

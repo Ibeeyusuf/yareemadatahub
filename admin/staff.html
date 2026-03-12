@@ -3,319 +3,408 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Staff & Roles - Yareema Datahub Admin</title>
+    <title>Staff & Roles - Yareema Data Hub Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/style.css">
     <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{primary:'#2563eb',secondary:'#7c3aed',success:'#10b981',warning:'#f59e0b',error:'#ef4444',dark:'#0f172a',light:'#f8fafc'}}}}</script>
+    <style>
+        .skeleton{background:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:12px}
+        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+        .role-option{cursor:pointer;transition:all .15s}
+        .role-option input[type=radio]:checked ~ .role-card{border-color:#2563eb;background:#eff6ff}
+        .role-card{border:2px solid #e2e8f0;border-radius:12px;padding:14px;transition:all .15s}
+        .role-option:hover .role-card{border-color:#93c5fd}
+        .perm-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#f1f5f9;border-radius:6px;font-size:11px;color:#475569;font-weight:500}
+        .perm-tag.active{background:#dbeafe;color:#1d4ed8}
+    </style>
 </head>
 <body class="text-slate-800 antialiased">
+
     <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+
     <div class="w-full">
         <div id="sidebar-placeholder"></div>
         <main class="lg:ml-64 flex flex-col min-h-screen bg-slate-50">
             <div id="header-placeholder"></div>
+
             <div class="p-4 lg:p-8 flex-1 overflow-y-auto">
                 <div class="space-y-6">
+
+                    <!-- Page header -->
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
-                            <h2 class="text-2xl font-bold text-slate-900">Staff & Roles Management</h2>
-                            <p class="text-slate-500 text-sm mt-1">Manage team members and permissions.</p>
+                            <h2 class="text-2xl font-bold text-slate-900">Staff & Roles</h2>
+                            <p class="text-slate-500 text-sm mt-1">
+                                Admin team members ·
+                                <span id="staffTotalBadge" class="font-semibold text-slate-700">—</span> total
+                            </p>
                         </div>
-                        <button onclick="openAddModal()" class="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200">
-                            <i data-lucide="user-plus" class="w-4 h-4"></i> Add Staff
-                        </button>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-                            <div class="flex items-start gap-4">
-                                <div class="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 font-semibold text-xl border-2 border-slate-200">AM</div>
-                                <div class="flex-1">
-                                    <h3 class="font-bold text-slate-900">Alex Morgan</h3>
-                                    <p class="text-sm text-slate-500">alex.morgan@Yareema.com</p>
-                                    <span class="inline-block mt-2 px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full">Super Admin</span>
-                                </div>
-                            </div>
-                            <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                                <span>Last active: 5 min ago</span>
-                                <button onclick='openEditModal({id:1, name:"Alex Morgan", email:"alex.morgan@Yareema.com", role:"Super Admin"})' class="text-primary hover:underline">Edit</button>
-                            </div>
-                        </div>
-                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-                            <div class="flex items-start gap-4">
-                                <div class="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-xl border-2 border-slate-200">SK</div>
-                                <div class="flex-1">
-                                    <h3 class="font-bold text-slate-900">Sarah Kim</h3>
-                                    <p class="text-sm text-slate-500">sarah.k@Yareema.com</p>
-                                    <span class="inline-block mt-2 px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">Admin</span>
-                                </div>
-                            </div>
-                            <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                                <span>Last active: 2 hours ago</span>
-                                <button onclick='openEditModal({id:2, name:"Sarah Kim", email:"sarah.k@Yareema.com", role:"Admin"})' class="text-primary hover:underline">Edit</button>
-                            </div>
-                        </div>
-                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-                            <div class="flex items-start gap-4">
-                                <div class="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold text-xl border-2 border-slate-200">RF</div>
-                                <div class="flex-1">
-                                    <h3 class="font-bold text-slate-900">Robert Fox</h3>
-                                    <p class="text-sm text-slate-500">rob.fox@Yareema.com</p>
-                                    <span class="inline-block mt-2 px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">Support</span>
-                                </div>
-                            </div>
-                            <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                                <span>Last active: 1 day ago</span>
-                                <button onclick='openEditModal({id:3, name:"Robert Fox", email:"rob.fox@Yareema.com", role:"Support"})' class="text-primary hover:underline">Edit</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                        <h3 class="font-bold text-slate-900 mb-4">Roles & Permissions</h3>
-                        <div class="space-y-4">
-                            <div class="p-4 border border-slate-200 rounded-lg">
-                                <div class="flex items-center justify-between mb-3">
-                                    <div>
-                                        <h4 class="font-medium text-slate-900">Super Admin</h4>
-                                        <p class="text-xs text-slate-500">Full system access with no restrictions</p>
-                                    </div>
-                                    <span class="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full">3 members</span>
-                                </div>
-                                <div class="flex flex-wrap gap-2">
-                                    <span class="px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded">All Permissions</span>
-                                </div>
-                            </div>
-                            <div class="p-4 border border-slate-200 rounded-lg">
-                                <div class="flex items-center justify-between mb-3">
-                                    <div>
-                                        <h4 class="font-medium text-slate-900">Admin</h4>
-                                        <p class="text-xs text-slate-500">Most access except staff management</p>
-                                    </div>
-                                    <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">5 members</span>
-                                </div>
-                                <div class="flex flex-wrap gap-2">
-                                    <span class="px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded">Users</span>
-                                    <span class="px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded">Transactions</span>
-                                    <span class="px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded">Wallet</span>
-                                    <span class="px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded">Reports</span>
-                                </div>
-                            </div>
-                            <div class="p-4 border border-slate-200 rounded-lg">
-                                <div class="flex items-center justify-between mb-3">
-                                    <div>
-                                        <h4 class="font-medium text-slate-900">Support</h4>
-                                        <p class="text-xs text-slate-500">View access with limited actions</p>
-                                    </div>
-                                    <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">8 members</span>
-                                </div>
-                                <div class="flex flex-wrap gap-2">
-                                    <span class="px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded">View Users</span>
-                                    <span class="px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded">View Transactions</span>
-                                    <span class="px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded">Support Tickets</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Staff Modal (Add/Edit) -->
-            <div id="staffModal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-                <div class="flex items-center justify-center min-h-screen px-4">
-                    <!-- Background overlay -->
-                    <div class="fixed inset-0 bg-slate-900/50 transition-opacity" onclick="closeModal()"></div>
-                    
-                    <!-- Modal panel -->
-                    <div class="relative bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
-                        <!-- Header -->
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 id="modal-title" class="text-lg font-bold text-slate-900">Add Staff Member</h3>
-                            <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
-                                <i data-lucide="x" class="w-5 h-5"></i>
+                        <div class="flex items-center gap-3">
+                            <button onclick="loadStaff()" class="flex items-center gap-2 px-3 py-2 border border-slate-200 bg-white text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50">
+                                <i data-lucide="refresh-cw" class="w-4 h-4"></i> Refresh
+                            </button>
+                            <button onclick="openAddStaffModal()" class="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-blue-700 shadow-sm shadow-blue-200">
+                                <i data-lucide="user-plus" class="w-4 h-4"></i> Add Staff
                             </button>
                         </div>
-        
-                        <!-- Form -->
-                        <form id="staffForm" onsubmit="handleSubmit(event)">
-                            <div class="space-y-4">
-                                <!-- Name -->
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700 mb-1">Full name</label>
-                                    <input 
-                                        type="text" 
-                                        id="staffName"
-                                        class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                                        placeholder="John Doe"
-                                        oninput="updateInitialsPreview()"
-                                        required
-                                    >
-                                </div>
-        
-                                <!-- Email -->
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700 mb-1">Email address</label>
-                                    <input 
-                                        type="email" 
-                                        id="staffEmail"
-                                        class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                                        placeholder="john@yareema.com"
-                                        required
-                                    >
-                                </div>
-        
-                                <!-- Role -->
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700 mb-1">Role</label>
-                                    <select 
-                                        id="staffRole"
-                                        class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                                    >
-                                        <option value="Super Admin">Super Admin</option>
-                                        <option value="Admin">Admin</option>
-                                        <option value="Support">Support</option>
-                                    </select>
-                                </div>
-        
-                                <!-- Initials Preview -->
-                                <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-                                    <div id="initialsPreview" class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-semibold text-sm">
-                                        JD
-                                    </div>
-                                    <span class="text-sm text-slate-600">Initials avatar (auto-generated)</span>
-                                </div>
-                            </div>
-        
-                            <!-- Actions -->
-                            <div class="flex justify-end gap-3 mt-6">
-                                <button 
-                                    type="button" 
-                                    onclick="closeModal()"
-                                    class="px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button 
-                                    type="submit"
-                                    class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
-                                >
-                                    <i data-lucide="save" class="w-4 h-4"></i>
-                                    <span id="submitText">Add Staff</span>
-                                </button>
-                            </div>
-                        </form>
                     </div>
+
+                    <!-- Search & filter -->
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <div class="relative flex-1">
+                            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input id="staffSearch" type="text" placeholder="Search name or email…" oninput="filterStaff()"
+                                class="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+                        </div>
+                        <select id="staffRoleFilter" onchange="filterStaff()"
+                            class="px-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none min-w-[150px]">
+                            <option value="">All Roles</option>
+                            <option value="superadmin">Super Admin</option>
+                            <option value="admin">Admin</option>
+                            <option value="support">Support</option>
+                        </select>
+                    </div>
+
+                    <!-- Staff grid -->
+                    <div id="staffGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div class="skeleton h-44"></div>
+                        <div class="skeleton h-44"></div>
+                        <div class="skeleton h-44"></div>
+                    </div>
+
+                    <!-- ── Roles & Permissions reference ── -->
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                            <div>
+                                <h3 class="font-bold text-slate-900">Roles & Permissions</h3>
+                                <p class="text-xs text-slate-400 mt-0.5">Member counts are live · Permissions are system-defined</p>
+                            </div>
+                        </div>
+                        <div class="divide-y divide-slate-100">
+
+                            <!-- Super Admin -->
+                            <div class="px-6 py-4 flex flex-col sm:flex-row sm:items-start gap-4">
+                                <div class="flex items-center gap-3 sm:w-48 flex-shrink-0">
+                                    <div class="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+                                        <i data-lucide="shield" class="w-4 h-4 text-purple-700"></i>
+                                    </div>
+                                    <div>
+                                        <p class="font-semibold text-slate-900 text-sm">Super Admin</p>
+                                        <span id="roleCount_superadmin" class="text-xs font-semibold text-purple-700">— members</span>
+                                    </div>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-xs text-slate-500 mb-2">Full unrestricted system access</p>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        <span class="perm-tag active">Dashboard</span>
+                                        <span class="perm-tag active">Users</span>
+                                        <span class="perm-tag active">Agents</span>
+                                        <span class="perm-tag active">Transactions</span>
+                                        <span class="perm-tag active">Wallet</span>
+                                        <span class="perm-tag active">Reports</span>
+                                        <span class="perm-tag active">Pricing</span>
+                                        <span class="perm-tag active">Staff</span>
+                                        <span class="perm-tag active">Settings</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Admin -->
+                            <div class="px-6 py-4 flex flex-col sm:flex-row sm:items-start gap-4">
+                                <div class="flex items-center gap-3 sm:w-48 flex-shrink-0">
+                                    <div class="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                        <i data-lucide="shield-check" class="w-4 h-4 text-blue-700"></i>
+                                    </div>
+                                    <div>
+                                        <p class="font-semibold text-slate-900 text-sm">Admin</p>
+                                        <span id="roleCount_admin" class="text-xs font-semibold text-blue-700">— members</span>
+                                    </div>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-xs text-slate-500 mb-2">Broad access — cannot manage staff or settings</p>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        <span class="perm-tag active">Dashboard</span>
+                                        <span class="perm-tag active">Users</span>
+                                        <span class="perm-tag active">Agents</span>
+                                        <span class="perm-tag active">Transactions</span>
+                                        <span class="perm-tag active">Wallet</span>
+                                        <span class="perm-tag active">Reports</span>
+                                        <span class="perm-tag active">Pricing</span>
+                                        <span class="perm-tag">Staff</span>
+                                        <span class="perm-tag">Settings</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Support -->
+                            <div class="px-6 py-4 flex flex-col sm:flex-row sm:items-start gap-4">
+                                <div class="flex items-center gap-3 sm:w-48 flex-shrink-0">
+                                    <div class="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                                        <i data-lucide="headphones" class="w-4 h-4 text-green-700"></i>
+                                    </div>
+                                    <div>
+                                        <p class="font-semibold text-slate-900 text-sm">Support</p>
+                                        <span id="roleCount_support" class="text-xs font-semibold text-green-700">— members</span>
+                                    </div>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-xs text-slate-500 mb-2">View-only access with limited actions</p>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        <span class="perm-tag active">Dashboard</span>
+                                        <span class="perm-tag active">View Users</span>
+                                        <span class="perm-tag active">View Transactions</span>
+                                        <span class="perm-tag">Agents</span>
+                                        <span class="perm-tag">Wallet</span>
+                                        <span class="perm-tag">Reports</span>
+                                        <span class="perm-tag">Pricing</span>
+                                        <span class="perm-tag">Staff</span>
+                                        <span class="perm-tag">Settings</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </main>
     </div>
+
+    <!-- ══════════════════════════════════════
+         ADD STAFF MODAL
+         Shows: name, email, role picker with
+         live permission breakdown per role.
+         Submit wired — awaiting backend endpoint.
+    ══════════════════════════════════════ -->
+    <div id="staffModal" class="fixed inset-0 z-50 overflow-y-auto hidden">
+        <div class="flex items-center justify-center min-h-screen px-4 py-8">
+            <div class="fixed inset-0 bg-slate-900/50" onclick="closeStaffModal()"></div>
+            <div class="relative bg-white rounded-2xl w-full max-w-lg shadow-2xl">
+
+                <!-- Modal header -->
+                <div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-100">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center">
+                            <i data-lucide="user-plus" class="w-4 h-4 text-blue-700"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900">Add Staff Member</h3>
+                            <p class="text-xs text-slate-400">Assign role & access level</p>
+                        </div>
+                    </div>
+                    <button onclick="closeStaffModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <div class="px-6 py-5 space-y-5 max-h-[76vh] overflow-y-auto">
+
+                    <!-- Name row -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1.5">First Name <span class="text-red-400">*</span></label>
+                            <input type="text" id="staffFirstName" oninput="updateAvatarPreview()"
+                                placeholder="John"
+                                class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-primary">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1.5">Last Name</label>
+                            <input type="text" id="staffLastName" oninput="updateAvatarPreview()"
+                                placeholder="Doe"
+                                class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-primary">
+                        </div>
+                    </div>
+
+                    <!-- Email -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1.5">Email Address <span class="text-red-400">*</span></label>
+                        <input type="email" id="staffEmail"
+                            placeholder="john@yareema.com"
+                            class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-primary">
+                    </div>
+
+                    <!-- Role picker -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-2">Role & Access Level <span class="text-red-400">*</span></label>
+                        <div class="space-y-2" id="rolePicker">
+
+                            <label class="role-option block">
+                                <input type="radio" name="staffRole" value="superadmin" class="sr-only">
+                                <div class="role-card">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-7 h-7 rounded-md bg-purple-100 flex items-center justify-center flex-shrink-0">
+                                                <i data-lucide="shield" class="w-3.5 h-3.5 text-purple-700"></i>
+                                            </div>
+                                            <span class="text-sm font-semibold text-slate-900">Super Admin</span>
+                                        </div>
+                                        <div class="w-4 h-4 rounded-full border-2 border-slate-300 flex items-center justify-center role-radio-dot">
+                                            <div class="w-2 h-2 rounded-full bg-primary hidden role-dot-fill"></div>
+                                        </div>
+                                    </div>
+                                    <p class="text-xs text-slate-500 mb-2 pl-9">Full unrestricted access to all modules</p>
+                                    <div class="flex flex-wrap gap-1 pl-9">
+                                        <span class="perm-tag active">All Permissions</span>
+                                    </div>
+                                </div>
+                            </label>
+
+                            <label class="role-option block">
+                                <input type="radio" name="staffRole" value="admin" class="sr-only" checked>
+                                <div class="role-card" style="border-color:#2563eb;background:#eff6ff">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-7 h-7 rounded-md bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                                <i data-lucide="shield-check" class="w-3.5 h-3.5 text-blue-700"></i>
+                                            </div>
+                                            <span class="text-sm font-semibold text-slate-900">Admin</span>
+                                        </div>
+                                        <div class="w-4 h-4 rounded-full border-2 border-primary flex items-center justify-center role-radio-dot">
+                                            <div class="w-2 h-2 rounded-full bg-primary role-dot-fill"></div>
+                                        </div>
+                                    </div>
+                                    <p class="text-xs text-slate-500 mb-2 pl-9">Broad access — no staff or settings management</p>
+                                    <div class="flex flex-wrap gap-1 pl-9">
+                                        <span class="perm-tag active">Dashboard</span>
+                                        <span class="perm-tag active">Users</span>
+                                        <span class="perm-tag active">Agents</span>
+                                        <span class="perm-tag active">Transactions</span>
+                                        <span class="perm-tag active">Wallet</span>
+                                        <span class="perm-tag active">Reports</span>
+                                        <span class="perm-tag active">Pricing</span>
+                                        <span class="perm-tag">Staff</span>
+                                        <span class="perm-tag">Settings</span>
+                                    </div>
+                                </div>
+                            </label>
+
+                            <label class="role-option block">
+                                <input type="radio" name="staffRole" value="support" class="sr-only">
+                                <div class="role-card">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-7 h-7 rounded-md bg-green-100 flex items-center justify-center flex-shrink-0">
+                                                <i data-lucide="headphones" class="w-3.5 h-3.5 text-green-700"></i>
+                                            </div>
+                                            <span class="text-sm font-semibold text-slate-900">Support</span>
+                                        </div>
+                                        <div class="w-4 h-4 rounded-full border-2 border-slate-300 flex items-center justify-center role-radio-dot">
+                                            <div class="w-2 h-2 rounded-full bg-primary hidden role-dot-fill"></div>
+                                        </div>
+                                    </div>
+                                    <p class="text-xs text-slate-500 mb-2 pl-9">View-only — handle support tickets and queries</p>
+                                    <div class="flex flex-wrap gap-1 pl-9">
+                                        <span class="perm-tag active">Dashboard</span>
+                                        <span class="perm-tag active">View Users</span>
+                                        <span class="perm-tag active">View Transactions</span>
+                                        <span class="perm-tag">Agents</span>
+                                        <span class="perm-tag">Wallet</span>
+                                        <span class="perm-tag">Reports</span>
+                                        <span class="perm-tag">Pricing</span>
+                                        <span class="perm-tag">Staff</span>
+                                        <span class="perm-tag">Settings</span>
+                                    </div>
+                                </div>
+                            </label>
+
+                        </div>
+                    </div>
+
+                    <!-- Avatar preview -->
+                    <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <div id="staffAvatarPreview"
+                            class="w-11 h-11 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-base flex-shrink-0">
+                            ?
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-slate-800" id="staffNamePreview">New staff member</p>
+                            <p class="text-xs text-slate-400" id="staffRolePreview">Admin</p>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Footer actions -->
+                <div class="px-6 py-4 border-t border-slate-100 flex items-center justify-between gap-3">
+                    <button type="button" onclick="closeStaffModal()"
+                        class="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">
+                        Cancel
+                    </button>
+                    <button onclick="handleStaffSubmit()"
+                        class="flex items-center gap-2 px-5 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-blue-700 shadow-sm shadow-blue-200">
+                        <i data-lucide="user-plus" class="w-4 h-4"></i>
+                        Add Staff Member
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ════════ ASSIGN ROLE MODAL ════════ -->
+    <div id="assignRoleModal" class="fixed inset-0 z-50 overflow-y-auto hidden">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="fixed inset-0 bg-slate-900/50" onclick="document.getElementById('assignRoleModal').classList.add('hidden')"></div>
+            <div class="relative bg-white rounded-2xl w-full max-w-sm shadow-2xl">
+                <div class="flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100">
+                    <h3 class="text-base font-bold text-slate-900">Change Role</h3>
+                    <button onclick="document.getElementById('assignRoleModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <div class="px-5 py-4 space-y-4">
+                    <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                        <div id="arAvatarPreview" class="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold flex-shrink-0">?</div>
+                        <div>
+                            <p id="assignRoleName" class="text-sm font-semibold text-slate-900"></p>
+                            <p class="text-xs text-slate-400">Current: <span id="assignRoleCurrentLabel" class="font-medium text-slate-600"></span></p>
+                        </div>
+                    </div>
+                    <input type="hidden" id="assignRoleUserId">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-2">Assign New Role</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:border-purple-300 hover:bg-purple-50 has-[:checked]:border-purple-500 has-[:checked]:bg-purple-50">
+                                <input type="radio" name="arRole" value="superadmin" class="accent-purple-600">
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-800">Super Admin</p>
+                                    <p class="text-xs text-slate-400">Full access — all permissions</p>
+                                </div>
+                            </label>
+                            <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:border-blue-300 hover:bg-blue-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+                                <input type="radio" name="arRole" value="admin" class="accent-blue-600">
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-800">Admin</p>
+                                    <p class="text-xs text-slate-400">Broad access, no staff/settings</p>
+                                </div>
+                            </label>
+                            <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:border-green-300 hover:bg-green-50 has-[:checked]:border-green-500 has-[:checked]:bg-green-50">
+                                <input type="radio" name="arRole" value="support" class="accent-green-600">
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-800">Support</p>
+                                    <p class="text-xs text-slate-400">View-only, support tickets</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-5 py-4 border-t border-slate-100 flex gap-3">
+                    <button onclick="document.getElementById('assignRoleModal').classList.add('hidden')"
+                        class="flex-1 px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">Cancel</button>
+                    <button onclick="submitAssignRole()"
+                        class="flex-1 px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-blue-700">Assign Role</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="assets/js/config.js"></script>
     <script src="assets/js/api-service.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/staff.js"></script>
     <script src="assets/js/main.js"></script>
-
-    <script>
-        let currentStaffId = null;
-        const modal = document.getElementById('staffModal');
-        const modalTitle = document.getElementById('modal-title');
-        const submitText = document.getElementById('submitText');
-        
-        // Form fields
-        const nameInput = document.getElementById('staffName');
-        const emailInput = document.getElementById('staffEmail');
-        const roleSelect = document.getElementById('staffRole');
-        const initialsPreview = document.getElementById('initialsPreview');
-
-        function getInitials(name) {
-            if (!name || !name.trim()) return '?';
-            return name.trim()
-                .split(' ')
-                .map(word => word[0])
-                .join('')
-                .toUpperCase()
-                .slice(0, 2);
-        }
-
-        function updateInitialsPreview() {
-            initialsPreview.textContent = getInitials(nameInput.value);
-        }
-
-        function openAddModal() {
-            currentStaffId = null;
-            modalTitle.textContent = 'Add Staff Member';
-            submitText.textContent = 'Add Staff';
-            
-            // Clear form
-            nameInput.value = '';
-            emailInput.value = '';
-            roleSelect.value = 'Admin';
-            updateInitialsPreview();
-            
-            modal.classList.remove('hidden');
-            lucide.createIcons();
-        }
-
-        function openEditModal(staffData) {
-            currentStaffId = staffData.id;
-            modalTitle.textContent = 'Edit Staff Member';
-            submitText.textContent = 'Save Changes';
-            
-            // Fill form with staff data
-            nameInput.value = staffData.name || '';
-            emailInput.value = staffData.email || '';
-            roleSelect.value = staffData.role || 'Admin';
-            updateInitialsPreview();
-            
-            modal.classList.remove('hidden');
-            lucide.createIcons();
-        }
-
-        function closeModal() {
-            modal.classList.add('hidden');
-        }
-
-        function handleSubmit(event) {
-            event.preventDefault();
-            
-            const formData = {
-                id: currentStaffId,
-                name: nameInput.value.trim(),
-                email: emailInput.value.trim(),
-                role: roleSelect.value,
-                initials: getInitials(nameInput.value)
-            };
-
-            if (currentStaffId) {
-                console.log('Editing staff:', formData);
-                alert('Edit staff: ' + JSON.stringify(formData, null, 2));
-            } else {
-                console.log('Adding new staff:', formData);
-                alert('Add staff: ' + JSON.stringify(formData, null, 2));
-            }
-            
-            closeModal();
-        }
-
-        function toggleSidebar() {
-            const overlay = document.getElementById('mobile-overlay');
-            const sidebar = document.getElementById('sidebar-placeholder');
-            if (window.innerWidth < 1024) {
-                overlay.classList.toggle('hidden');
-                sidebar.classList.toggle('hidden');
-            }
-        }
-
-        // Close modal with Escape key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
-                closeModal();
-            }
-        });
-
-        // Initialize Lucide icons and preview
-        lucide.createIcons();
-        updateInitialsPreview();
-    </script>
 </body>
 </html>
