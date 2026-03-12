@@ -265,6 +265,13 @@ async function submitDataPurchase() {
     }
     console.log('[Data Purchase] selected plan object:', selectedPlan);
 
+    // Get the amount from the selected plan
+    const amount = selectedPlan.PRODUCT_AMOUNT || selectedPlan.sellingPrice || selectedPlan.price || 0;
+    if (!amount || amount <= 0) {
+        showError('Could not determine plan amount. Please try again.');
+        return;
+    }
+
     // Nellobytes PRODUCT_ID e.g. "1000.0" → send "1000" as dataPlan
     const rawId = selectedPlan.PRODUCT_ID || selectedPlan.planId || selectedPlan.planCode || selectedPlan._id || selectedPlan.id;
     console.log('[Data Purchase] raw PRODUCT_ID:', rawId);
@@ -279,11 +286,13 @@ async function submitDataPurchase() {
 
     try {
         showLoading('Purchasing data...');
-        const response = await api.purchaseData(phone, selectedNetwork, planId, pin);
+        // Pass the amount to the API
+        const response = await api.purchaseData(phone, selectedNetwork, planId, pin, amount);
         closeModal();
         setTimeout(() => {
             const planName = selectedPlan.PRODUCT_NAME || selectedPlan.planName || 'Data';
-            showSuccess(planName + ' purchased successfully for ' + phone + '! ✅');
+            const formattedAmount = `₦${Math.round(Number(amount)).toLocaleString()}`;
+            showSuccess(planName + ' purchased successfully for ' + phone + '! ✅\nAmount: ' + formattedAmount);
         }, 300);
     } catch (error) {
         closeModal();
@@ -958,30 +967,32 @@ async function submitRechargePIN() {
     try {
         showLoading('Purchasing recharge PIN...');
         
-        // Use the new epin purchase endpoint with networkId
+        // Pass networkId as the 'network' parameter
         const response = await api.purchaseEpin(networkId, amount, quantity, pin);
         
         closeModal();
         
         // Handle success
         setTimeout(() => {
-            if (response.TXN_EPIN && response.TXN_EPIN.length > 0) {
-                // Show success with the first PIN as example
-                showSuccess(`
-                    <div style="text-align: center;">
-                        <p style="font-size: 16px; margin-bottom: 8px;">PIN Purchase Successful! 🔐</p>
-                        <p style="font-size: 14px; color: #64748b;">${quantity} x ₦${amount} ${network.toUpperCase()} PIN(s) purchased</p>
-                        <p style="font-size: 13px; color: #94a3b8; margin-top: 8px;">PINs have been sent to your email</p>
-                    </div>
-                `);
-            } else {
-                showSuccess(`
-                    <div style="text-align: center;">
-                        <p style="font-size: 16px; margin-bottom: 8px;">PIN Purchase Successful! 🔐</p>
-                        <p style="font-size: 14px; color: #64748b;">${quantity} x ₦${amount} ${network.toUpperCase()} PIN(s) purchased</p>
-                    </div>
-                `);
-            }
+            // Calculate total with discount
+            const discountRates = {
+                'mtn': 0.99,      // 1% discount
+                'glo': 0.98,      // 2% discount
+                '9mobile': 0.95,  // 5% discount
+                'airtel': 0.98    // 2% discount
+            };
+            const discountRate = discountRates[network] || 1;
+            const subtotal = parseInt(amount) * quantity;
+            const totalPaid = Math.round(subtotal * discountRate);
+            
+            showSuccess(`
+                <div style="text-align: center;">
+                    <p style="font-size: 16px; margin-bottom: 8px;">PIN Purchase Successful! 🔐</p>
+                    <p style="font-size: 14px; color: #64748b;">${quantity} x ₦${amount} ${network.toUpperCase()} PIN(s)</p>
+                    <p style="font-size: 13px; color: #16a34a; margin: 4px 0;">Total Paid: ₦${totalPaid.toLocaleString()}</p>
+                    <p style="font-size: 13px; color: #94a3b8; margin-top: 8px;">PINs have been sent to your email</p>
+                </div>
+            `);
         }, 300);
         
     } catch (error) {
