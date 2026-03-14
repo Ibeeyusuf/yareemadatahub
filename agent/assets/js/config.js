@@ -150,16 +150,30 @@ const API = {
                     if (isLoginRequest) {
                         throw new Error(errorMessage);
                     }
-                    this.removeToken();
-                    if (!window.location.pathname.includes('index.html') && 
-                        !window.location.pathname.includes('register.html') &&
-                        !window.location.pathname.includes('forgot-password.html')) {
-                        UI.showToast('Session expired. Please login again.', 'error');
-                        setTimeout(() => {
-                            window.location.href = 'index.html';
-                        }, 1500);
+                    // Only treat as session expired if it's a real token error.
+                    // Business-logic 401s (wrong PIN, not approved, access denied)
+                    // should surface as errors to the UI, not log the user out.
+                    const _msg = (data.message || data.error || data.msg || '').toLowerCase();
+                    const _isTokenError = _msg.includes('token') || _msg.includes('jwt') ||
+                                         _msg.includes('expired') || _msg.includes('not authenticated') ||
+                                         _msg.includes('no token') || _msg.includes('invalid token') ||
+                                         _msg === '' || _msg === 'unauthorized';
+                    const _isBusinessError = _msg.includes('pin') || _msg.includes('approved') ||
+                                             _msg.includes('not approved') || _msg.includes('access') ||
+                                             _msg.includes('permission') || _msg.includes('wrong') ||
+                                             _msg.includes('incorrect') || _msg.includes('insufficient');
+                    if (_isTokenError && !_isBusinessError) {
+                        this.removeToken();
+                        if (!window.location.pathname.includes('index.html') &&
+                            !window.location.pathname.includes('register.html') &&
+                            !window.location.pathname.includes('forgot-password.html')) {
+                            UI.showToast('Session expired. Please login again.', 'error');
+                            setTimeout(() => { window.location.href = 'index.html'; }, 1500);
+                        }
+                        throw new Error('Session expired. Please login again.');
                     }
-                    throw new Error('Session expired. Please login again.');
+                    // Business-logic 401 — throw the message so the UI can handle it
+                    throw new Error(errorMessage || 'Access denied');
                 }
                 
                 if (response.status === 403) {

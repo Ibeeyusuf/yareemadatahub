@@ -655,6 +655,333 @@ function calculateCommission(type) {
     }
 }
 
+// ==================== MISSING SERVICES (ported from User module) ====================
+
+// Airtime Swap (User: swapAirtime)
+const AgentAirtimeSwap = {
+    async swap(phoneNumber, network, airtimeAmount, transactionPin) {
+        try {
+            const response = await API.post('/api/v1/agent/airtime/swap', {
+                phoneNumber,
+                network: network.toLowerCase(),
+                airtimeAmount,
+                transactionPin
+            });
+            if (response.success || response.status === 'success') {
+                return { success: true, message: response.message || 'Airtime swap successful', data: response.data };
+            }
+            throw new Error(response.message || 'Airtime swap failed');
+        } catch (error) {
+            return { success: false, message: error.message || 'Airtime swap failed. Please try again.' };
+        }
+    }
+};
+
+// ePIN Purchase (User: purchaseEpin)
+const AgentEpin = {
+    async purchase(network, amount, quantity, transactionPin) {
+        try {
+            const response = await API.post('/api/v1/telecom/epin/purchase', {
+                network,
+                amount,
+                quantity,
+                transactionPin
+            });
+            if (response.success || response.status === 'success') {
+                return { success: true, message: response.message || 'ePIN purchase successful', data: response.data };
+            }
+            throw new Error(response.message || 'ePIN purchase failed');
+        } catch (error) {
+            return { success: false, message: error.message || 'ePIN purchase failed. Please try again.' };
+        }
+    }
+};
+
+// Electricity (dedicated methods matching User: verifyElectricityCustomer + purchaseElectricity)
+const AgentElectricity = {
+    async verify(meterNumber, disco, meterType = 'prepaid') {
+        try {
+            const response = await API.post(API_CONFIG.ENDPOINTS.ELECTRICITY_VERIFY, {
+                meterNumber,
+                disco: disco.toLowerCase(),
+                meterType
+            });
+            if (response.success || response.status === 'success') {
+                return { success: true, data: response.data };
+            }
+            throw new Error(response.message || 'Meter verification failed');
+        } catch (error) {
+            return { success: false, message: error.message || 'Meter verification failed' };
+        }
+    },
+
+    async purchase(meterNumber, disco, amount, phoneNumber, transactionPin, meterType = 'prepaid') {
+        try {
+            const response = await API.post('/api/v1/agent/bills/electricity/purchase', {
+                meterNumber,
+                disco: disco.toLowerCase(),
+                meterType,
+                amount,
+                phoneNumber,
+                transactionPin
+            });
+            if (response.success || response.status === 'success') {
+                return { success: true, message: response.message || 'Electricity purchase successful', data: response.data };
+            }
+            throw new Error(response.message || 'Electricity purchase failed');
+        } catch (error) {
+            return { success: false, message: error.message || 'Electricity purchase failed. Please try again.' };
+        }
+    }
+};
+
+// Cable TV (dedicated purchase matching User: purchaseCableTV)
+const AgentCableTV = {
+    async verify(smartCardNumber, provider) {
+        try {
+            const response = await API.post(API_CONFIG.ENDPOINTS.CABLE_VERIFY, {
+                smartCardNumber,
+                provider: provider.toLowerCase()
+            });
+            if (response.success || response.status === 'success') {
+                return { success: true, data: response.data };
+            }
+            throw new Error(response.message || 'Smart card verification failed');
+        } catch (error) {
+            return { success: false, message: error.message || 'Smart card verification failed' };
+        }
+    },
+
+    async purchase(smartCardNumber, provider, planId, months, transactionPin) {
+        try {
+            const response = await API.post('/api/v1/agent/bills/cable/purchase', {
+                smartCardNumber,
+                provider: provider.toLowerCase(),
+                planId,
+                months,
+                transactionPin
+            });
+            if (response.success || response.status === 'success') {
+                return { success: true, message: response.message || 'Cable TV subscription successful', data: response.data };
+            }
+            throw new Error(response.message || 'Cable TV subscription failed');
+        } catch (error) {
+            return { success: false, message: error.message || 'Cable TV subscription failed. Please try again.' };
+        }
+    }
+};
+
+// Education PIN (dedicated matching User: purchaseEducationPIN)
+const AgentEducation = {
+    async purchase(examType, quantity, transactionPin) {
+        try {
+            const response = await API.post('/api/v1/agent/bills/education/purchase', {
+                examType,
+                quantity,
+                transactionPin
+            });
+            if (response.success || response.status === 'success') {
+                return { success: true, message: response.message || 'Education PIN purchase successful', data: response.data };
+            }
+            throw new Error(response.message || 'Education PIN purchase failed');
+        } catch (error) {
+            return { success: false, message: error.message || 'Education PIN purchase failed. Please try again.' };
+        }
+    }
+};
+
+// Notifications (matching User: getNotifications, markNotificationRead, etc.)
+const AgentNotifications = {
+    async getAll() {
+        try {
+            const response = await API.get('/api/v1/notifications');
+            if (response.success || response.status === 'success') {
+                return { success: true, data: response.data };
+            }
+            throw new Error(response.message || 'Failed to load notifications');
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    },
+
+    async getUnreadCount() {
+        try {
+            const response = await API.get('/api/v1/notifications/unread-count');
+            if (response.success || response.status === 'success') {
+                return { success: true, data: response.data };
+            }
+            throw new Error(response.message || 'Failed to get unread count');
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    },
+
+    async markRead(id) {
+        try {
+            const response = await API.put(`/api/v1/notifications/${id}/read`);
+            if (response.success || response.status === 'success') {
+                return { success: true };
+            }
+            throw new Error(response.message || 'Failed to mark as read');
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    },
+
+    async markAllRead() {
+        try {
+            const response = await API.put('/api/v1/notifications/mark-all-read');
+            if (response.success || response.status === 'success') {
+                return { success: true };
+            }
+            throw new Error(response.message || 'Failed to mark all as read');
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    },
+
+    async delete(id) {
+        try {
+            const response = await API.delete(`/api/v1/notifications/${id}`);
+            if (response.success || response.status === 'success') {
+                return { success: true };
+            }
+            throw new Error(response.message || 'Failed to delete notification');
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    },
+
+    async deleteAll() {
+        try {
+            const response = await API.delete('/api/v1/notifications');
+            if (response.success || response.status === 'success') {
+                return { success: true };
+            }
+            throw new Error(response.message || 'Failed to delete all notifications');
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    }
+};
+
+// Remita RRR Payment (matching User: validateRRR + processRRRPayment)
+const AgentRemita = {
+    async validate(rrr) {
+        try {
+            const response = await API.post('/api/v1/remita/validate', { rrr });
+            if (response.success || response.status === 'success') {
+                return { success: true, data: response.data };
+            }
+            throw new Error(response.message || 'RRR validation failed');
+        } catch (error) {
+            return { success: false, message: error.message || 'RRR validation failed' };
+        }
+    },
+
+    async processPayment(rrr, transactionPin) {
+        try {
+            const response = await API.post('/api/v1/remita/payment', { rrr, transactionPin });
+            if (response.success || response.status === 'success') {
+                return { success: true, message: response.message || 'RRR payment successful', data: response.data };
+            }
+            throw new Error(response.message || 'RRR payment failed');
+        } catch (error) {
+            return { success: false, message: error.message || 'RRR payment failed. Please try again.' };
+        }
+    }
+};
+
+// Wallet — extend WalletAPI with missing methods (User: createWalletAccount, transferFunds, setWalletPIN)
+const AgentWalletExtended = {
+    async createAccount(payload = {}) {
+        try {
+            const response = await API.post('/api/v1/wallet/create', payload);
+            if (response.success || response.status === 'success') {
+                return { success: true, data: response.data };
+            }
+            throw new Error(response.message || 'Wallet creation failed');
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    },
+
+    async transfer(data) {
+        try {
+            const response = await API.post(API_CONFIG.ENDPOINTS.WALLET_TRANSFER, data);
+            if (response.success || response.status === 'success') {
+                return { success: true, message: response.message || 'Transfer successful', data: response.data };
+            }
+            throw new Error(response.message || 'Transfer failed');
+        } catch (error) {
+            return { success: false, message: error.message || 'Transfer failed. Please try again.' };
+        }
+    },
+
+    async setWalletPIN(transactionPin, confirmPin) {
+        try {
+            const response = await API.post('/api/v1/wallet/set-pin', { transactionPin, confirmPin });
+            if (response.success || response.status === 'success') {
+                return { success: true, message: response.message || 'Wallet PIN set successfully' };
+            }
+            throw new Error(response.message || 'Failed to set wallet PIN');
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    }
+};
+
+// Auth — extend with missing methods (User: resendOTP, updateProfile, changePassword, setTransactionPIN)
+const AgentAuthExtended = {
+    async resendOTP(email, verificationType = 'email') {
+        try {
+            const response = await API.post('/api/v1/auth/resend-otp', { email, verificationType });
+            if (response.success || response.status === 'success') {
+                return { success: true, message: response.message || 'OTP resent successfully' };
+            }
+            throw new Error(response.message || 'Failed to resend OTP');
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    },
+
+    async updateProfile(data) {
+        try {
+            const response = await API.put(API_CONFIG.ENDPOINTS.AUTH_PROFILE, data);
+            if (response.success || response.status === 'success') {
+                return { success: true, message: response.message || 'Profile updated successfully', data: response.data };
+            }
+            throw new Error(response.message || 'Profile update failed');
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    },
+
+    async changePassword(currentPassword, newPassword) {
+        try {
+            const response = await API.post(API_CONFIG.ENDPOINTS.AUTH_CHANGE_PASSWORD, { currentPassword, newPassword });
+            if (response.success || response.status === 'success') {
+                return { success: true, message: response.message || 'Password changed successfully' };
+            }
+            throw new Error(response.message || 'Password change failed');
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    },
+
+    async setTransactionPIN(transactionPin, confirmPin) {
+        try {
+            const response = await API.post('/api/v1/auth/set-transaction-pin', { transactionPin, confirmPin });
+            if (response.success || response.status === 'success') {
+                return { success: true, message: response.message || 'Transaction PIN set successfully' };
+            }
+            throw new Error(response.message || 'Failed to set transaction PIN');
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    }
+};
+
 // Transaction status checker
 async function checkTransactionStatus(reference) {
     try {

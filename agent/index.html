@@ -281,15 +281,9 @@
                 if (result.success) {
                     UI.showToast('Login successful! Redirecting...', 'success');
 
-                    // Backend pin field is the ONLY source of truth
-                    const _hasPinSet = (result.pin === true);
-
-                    // Save locally so this device remembers
-                    if (_hasPinSet) {
-                        const _agentData = JSON.parse(localStorage.getItem('agentData') || '{}');
-                        const _uid = _agentData._id || _agentData.id || '';
-                        if (_uid) localStorage.setItem('agent_pin_set_' + _uid, 'true');
-                    }
+                    // Backend returns pin: false (not set) or pin: true (set) inside data.user
+                    // result.pin = user.pin directly from the login response
+                    const _hasPinSet = result.pin === true;
 
                     setTimeout(() => {
                         window.location.href = _hasPinSet ? 'dashboard.html' : 'set-pin.html';

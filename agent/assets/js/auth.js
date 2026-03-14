@@ -18,8 +18,9 @@ const Auth = {
             });
             
             if (response.success || response.status === 'success') {
+                // Response shape: { status, token, refreshToken, data: { user: { pin: false|true, ... } } }
                 const token = response.token || response.data?.token;
-                const user = response.user || response.data?.user || response.data?.agent || response.data;
+                const user = response.data?.user || response.data?.agent || response.user || response.data;
                 
                 if (token) {
                     API.setToken(token);
@@ -33,27 +34,8 @@ const Auth = {
                     API.setAgentData(user);
                 }
 
-                try {
-                    const walletResp = await API.get(API_CONFIG.ENDPOINTS.WALLET_BALANCE);
-                    if (walletResp && (walletResp.status === 'success' || walletResp.success)) {
-                        const bal = walletResp.data?.balance || walletResp.data?.availableBalance || walletResp.data?.walletBalance || 0;
-                        localStorage.setItem('agentWalletBalance', parseFloat(bal).toString());
-                    }
-                } catch (walletErr) {
-                    console.warn('[Auth] Could not pre-fetch wallet balance:', walletErr.message);
-                }
-
-                // Extract pin from every possible response location
-                const pinValue = response.data?.user?.pin ?? response.data?.agent?.pin ?? response.data?.pin ?? response.pin ?? undefined;
-
-                // Persist pin onto agentData in localStorage so this device remembers it
-                if (pinValue !== undefined) {
-                    try {
-                        const stored = JSON.parse(localStorage.getItem('agentData') || '{}');
-                        stored.pin = pinValue;
-                        localStorage.setItem('agentData', JSON.stringify(stored));
-                    } catch(e) {}
-                }
+                // pin comes directly from response.data.user.pin (false = not set, true = set)
+                const pinValue = user?.pin;
 
                 return {
                     success: true,
