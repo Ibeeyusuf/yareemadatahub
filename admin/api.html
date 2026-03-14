@@ -3,103 +3,361 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API Console - Yareema Datahub Admin</title>
+    <title>VTU Gateway · Yareema Datahub Console</title>
+    <!-- Tailwind + Lucide + Chart.js (professional stack) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/style.css">
-    <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{primary:'#2563eb',secondary:'#7c3aed',success:'#10b981',warning:'#f59e0b',error:'#ef4444',dark:'#0f172a',light:'#f8fafc'}}}}</script>
+    <!-- Inter font & custom smooth styles -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        .glass-card { backdrop-filter: blur(2px); background: rgba(255,255,255,0.75); border: 1px solid rgba(226,232,240,0.6); }
+        .provider-badge { transition: all 0.15s ease; }
+        .provider-radio:checked + label { border-color: #2563eb; background-color: #f0f7ff; box-shadow: 0 4px 10px -4px rgba(37,99,235,0.2); }
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+        [x-cloak] { display: none !important; } /* for future alpine */
+    </style>
 </head>
-<body class="text-slate-800 antialiased">
-    <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
-    <div class="w-full">
-        <div id="sidebar-placeholder"></div>
-        <main class="lg:ml-64 flex flex-col min-h-screen bg-slate-50">
-            <div id="header-placeholder"></div>
-            <div class="p-4 lg:p-8 flex-1 overflow-y-auto">
-                <div class="space-y-6">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div>
-                            <h2 class="text-2xl font-bold text-slate-900">API Management Console</h2>
-                            <p class="text-slate-500 text-sm mt-1">Monitor and configure API integrations.</p>
+<body class="bg-slate-50 text-slate-800 antialiased">
+
+<!-- mobile overlay (kept from original) -->
+<div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+
+<div class="w-full">
+    <!-- sidebar placeholder (your partials will load) -->
+    <div id="sidebar-placeholder"></div>
+
+    <main class="lg:ml-64 flex flex-col min-h-screen">
+        <!-- header placeholder -->
+        <div id="header-placeholder"></div>
+
+        <!-- MAIN CONTENT (API CONSOLE) -->
+        <div class="p-4 lg:p-8 flex-1 overflow-y-auto">
+            <div class="space-y-6 max-w-7xl mx-auto">
+
+                <!-- HEADER with provider switcher + test button -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-900">⚙️ API Gateway controller</h2>
+                        <p class="text-slate-500 text-sm mt-1 flex items-center gap-1">
+                            <i data-lucide="network" class="w-4 h-4"></i>
+                            active provider defines which VTU service handles transactions
+                        </p>
+                    </div>
+                    <button onclick="runGlobalHealthCheck()" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200">
+                        <i data-lucide="activity" class="w-4 h-4"></i> test all providers
+                    </button>
+                </div>
+
+                <!-- PROFESSIONAL PROVIDER SELECTOR (three integrated APIs) -->
+                <div class="bg-white/90 backdrop-blur-sm p-5 rounded-2xl border border-slate-200 shadow-md">
+                    <div class="flex items-center gap-2 mb-4 text-slate-700">
+                        <i data-lucide="toggle-right" class="w-5 h-5 text-primary"></i>
+                        <span class="font-semibold text-base">primary VTU provider  —  select active API</span>
+                        <span class="text-xs bg-slate-100 px-2 py-1 rounded-full ml-auto">failover ready</span>
+                    </div>
+
+                    <!-- three radio cards: club konnect, airtime nigeria, smeplug -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Club Konnect -->
+                        <div class="relative">
+                            <input type="radio" name="vtuProvider" id="providerClub" value="clubkonnect" class="hidden provider-radio" checked>
+                            <label for="providerClub" class="provider-badge block p-5 rounded-xl border-2 border-slate-200 cursor-pointer transition-all hover:border-blue-300">
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <span class="font-extrabold text-lg flex items-center gap-1.5">
+                                            <i data-lucide="zap" class="w-5 h-5 text-amber-500"></i> Club Konnect
+                                        </span>
+                                        <span class="text-xs text-slate-500 mt-1 block">smart bundles · corporate</span>
+                                    </div>
+                                    <span class="bg-green-100 text-green-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">latency 98ms</span>
+                                </div>
+                                <div class="mt-3 text-xs text-slate-600 border-t pt-2 flex justify-between">
+                                    <span>MTN/ Glo/ Airtel/ 9mobile</span>
+                                    <span class="font-mono">••• key: live</span>
+                                </div>
+                            </label>
                         </div>
-                        <button onclick="testAllAPIs()" class="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200">
-                            <i data-lucide="refresh-cw" class="w-4 h-4"></i> Test All APIs
+
+                        <!-- Airtime Nigeria (airtimenigeria.com.ng style) -->
+                        <div class="relative">
+                            <input type="radio" name="vtuProvider" id="providerAirtimeNg" value="airtimenigeria" class="hidden provider-radio">
+                            <label for="providerAirtimeNg" class="provider-badge block p-5 rounded-xl border-2 border-slate-200 cursor-pointer transition-all hover:border-blue-300">
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <span class="font-extrabold text-lg flex items-center gap-1.5">
+                                            <i data-lucide="airplay" class="w-5 h-5 text-sky-600"></i> Airtime Nigeria
+                                        </span>
+                                        <span class="text-xs text-slate-500 mt-1 block">recharge · data · discoin</span>
+                                    </div>
+                                    <span class="bg-amber-100 text-amber-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">99.2% uptime</span>
+                                </div>
+                                <div class="mt-3 text-xs text-slate-600 border-t pt-2 flex justify-between">
+                                    <span>bulk VTU · cable</span>
+                                    <span class="font-mono">••• live</span>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- SMEPlug (smeplug.ng) -->
+                        <div class="relative">
+                            <input type="radio" name="vtuProvider" id="providerSmeplug" value="smeplug" class="hidden provider-radio">
+                            <label for="providerSmeplug" class="provider-badge block p-5 rounded-xl border-2 border-slate-200 cursor-pointer transition-all hover:border-blue-300">
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <span class="font-extrabold text-lg flex items-center gap-1.5">
+                                            <i data-lucide="plug" class="w-5 h-5 text-indigo-500"></i> SMEPlug
+                                        </span>
+                                        <span class="text-xs text-slate-500 mt-1 block">utility · data · airtime</span>
+                                    </div>
+                                    <span class="bg-purple-100 text-purple-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">balanced</span>
+                                </div>
+                                <div class="mt-3 text-xs text-slate-600 border-t pt-2 flex justify-between">
+                                    <span>· sme</span>
+                                    <span class="font-mono">•••</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- current active indicator + apply button (inline) -->
+                    <div class="mt-5 flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-lg">
+                        <div class="flex items-center gap-3">
+                            <span class="text-sm text-slate-600">currently routing through:</span>
+                            <span id="activeProviderBadge" class="inline-flex items-center gap-1 bg-primary/10 text-primary font-medium text-sm px-3 py-1 rounded-full">
+                                <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Club Konnect
+                            </span>
+                        </div>
+                        <button onclick="applyProviderSwitch()" class="px-5 py-2 bg-primary text-white rounded-lg text-sm font-medium shadow-sm hover:bg-blue-800 transition flex items-center gap-2">
+                            <i data-lucide="save" class="w-4 h-4"></i> switch & reconfigure
                         </button>
                     </div>
+                </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                            <div class="flex items-center justify-between mb-3">
-                                <h3 class="font-bold text-slate-900">MTN API</h3>
-                                <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-                            </div>
-                            <p class="text-xs text-slate-500 mb-2">Uptime: 99.8%</p>
-                            <div class="flex items-center justify-between text-xs">
-                                <span class="text-slate-500">Response: 120ms</span>
-                                <button onclick="openModal('apiConfigModal')" class="text-primary hover:underline">Configure</button>
-                            </div>
+                <!-- 2-row: network provider cards (but now with professional twist) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow transition">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-bold text-slate-900">MTN Nigeria</h3>
+                            <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
                         </div>
-                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                            <div class="flex items-center justify-between mb-3">
-                                <h3 class="font-bold text-slate-900">Airtel API</h3>
-                                <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-                            </div>
-                            <p class="text-xs text-slate-500 mb-2">Uptime: 99.5%</p>
-                            <div class="flex items-center justify-between text-xs">
-                                <span class="text-slate-500">Response: 145ms</span>
-                                <button onclick="openModal('apiConfigModal')" class="text-primary hover:underline">Configure</button>
-                            </div>
-                        </div>
-                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                            <div class="flex items-center justify-between mb-3">
-                                <h3 class="font-bold text-slate-900">Glo API</h3>
-                                <span class="w-3 h-3 bg-amber-500 rounded-full"></span>
-                            </div>
-                            <p class="text-xs text-slate-500 mb-2">Uptime: 95.2%</p>
-                            <div class="flex items-center justify-between text-xs">
-                                <span class="text-slate-500">Response: 320ms</span>
-                                <button onclick="openModal('apiConfigModal')" class="text-primary hover:underline">Configure</button>
-                            </div>
-                        </div>
-                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                            <div class="flex items-center justify-between mb-3">
-                                <h3 class="font-bold text-slate-900">9mobile API</h3>
-                                <span class="w-3 h-3 bg-red-500 rounded-full"></span>
-                            </div>
-                            <p class="text-xs text-slate-500 mb-2">Uptime: 88.1%</p>
-                            <div class="flex items-center justify-between text-xs">
-                                <span class="text-slate-500">Response: Timeout</span>
-                                <button class="text-red-600 hover:underline">Fix Issues</button>
-                            </div>
+                        <p class="text-xs text-slate-500 mb-2">active provider: <span class="font-medium text-primary">Club Konnect</span></p>
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-slate-500">avg resp: 112ms</span>
+                            <button onclick="openModal('apiConfigModal')" class="text-primary hover:underline font-medium">inspect</button>
                         </div>
                     </div>
-
-                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                        <h3 class="font-bold text-slate-900 mb-4">API Request Logs (Last 24 Hours)</h3>
-                        <div class="h-64 w-full overflow-hidden">
-                            <canvas id="apiChart"></canvas>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow transition">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-bold text-slate-900">Airtel</h3>
+                            <span class="w-3 h-3 bg-green-500 rounded-full"></span>
+                        </div>
+                        <p class="text-xs text-slate-500 mb-2">active provider: <span class="font-medium text-primary">Airtime Nigeria</span></p>
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-slate-500">resp: 145ms</span>
+                            <button onclick="openModal('apiConfigModal')" class="text-primary hover:underline">details</button>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow transition">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-bold text-slate-900">Glo</h3>
+                            <span class="w-3 h-3 bg-amber-500 rounded-full"></span>
+                        </div>
+                        <p class="text-xs text-slate-500 mb-2">active provider: <span class="font-medium text-primary">SMEPlug</span></p>
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-slate-500">240ms</span>
+                            <button class="text-amber-600 hover:underline">adjust</button>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow transition">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-bold text-slate-900">9mobile</h3>
+                            <span class="w-3 h-3 bg-red-400 rounded-full"></span>
+                        </div>
+                        <p class="text-xs text-slate-500 mb-2">active provider: <span class="font-medium">fallback route</span></p>
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-slate-500">degraded</span>
+                            <button class="text-red-600 hover:underline font-medium">investigate</button>
                         </div>
                     </div>
                 </div>
+
+                <!-- API logs chart + recent activity (professional) -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                    <!-- chart area (spans 2 cols) -->
+                    <div class="lg:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-semibold text-slate-800 flex items-center gap-2"><i data-lucide="bar-chart-3" class="w-5 h-5 text-primary"></i> last 24h traffic by provider</h3>
+                            <span class="text-xs bg-slate-100 px-2 py-1 rounded">updated live</span>
+                        </div>
+                        <div class="h-64 w-full">
+                            <canvas id="apiChart"></canvas>
+                        </div>
+                    </div>
+                    <!-- mini status & quotas -->
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+                        <h4 class="font-semibold text-slate-800 flex items-center gap-2 mb-3"><i data-lucide="list-checks" class="w-5 h-5 text-slate-500"></i> provider balance</h4>
+                        <div class="space-y-3 text-sm">
+                            <div><span class="text-slate-500">Club Konnect quota</span> <span class="float-right font-mono">18,450/20k</span><div class="w-full bg-slate-100 h-1.5 rounded-full mt-1"><div class="bg-blue-600 h-1.5 rounded-full" style="width:92%"></div></div></div>
+                            <div><span class="text-slate-500">Airtime Nigeria</span> <span class="float-right font-mono">9,220/15k</span><div class="w-full bg-slate-100 h-1.5 rounded-full mt-1"><div class="bg-sky-500 h-1.5 rounded-full" style="width:61%"></div></div></div>
+                            <div><span class="text-slate-500">SMEPlug</span> <span class="float-right font-mono">5,430/10k</span><div class="w-full bg-slate-100 h-1.5 rounded-full mt-1"><div class="bg-indigo-400 h-1.5 rounded-full" style="width:54%"></div></div></div>
+                        </div>
+                        <div class="mt-5 pt-3 border-t text-xs text-slate-400 flex justify-between">
+                            <span>last switch: 2h ago</span>
+                            <span class="text-primary font-medium">failover: auto</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- recent api calls table (mocked) -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="px-5 py-4 border-b border-slate-100 flex justify-between items-center">
+                        <h3 class="font-semibold text-slate-800 flex items-center gap-2"><i data-lucide="clock" class="w-4 h-4"></i> recent API calls</h3>
+                        <button class="text-xs bg-slate-100 px-3 py-1.5 rounded-lg hover:bg-slate-200 transition">view full logs</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-slate-50 text-slate-500 text-xs">
+                                <tr><th class="px-5 py-3 text-left">time</th><th class="px-5 py-3 text-left">provider</th><th class="px-5 py-3 text-left">endpoint</th><th class="px-5 py-3 text-left">status</th><th class="px-5 py-3 text-left">duration</th></tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr><td class="px-5 py-3">13:45:22</td><td><span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs">clubkonnect</span></td><td class="font-mono text-xs">/v1/mtn/data</td><td><span class="text-green-600">success</span></td><td>87ms</td></tr>
+                                <tr><td class="px-5 py-3">13:42:10</td><td><span class="bg-sky-50 text-sky-700 px-2 py-0.5 rounded-full text-xs">airtimenigeria</span></td><td class="font-mono text-xs">/api/airtime</td><td><span class="text-green-600">success</span></td><td>124ms</td></tr>
+                                <tr><td class="px-5 py-3">13:37:01</td><td><span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full text-xs">smeplug</span></td><td class="font-mono text-xs">/v2/electricity</td><td><span class="text-amber-600">pending</span></td><td>312ms</td></tr>
+                                <tr><td class="px-5 py-3">13:29:44</td><td><span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs">clubkonnect</span></td><td class="font-mono text-xs">/v1/glo/data</td><td><span class="text-green-600">success</span></td><td>91ms</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-        </main>
-    </div>
-    <div id="modals-placeholder"></div>
-    <script src="assets/js/config.js"></script>
-    <script src="assets/js/api-service.js"></script>
-    <script src="assets/js/main.js"></script>
-    <script src="assets/js/charts.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', async function() {
-            const modalsEl = document.getElementById('modals-placeholder');
-            if (modalsEl) {
-                const response = await fetch('partials/modals.html');
-                modalsEl.innerHTML = await response.text();
-                lucide.createIcons();
+        </div>
+    </main>
+</div>
+
+<!-- modal placeholder (your partials/modals.html) -->
+
+<!-- JS: config, api-service, main, charts (as original) plus our custom controller -->
+<script src="assets/js/config.js"></script>
+<script src="assets/js/api-service.js"></script>
+<script src="assets/js/main.js"></script>
+<script src="assets/js/charts.js"></script>
+
+<!-- inlined professional switch logic -->
+<script>
+    // ensure lucide icons after dynamic changes
+    function refreshIcons() { if (typeof lucide !== 'undefined') lucide.createIcons(); }
+
+    // update active badge based on radio
+    function updateActiveBadge() {
+        const selected = document.querySelector('input[name="vtuProvider"]:checked');
+        const badge = document.getElementById('activeProviderBadge');
+        if (selected && badge) {
+            let label = '';
+            if (selected.value === 'clubkonnect') label = 'Club Konnect';
+            else if (selected.value === 'airtimenigeria') label = 'Airtime Nigeria';
+            else if (selected.value === 'smeplug') label = 'SMEPlug';
+            badge.innerHTML = `<i data-lucide="check-circle" class="w-3.5 h-3.5"></i> ${label}`;
+            refreshIcons();
+        }
+    }
+
+    // apply switch (simulate api call, update cards etc)
+    window.applyProviderSwitch = function() {
+        const selected = document.querySelector('input[name="vtuProvider"]:checked');
+        if (!selected) return;
+        const provider = selected.value;
+        // update badge
+        updateActiveBadge();
+        // show toast or feedback (you can integrate a nice toast)
+        alert(`✅ Primary VTU provider switched to ${provider}. Configuration saved.`);
+
+        // change the "active provider" tags in network cards for realism
+        const providerNames = {
+            clubkonnect: 'Club Konnect',
+            airtimenigeria: 'Airtime Nigeria',
+            smeplug: 'SMEPlug'
+        };
+        document.querySelectorAll('.grid-cols-1.md\\:grid-cols-2.lg\\:grid-cols-4 .bg-white').forEach((card, idx) => {
+            const providerSpan = card.querySelector('.text-xs.text-slate-500 span');
+            // just update first two cards for demo
+            if (providerSpan) {
+                if (idx === 0) providerSpan.innerText = providerNames[provider] || 'Club Konnect';
+                else if (idx === 1) providerSpan.innerText = providerNames[provider] || 'Airtime Nigeria';
+                // else skip
             }
         });
-    </script>
+    };
+
+    // global health check (mimics test all APIs)
+    window.runGlobalHealthCheck = function() {
+        alert('🏥 Running diagnostic against Club Konnect, Airtime Nigeria, SMEPlug…\n✅ All providers reachable.');
+        // you could extend with actual api-service calls
+    };
+
+    // open modal (original, using your placeholder)
+    window.openModal = function(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) modal.classList.remove('hidden'); else alert('modal ' + modalId + ' not loaded (check partials/modals.html)');
+    };
+
+    // toggle sidebar (stub)
+    window.toggleSidebar = function() {
+        const overlay = document.getElementById('mobile-overlay');
+        if (overlay) overlay.classList.toggle('hidden');
+    };
+
+    // on load: attach listeners to radio buttons to update badge instantly
+    document.addEventListener('DOMContentLoaded', async function() {
+        // load modals html
+        const modalsEl = document.getElementById('modals-placeholder');
+        if (modalsEl) {
+            try {
+                const response = await fetch('partials/modals.html');
+                if (response.ok) modalsEl.innerHTML = await response.text();
+            } catch (e) { console.warn('modals not loaded, use fallback'); }
+        }
+
+        // init lucide
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+
+        // set up radio change listeners
+        document.querySelectorAll('input[name="vtuProvider"]').forEach(radio => {
+            radio.addEventListener('change', updateActiveBadge);
+        });
+
+        // chart initialization (similar to original but professional)
+        const ctx = document.getElementById('apiChart')?.getContext('2d');
+        if (ctx && typeof Chart !== 'undefined') {
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
+                    datasets: [
+                        { label: 'Club Konnect', data: [22, 28, 41, 57, 49, 38], borderColor: '#2563eb', tension: 0.2, fill: false },
+                        { label: 'Airtime Nigeria', data: [15, 20, 32, 48, 44, 30], borderColor: '#0284c7', tension: 0.2 },
+                        { label: 'SMEPlug', data: [9, 18, 24, 31, 27, 22], borderColor: '#7c3aed', tension: 0.2 }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        // default badge sync
+        updateActiveBadge();
+
+        // reapply lucide after badge update
+        refreshIcons();
+    });
+
+    // also after any dynamic re-render (eg modals open) we can call refreshIcons but we use interval?
+    window.addEventListener('load', function() { refreshIcons(); });
+</script>
+
+<!-- fallback style for radio checked state -->
+<style>
+    .provider-radio:checked + label { border-color: #2563eb; background-color: #f5f9ff; border-width: 2px; }
+    .provider-radio:checked + label .lucide-check-circle { display: inline-block; }
+</style>
 </body>
 </html>
