@@ -971,7 +971,7 @@ const AgentAuthExtended = {
 
     async setTransactionPIN(transactionPin, confirmPin) {
         try {
-            const response = await API.post('/api/v1/auth/set-transaction-pin', { transactionPin, confirmPin });
+            const response = await API.post('/api/v1/auth/set-pin', { transactionPin, confirmPin });
             if (response.success || response.status === 'success') {
                 return { success: true, message: response.message || 'Transaction PIN set successfully' };
             }

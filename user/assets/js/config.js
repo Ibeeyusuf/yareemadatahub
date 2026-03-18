@@ -6,7 +6,7 @@ const API_CONFIG = {
             REGISTER: '/api/v1/auth/register',
             PROFILE: '/api/v1/auth/profile',
             CHANGE_PASSWORD: '/api/v1/auth/change-password',
-            SET_PIN: '/api/v1/auth/set-transaction-pin'
+            SET_PIN: '/api/v1/auth/set-pin'
         },
         WALLET: {
             BALANCE: '/api/v1/wallet/balance',

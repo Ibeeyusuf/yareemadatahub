@@ -217,7 +217,7 @@
     async function doSetup(p1, p2) {
         setLoading('Setting your transaction PIN...', 'Securing your account');
         try {
-            await callAPI('/api/v1/auth/set-transaction-pin', { transactionPin: p1, confirmPin: p2 });
+            await callAPI('/api/v1/auth/set-pin', { transactionPin: p1, confirmPin: p2 });
 
             // Save pin flag
             try {

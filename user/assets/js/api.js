@@ -197,7 +197,7 @@ class YareemaUserAPI {
     }
 
     async setTransactionPIN(transactionPin, confirmPin) {
-        return await this.request('/api/v1/auth/set-transaction-pin', {
+        return await this.request('/api/v1/auth/set-pin', {
             method: 'POST',
             body: { transactionPin, confirmPin }
         });
