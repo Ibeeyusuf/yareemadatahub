@@ -127,23 +127,6 @@
 
         </div>
 
-        <!-- Referral Code Card -->
-        <div class="referral-card">
-            <div class="referral-card-left">
-                <div class="referral-icon">
-                    <i data-lucide="gift" style="width: 20px; height: 20px; color: #fff;"></i>
-                </div>
-                <div>
-                    <div class="referral-label">Your Referral Code</div>
-                    <div class="referral-code" id="referralCode">Loading...</div>
-                </div>
-            </div>
-            <button class="referral-copy-btn" onclick="copyReferralCode()">
-                <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
-                <span id="copyBtnText">Copy</span>
-            </button>
-        </div>
-
         <!-- Quick Services -->
         <div class="section-header">
             <h2 class="section-title">Quick Services</h2>
@@ -152,40 +135,76 @@
         
         <div class="services-grid">
             <div class="service-card" onclick="openModal('data')">
-                <div class="service-icon" style="background: #eff6ff;">
-                    <i data-lucide="wifi" style="width: 28px; height: 28px; color: #2563eb;"></i>
+                <div class="service-icon" style="background:#eff6ff;width:42px;height:42px;margin-bottom:7px;">
+                    <i data-lucide="wifi" style="width:19px;height:19px;color:#2563eb;"></i>
                 </div>
-                <div class="service-name">Buy Data</div>
+                <div class="service-name" style="font-size:11px;">Buy Data</div>
             </div>
             <div class="service-card" onclick="openModal('airtime')">
-                <div class="service-icon" style="background: #f0fdf4;">
-                    <i data-lucide="phone" style="width: 28px; height: 28px; color: #16a34a;"></i>
+                <div class="service-icon" style="background:#f0fdf4;width:42px;height:42px;margin-bottom:7px;">
+                    <i data-lucide="phone" style="width:19px;height:19px;color:#16a34a;"></i>
                 </div>
-                <div class="service-name">Buy Airtime</div>
+                <div class="service-name" style="font-size:11px;">Airtime</div>
+            </div>
+            <div class="service-card" onclick="openModal('sms')">
+                <div class="service-icon" style="background:#ecfeff;width:42px;height:42px;margin-bottom:7px;">
+                    <i data-lucide="message-circle" style="width:19px;height:19px;color:#0891b2;"></i>
+                </div>
+                <div class="service-name" style="font-size:11px;">Bulk SMS</div>
+            </div>
+            <div class="service-card" onclick="openModal('rechargepin')">
+                <div class="service-icon" style="background:#fdf4ff;width:42px;height:42px;margin-bottom:7px;">
+                    <i data-lucide="ticket" style="width:19px;height:19px;color:#a21caf;"></i>
+                </div>
+                <div class="service-name" style="font-size:11px;">Airtime PIN</div>
             </div>
             <div class="service-card" onclick="openModal('electricity')">
-                <div class="service-icon" style="background: #fffbeb;">
-                    <i data-lucide="zap" style="width: 28px; height: 28px; color: #d97706;"></i>
+                <div class="service-icon" style="background:#fffbeb;width:42px;height:42px;margin-bottom:7px;">
+                    <i data-lucide="zap" style="width:19px;height:19px;color:#d97706;"></i>
                 </div>
-                <div class="service-name">Electricity</div>
+                <div class="service-name" style="font-size:11px;">Electricity</div>
             </div>
             <div class="service-card" onclick="openModal('tv')">
-                <div class="service-icon" style="background: #faf5ff;">
-                    <i data-lucide="tv" style="width: 28px; height: 28px; color: #9333ea;"></i>
+                <div class="service-icon" style="background:#faf5ff;width:42px;height:42px;margin-bottom:7px;">
+                    <i data-lucide="tv" style="width:19px;height:19px;color:#9333ea;"></i>
                 </div>
-                <div class="service-name">Cable TV</div>
+                <div class="service-name" style="font-size:11px;">Cable TV</div>
             </div>
             <div class="service-card" onclick="openModal('education')">
-                <div class="service-icon" style="background: #eef2ff;">
-                    <i data-lucide="graduation-cap" style="width: 28px; height: 28px; color: #4f46e5;"></i>
+                <div class="service-icon" style="background:#eef2ff;width:42px;height:42px;margin-bottom:7px;">
+                    <i data-lucide="graduation-cap" style="width:19px;height:19px;color:#4f46e5;"></i>
                 </div>
-                <div class="service-name">Education</div>
+                <div class="service-name" style="font-size:11px;">Education</div>
             </div>
             <div class="service-card" onclick="openModal('swap')">
-                <div class="service-icon" style="background: #fff7ed;">
-                    <i data-lucide="repeat" style="width: 28px; height: 28px; color: #ea580c;"></i>
+                <div class="service-icon" style="background:#fff7ed;width:42px;height:42px;margin-bottom:7px;">
+                    <i data-lucide="repeat" style="width:19px;height:19px;color:#ea580c;"></i>
                 </div>
-                <div class="service-name">Airtime2Cash</div>
+                <div class="service-name" style="font-size:11px;">Airtime2Cash</div>
+            </div>
+            <div class="service-card" onclick="openModal('remita')">
+                <div class="service-icon" style="background:#fef2f2;width:42px;height:42px;margin-bottom:7px;">
+                    <i data-lucide="credit-card" style="width:19px;height:19px;color:#dc2626;"></i>
+                </div>
+                <div class="service-name" style="font-size:11px;">Remita</div>
+            </div>
+            <div class="service-card" onclick="openModal('alpha')">
+                <div class="service-icon" style="background:#faf5ff;width:42px;height:42px;margin-bottom:7px;">
+                    <i data-lucide="diamond" style="width:19px;height:19px;color:#9333ea;"></i>
+                </div>
+                <div class="service-name" style="font-size:11px;">Alpha</div>
+            </div>
+            <div class="service-card" onclick="window.location.href='referral.html'">
+                <div class="service-icon" style="background:#eff6ff;width:42px;height:42px;margin-bottom:7px;">
+                    <i data-lucide="gift" style="width:19px;height:19px;color:#1e3d5c;"></i>
+                </div>
+                <div class="service-name" style="font-size:11px;">Referral</div>
+            </div>
+            <div class="service-card" onclick="window.location.href='services.html'">
+                <div class="service-icon" style="background:#f1f5f9;width:42px;height:42px;margin-bottom:7px;">
+                    <i data-lucide="grid" style="width:19px;height:19px;color:#64748b;"></i>
+                </div>
+                <div class="service-name" style="font-size:11px;">More</div>
             </div>
         </div>
 
@@ -235,7 +254,8 @@
         }
 
         function copyReferralCode() {
-            const code = document.getElementById('referralCode').textContent;
+            const el = document.getElementById('referralCode');
+            const code = el ? el.textContent : '';
             if (!code || code === 'Loading...') return;
             navigator.clipboard.writeText(code).then(() => {
                 const btn = document.getElementById('copyBtnText');
@@ -274,7 +294,8 @@
 
                 // Load referral code
                 const referralCode = user.referralCode || user.referral_code || user.refCode || null;
-                document.getElementById('referralCode').textContent = referralCode || 'N/A';
+                const refEl = document.getElementById('referralCode');
+                if (refEl) refEl.textContent = referralCode || 'N/A';
 
                 // Load wallet balance + embedded accounts + package badge
                 try {
@@ -293,18 +314,30 @@
                         badge.style.display = 'inline-block';
                     }
 
-                    // Resolve accounts from API or cache
+                    // Resolve accounts — try every known response shape
                     let accounts = [];
-                    if (walletData.accounts?.length > 0) {
-                        accounts = walletData.accounts;
-                    } else if (walletData.virtualAccount?.accountNumber) {
-                        accounts = [{ ...walletData.virtualAccount, isDefault: true }];
+                    const raw = wallet.data || wallet;
+                    const wd  = raw.wallet || raw;
+
+                    if (Array.isArray(wd.accounts) && wd.accounts.length > 0) {
+                        accounts = wd.accounts;
+                    } else if (Array.isArray(raw.accounts) && raw.accounts.length > 0) {
+                        accounts = raw.accounts;
+                    } else if (wd.virtualAccount?.accountNumber) {
+                        accounts = [{ ...wd.virtualAccount, isDefault: true }];
+                    } else if (raw.virtualAccount?.accountNumber) {
+                        accounts = [{ ...raw.virtualAccount, isDefault: true }];
+                    } else if (wd.accountNumber) {
+                        accounts = [{ accountNumber: wd.accountNumber, bankName: wd.bankName || wd.bank, accountName: wd.accountName, isDefault: true }];
                     }
-                    // Save + render
+
+                    // Persist non-empty results; fall back to cache
+                    const cacheKey = 'wallet_accounts_' + (user._id || user.id || 'u');
                     let savedAccounts = null;
-                    try { savedAccounts = JSON.parse(localStorage.getItem('wallet_accounts') || 'null'); } catch(e) {}
+                    try { savedAccounts = JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch(e) {}
+
                     if (accounts.length > 0) {
-                        try { localStorage.setItem('wallet_accounts', JSON.stringify(accounts)); } catch(e) {}
+                        try { localStorage.setItem(cacheKey, JSON.stringify(accounts)); } catch(e) {}
                         renderDashboardAccounts(accounts);
                     } else if (savedAccounts?.length) {
                         renderDashboardAccounts(savedAccounts);

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Push Notifications - Yareema Data Hub Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{primary:'#2563eb',secondary:'#7c3aed',success:'#10b981',warning:'#f59e0b',error:'#ef4444',dark:'#0f172a',light:'#f8fafc'}}}}</script>
+    <style>
+        .tab-btn.active { background: #2563eb; color: #fff; }
+        .tab-btn { transition: all 0.2s; }
+        .preview-phone {
+            width: 220px;
+            background: #18181b;
+            border-radius: 36px;
+            padding: 16px 12px 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.35), inset 0 0 0 2px #3f3f46;
+        }
+        .preview-phone::before {
+            content: '';
+            display: block;
+            width: 70px; height: 6px;
+            background: #3f3f46;
+            border-radius: 4px;
+            margin: 0 auto 14px;
+        }
+        .notif-card-preview {
+            background: rgba(255,255,255,0.95);
+            border-radius: 14px;
+            padding: 12px 14px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+        }
+        .history-row:hover { background: #f8fafc; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased">
+
+    <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+    <div class="w-full">
+        <div id="sidebar-placeholder"></div>
+
+        <main class="lg:ml-64 flex flex-col min-h-screen bg-slate-50">
+            <div id="header-placeholder"></div>
+
+            <div class="p-4 lg:p-8 flex-1">
+                <div class="space-y-6">
+
+                    <!-- Page Header -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-2xl font-bold text-slate-900">Push Notifications</h2>
+                            <p class="text-slate-500 text-sm mt-1">Broadcast messages to all app users</p>
+                        </div>
+                        <span class="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-full w-fit">
+                            <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse inline-block"></span>
+                            Push Service Active
+                        </span>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                                    <i data-lucide="send" class="w-5 h-5 text-primary"></i>
+                                </div>
+                                <div>
+                                    <p class="text-2xl font-bold text-slate-900" id="stat-sent">0</p>
+                                    <p class="text-xs text-slate-500">Sent Today</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
+                                    <i data-lucide="mouse-pointer-click" class="w-5 h-5 text-success"></i>
+                                </div>
+                                <div>
+                                    <p class="text-2xl font-bold text-slate-900">—</p>
+                                    <p class="text-xs text-slate-500">Open Rate</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
+                                    <i data-lucide="users" class="w-5 h-5 text-secondary"></i>
+                                </div>
+                                <div>
+                                    <p class="text-2xl font-bold text-slate-900" id="stat-users">—</p>
+                                    <p class="text-xs text-slate-500">Subscribed Users</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
+                                    <i data-lucide="bell" class="w-5 h-5 text-warning"></i>
+                                </div>
+                                <div>
+                                    <p class="text-2xl font-bold text-slate-900" id="stat-total">0</p>
+                                    <p class="text-xs text-slate-500">Total Sent</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+                        <button id="tab-compose" onclick="switchTab('compose')" class="tab-btn active text-sm font-medium px-5 py-2 rounded-lg">
+                            Compose
+                        </button>
+                        <button id="tab-history" onclick="switchTab('history')" class="tab-btn text-sm font-medium px-5 py-2 rounded-lg text-slate-600 hover:bg-white">
+                            History
+                        </button>
+                    </div>
+
+                    <!-- ===== COMPOSE TAB ===== -->
+                    <div id="panel-compose" class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+                        <!-- Form -->
+                        <div class="xl:col-span-2 space-y-5">
+                            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                                <h3 class="font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                                    <i data-lucide="edit-3" class="w-4 h-4 text-primary"></i>
+                                    Notification Content
+                                </h3>
+                                <div class="space-y-4">
+
+                                    <!-- Title -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                                            Title <span class="text-red-500">*</span>
+                                        </label>
+                                        <input type="text" id="notif-title" maxlength="65" oninput="updatePreview()"
+                                            placeholder="e.g. ⚡ Data Bonus is LIVE!"
+                                            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+                                        <div class="flex justify-between mt-1">
+                                            <p class="text-xs text-slate-400">Emoji supported · Keep under 50 chars for best display</p>
+                                            <span id="title-count" class="text-xs text-slate-400">0/65</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Body -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                                            Message <span class="text-red-500">*</span>
+                                        </label>
+                                        <textarea id="notif-body" maxlength="200" rows="3" oninput="updatePreview()"
+                                            placeholder="e.g. Buy any data bundle today and get 10% extra — valid for 24hrs only. Tap to activate 🎁"
+                                            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"></textarea>
+                                        <div class="flex justify-end mt-1">
+                                            <span id="body-count" class="text-xs text-slate-400">0/200</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Type + Deep link -->
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-slate-700 mb-1.5">Notification Type</label>
+                                            <select id="notif-type" onchange="updatePreview()"
+                                                class="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+                                                <option value="promo">📢 Promotional</option>
+                                                <option value="alert">🚨 System Alert</option>
+                                                <option value="update">🔄 Service Update</option>
+                                                <option value="bonus">🎁 Bonus / Reward</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-slate-700 mb-1.5">Deep Link <span class="text-slate-400 font-normal">(optional)</span></label>
+                                            <select class="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+                                                <option value="">— No action —</option>
+                                                <option>Airtime Purchase</option>
+                                                <option>Data Purchase</option>
+                                                <option>Cable TV</option>
+                                                <option>Electricity Bills</option>
+                                                <option>Wallet / Fund</option>
+                                                <option>Referral Page</option>
+                                                <option>App Home</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                            <!-- Broadcast Notice -->
+                            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+                                <i data-lucide="radio" class="w-5 h-5 text-primary flex-shrink-0 mt-0.5"></i>
+                                <div>
+                                    <p class="text-sm font-semibold text-blue-900">Broadcast to All Users</p>
+                                    <p class="text-xs text-blue-700 mt-0.5">This notification will be sent to every user who has push notifications enabled on the Yareema app.</p>
+                                </div>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="flex items-center justify-end gap-3">
+                                <button onclick="clearForm()" class="px-6 py-2.5 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">
+                                    Clear
+                                </button>
+                                <button onclick="confirmSend()" class="px-8 py-2.5 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-blue-700 flex items-center gap-2 shadow-md shadow-blue-200">
+                                    <i data-lucide="send" class="w-4 h-4"></i>
+                                    Broadcast Now
+                                </button>
+                            </div>
+                        </div>
+
+                       
+                    </div>
+
+                    <!-- ===== HISTORY TAB ===== -->
+                    <div id="panel-history" class="hidden">
+                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+                                <h3 class="font-semibold text-slate-900">Sent Notifications</h3>
+                                <button class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs text-slate-600 hover:bg-slate-50 flex items-center gap-1">
+                                    <i data-lucide="download" class="w-3.5 h-3.5"></i> Export
+                                </button>
+                            </div>
+
+                            <div id="history-empty" class="py-16 text-center text-slate-400">
+                                <i data-lucide="bell-off" class="w-10 h-10 mx-auto mb-3 opacity-30"></i>
+                                <p class="text-sm font-medium">No notifications sent yet</p>
+                                <p class="text-xs mt-1">Sent broadcasts will appear here</p>
+                            </div>
+
+                            <div class="overflow-x-auto">
+                                <table class="w-full" id="history-table" style="display:none">
+                                    <thead class="bg-slate-50">
+                                        <tr>
+                                            <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Title</th>
+                                            <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</th>
+                                            <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Sent At</th>
+                                            <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Sent By</th>
+                                            <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="history-body" class="divide-y divide-slate-100"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script>
+        // ─── Tab Switching ───────────────────────────────────────────────────
+        function switchTab(name) {
+            ['compose', 'history'].forEach(t => {
+                document.getElementById('tab-' + t).classList.remove('active');
+                document.getElementById('tab-' + t).classList.add('text-slate-600');
+                document.getElementById('panel-' + t).classList.add('hidden');
+            });
+            document.getElementById('tab-' + name).classList.add('active');
+            document.getElementById('tab-' + name).classList.remove('text-slate-600');
+            document.getElementById('panel-' + name).classList.remove('hidden');
+        }
+
+      
+
+        // ─── Send Confirmation ───────────────────────────────────────────────
+        function confirmSend() {
+            const title = document.getElementById('notif-title').value.trim();
+            const body  = document.getElementById('notif-body').value.trim();
+
+            if (!title || !body) {
+                Swal.fire({ icon: 'warning', title: 'Incomplete', text: 'Please fill in both the title and message.', confirmButtonColor: '#2563eb' });
+                return;
+            }
+
+            Swal.fire({
+                title: 'Broadcast to All Users?',
+                html: `<div class="text-left">
+                    <p class="text-sm text-slate-500 mb-3">This will be sent to <strong>all subscribed users</strong> immediately.</p>
+                    <div class="bg-slate-50 rounded-lg p-3">
+                        <p class="font-semibold text-slate-900 text-sm">${title}</p>
+                        <p class="text-xs text-slate-500 mt-1">${body}</p>
+                    </div>
+                </div>`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, Broadcast Now',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#2563eb',
+                cancelButtonColor: '#94a3b8'
+            }).then(result => {
+                if (result.isConfirmed) sendNotification(title, body);
+            });
+        }
+
+        // ─── Send (wire your API here) ───────────────────────────────────────
+        async function sendNotification(title, body) {
+            const type = document.getElementById('notif-type').value;
+
+            // TODO: replace with your actual endpoint
+            // const res = await fetch('/api/notifications/broadcast', {
+            //     method: 'POST',
+            //     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
+            //     body: JSON.stringify({ title, body, type })
+            // });
+
+            // Simulated success for now
+            addToHistory(title, body, type);
+            clearForm();
+            incrementStats();
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Broadcast Sent!',
+                text: 'Your notification is being delivered to all users.',
+                confirmButtonColor: '#2563eb',
+                timer: 2500,
+                showConfirmButton: false
+            });
+        }
+
+        // ─── History ─────────────────────────────────────────────────────────
+        const history = [];
+        function addToHistory(title, body, type) {
+            const typeLabels = {
+                promo: '📢 Promotional', alert: '🚨 System Alert',
+                update: '🔄 Service Update', bonus: '🎁 Bonus / Reward'
+            };
+            const now = new Date();
+            history.unshift({ title, body, type: typeLabels[type] || type, sentAt: now.toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' }) });
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const tbody = document.getElementById('history-body');
+            tbody.innerHTML = history.map(n => `
+                <tr class="history-row">
+                    <td class="px-5 py-3.5">
+                        <p class="text-sm font-medium text-slate-900">${n.title}</p>
+                        <p class="text-xs text-slate-400 mt-0.5">${n.body}</p>
+                    </td>
+                    <td class="px-5 py-3.5"><span class="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-full font-medium">${n.type}</span></td>
+                    <td class="px-5 py-3.5 text-xs text-slate-600">${n.sentAt}</td>
+                    <td class="px-5 py-3.5 text-xs text-slate-700">Admin</td>
+                    <td class="px-5 py-3.5"><span class="text-xs bg-green-50 text-green-700 border border-green-200 px-2 py-1 rounded-full">Delivered</span></td>
+                </tr>
+            `).join('');
+            document.getElementById('history-empty').style.display = history.length ? 'none' : 'block';
+            document.getElementById('history-table').style.display = history.length ? 'table' : 'none';
+        }
+
+        // ─── Helpers ─────────────────────────────────────────────────────────
+        let sentToday = 0, totalSent = 0;
+        function incrementStats() {
+            sentToday++; totalSent++;
+            document.getElementById('stat-sent').textContent  = sentToday;
+            document.getElementById('stat-total').textContent = totalSent;
+        }
+
+        function clearForm() {
+            document.getElementById('notif-title').value = '';
+            document.getElementById('notif-body').value  = '';
+            updatePreview();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
+    </script>
+</body>
+</html>
