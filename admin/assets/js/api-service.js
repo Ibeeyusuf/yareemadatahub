@@ -506,7 +506,47 @@ class YareemaAPI {
         });
     }
 
-    // ==================== SYSTEM SETTINGS ====================
+    // ==================== STAFF MANAGEMENT ====================
+
+    // GET /api/v1/admin/staff?page=1&limit=20&role=admin
+    async getStaff(params = {}) {
+        const qs = new URLSearchParams(
+            Object.entries(params).filter(([_, v]) => v != null && v !== '')
+        ).toString();
+        return await this.request(`/api/v1/admin/staff${qs ? '?' + qs : ''}`);
+    }
+
+    // GET /api/v1/admin/staff/:id
+    async getStaffById(id) {
+        return await this.request(`/api/v1/admin/staff/${id}`);
+    }
+
+    // POST /api/v1/admin/staff
+    // body: { firstName, lastName, email, phoneNumber, role }
+    async createStaff(payload) {
+        return await this.request('/api/v1/admin/staff', {
+            method: 'POST',
+            body: payload
+        });
+    }
+
+    // PUT /api/v1/admin/staff/:id
+    // body: { firstName, lastName, email, phoneNumber, role }
+    async updateStaff(id, payload) {
+        return await this.request(`/api/v1/admin/staff/${id}`, {
+            method: 'PUT',
+            body: payload
+        });
+    }
+
+    // DELETE /api/v1/admin/staff/:id
+    async deleteStaff(id) {
+        return await this.request(`/api/v1/admin/staff/${id}`, {
+            method: 'DELETE'
+        });
+    }
+
+        // ==================== SYSTEM SETTINGS ====================
     
     async getSystemSettings() {
         return await this.request('/api/v1/admin/settings');
