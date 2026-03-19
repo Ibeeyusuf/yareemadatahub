@@ -2143,20 +2143,41 @@ function showNotificationsModal() {
     `);
     document.getElementById('modalFooter').style.display = 'flex';
     document.getElementById('modalFooter').style.gap = '10px';
+
+    // Clear the bell badge when user opens notifications
+    const badge = document.getElementById('notif-badge');
+    if (badge) badge.style.display = 'none';
+
     _loadNotifications();
 }
 
 async function _loadNotifications() {
     try {
         const response = await api.getNotifications();
-        console.log('[Notifications] response:', response);
-        const notifications = response.data?.notifications || response.data || response.notifications || [];
+
+        // Handle every possible response shape the backend might return:
+        // { data: { notifications: [] } }  — standard
+        // { data: [] }                      — flat array in data
+        // { notifications: [] }             — top level
+        // { data: { data: [] } }            — nested
+        let notifications = [];
+        const d = response?.data;
+        if (Array.isArray(d?.notifications))       notifications = d.notifications;
+        else if (Array.isArray(d?.data))           notifications = d.data;
+        else if (Array.isArray(d))                 notifications = d;
+        else if (Array.isArray(response?.notifications)) notifications = response.notifications;
+        else if (Array.isArray(response?.results)) notifications = response.results;
+
         _renderNotifications(notifications);
     } catch (err) {
-        document.getElementById('notifLoadingState').innerHTML = `
-            <p style="color:#dc2626;font-size:14px;text-align:center;padding:32px 0;">
-                Failed to load notifications
-            </p>`;
+        const el = document.getElementById('notifLoadingState');
+        if (el) el.innerHTML = `
+            <div style="text-align:center;padding:40px 0;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" style="margin:0 auto 10px;display:block;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <p style="color:#dc2626;font-size:14px;margin:0;">Failed to load notifications</p>
+                <p style="color:#94a3b8;font-size:12px;margin:6px 0 0;">${err.message || 'Please try again'}</p>
+                <button onclick="_loadNotifications()" style="margin-top:14px;padding:8px 20px;background:#1e3d5c;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;">Retry</button>
+            </div>`;
     }
 }
 
@@ -2166,41 +2187,51 @@ function _renderNotifications(notifications) {
     if (loading) loading.style.display = 'none';
     if (!list) return;
 
-    if (!notifications.length) {
+    if (!notifications || !notifications.length) {
         list.style.display = 'block';
         list.innerHTML = `
             <div style="text-align:center;padding:48px 0;">
                 <div style="width:56px;height:56px;background:#f1f5f9;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                    </svg>
                 </div>
-                <p style="color:#64748b;font-size:14px;">No notifications yet</p>
+                <p style="color:#64748b;font-size:14px;font-weight:600;margin:0;">No notifications yet</p>
+                <p style="color:#94a3b8;font-size:12px;margin:4px 0 0;">Broadcasts from admin will appear here</p>
             </div>`;
         return;
     }
 
     list.style.display = 'block';
     list.innerHTML = notifications.map(n => {
-        const id       = n._id || n.id;
-        const isRead   = n.isRead || n.read || false;
-        const title    = n.title || n.subject || 'Notification';
-        const message  = n.message || n.body || n.content || '';
-        const time     = n.createdAt ? _timeAgoNotif(n.createdAt) : '';
-        const typeIcon = _notifIcon(n.type || n.category || '');
+        const id      = n._id || n.id || '';
+        const isRead  = n.isRead || n.read || n.seen || false;
+        const title   = n.title || n.subject || 'Notification';
+        const message = n.message || n.body || n.content || n.description || '';
+        const time    = n.createdAt || n.timestamp || n.date || null;
+        const typeIcon = _notifIcon(n.type || n.category || n.notificationType || '');
 
         return `
         <div id="notif_${id}" onclick="readNotif('${id}', this)"
-            style="display:flex;align-items:flex-start;gap:12px;padding:14px 0;border-bottom:1px solid #f1f5f9;cursor:pointer;
-                   background:${isRead ? 'transparent' : '#f8faff'};border-radius:8px;padding:12px;margin-bottom:4px;transition:background .15s;">
-            <div style="width:38px;height:38px;border-radius:50%;background:${isRead ? '#f1f5f9' : '#dbeafe'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            style="display:flex;align-items:flex-start;gap:12px;
+                   background:${isRead ? 'transparent' : '#f0f7ff'};
+                   border-radius:10px;padding:12px;margin-bottom:6px;
+                   cursor:pointer;transition:background .15s;
+                   border:1px solid ${isRead ? 'transparent' : '#dbeafe'};">
+            <div style="width:38px;height:38px;border-radius:50%;
+                        background:${isRead ? '#f1f5f9' : '#dbeafe'};
+                        display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 ${typeIcon}
             </div>
             <div style="flex:1;min-width:0;">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                    <p style="font-weight:${isRead ? '500' : '700'};color:#0f172a;font-size:14px;margin:0;">${title}</p>
-                    ${!isRead ? '<span style="width:8px;height:8px;background:#2563eb;border-radius:50%;flex-shrink:0;"></span>' : ''}
+                    <p style="font-weight:${isRead ? '500' : '700'};color:#0f172a;font-size:14px;margin:0;
+                               white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${title}</p>
+                    ${!isRead ? '<span style="width:8px;height:8px;min-width:8px;background:#2563eb;border-radius:50%;"></span>' : ''}
                 </div>
-                <p style="color:#64748b;font-size:13px;margin:3px 0 0;line-height:1.4;">${message}</p>
-                <p style="color:#94a3b8;font-size:11px;margin:4px 0 0;">${time}</p>
+                <p style="color:#64748b;font-size:13px;margin:4px 0 0;line-height:1.45;">${message}</p>
+                ${time ? `<p style="color:#94a3b8;font-size:11px;margin:5px 0 0;">${_timeAgoNotif(time)}</p>` : ''}
             </div>
         </div>`;
     }).join('');
@@ -2208,33 +2239,41 @@ function _renderNotifications(notifications) {
 
 function _notifIcon(type) {
     const t = (type || '').toLowerCase();
-    if (t.includes('success') || t.includes('credit') || t.includes('fund'))
+    if (t.includes('success') || t.includes('credit') || t.includes('fund') || t.includes('bonus'))
         return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
     if (t.includes('fail') || t.includes('error') || t.includes('debit'))
         return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
-    if (t.includes('warn') || t.includes('pending'))
+    if (t.includes('warn') || t.includes('pending') || t.includes('alert'))
         return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+    if (t.includes('broadcast') || t.includes('promo') || t.includes('update'))
+        return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>';
+    // default bell icon
     return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
 }
 
 function _timeAgoNotif(d) {
     const s = (Date.now() - new Date(d)) / 1000;
-    if (s < 60)    return 'Just now';
-    if (s < 3600)  return Math.floor(s / 60) + 'm ago';
-    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
-    return Math.floor(s / 86400) + 'd ago';
+    if (s < 60)     return 'Just now';
+    if (s < 3600)   return Math.floor(s / 60) + 'm ago';
+    if (s < 86400)  return Math.floor(s / 3600) + 'h ago';
+    if (s < 604800) return Math.floor(s / 86400) + 'd ago';
+    return new Date(d).toLocaleDateString('en-NG', { day:'numeric', month:'short' });
 }
 
 async function readNotif(id, el) {
-    if (!el.querySelector('span[style*="background:#2563eb"]')) return; // already read
+    if (!id || el.dataset.read === 'true') return; // already read
     try {
         await api.markNotificationRead(id);
-        el.style.background = 'transparent';
+        el.dataset.read        = 'true';
+        el.style.background    = 'transparent';
+        el.style.border        = '1px solid transparent';
         const dot = el.querySelector('span[style*="background:#2563eb"]');
         if (dot) dot.remove();
-        const title = el.querySelector('p');
-        if (title) title.style.fontWeight = '500';
-    } catch (e) { /* silent */ }
+        const iconBox = el.querySelector('div[style*="background:#dbeafe"]');
+        if (iconBox) iconBox.style.background = '#f1f5f9';
+        const titleEl = el.querySelector('p');
+        if (titleEl) titleEl.style.fontWeight = '500';
+    } catch (e) { /* silent — UI already updated */ }
 }
 
 async function markAllNotifsRead() {
@@ -2242,13 +2281,24 @@ async function markAllNotifsRead() {
     if (btn) { btn.disabled = true; btn.textContent = 'Marking...'; }
     try {
         await api.markAllNotificationsRead();
-        document.querySelectorAll('#notifList > div').forEach(el => {
+
+        // Update every unread item in the list
+        document.querySelectorAll('#notifList > div[id^="notif_"]').forEach(el => {
+            el.dataset.read     = 'true';
             el.style.background = 'transparent';
+            el.style.border     = '1px solid transparent';
             const dot = el.querySelector('span[style*="background:#2563eb"]');
             if (dot) dot.remove();
-            const title = el.querySelector('p');
-            if (title) title.style.fontWeight = '500';
+            const iconBox = el.querySelector('div[style*="background:#dbeafe"]');
+            if (iconBox) iconBox.style.background = '#f1f5f9';
+            const titleEl = el.querySelector('p');
+            if (titleEl) titleEl.style.fontWeight = '500';
         });
+
+        // Clear bell badge
+        const badge = document.getElementById('notif-badge');
+        if (badge) badge.style.display = 'none';
+
         if (btn) { btn.disabled = false; btn.textContent = 'All read ✓'; }
     } catch (e) {
         if (btn) { btn.disabled = false; btn.textContent = 'Mark all read'; }

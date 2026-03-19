@@ -6,7 +6,7 @@
     <title>Dashboard - Yareema Data Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/"></script>
+    <!-- SweetAlert2 not used in user app - uses native showModal instead -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
@@ -73,8 +73,13 @@
                 </div>
             </div>
             <div class="top-bar-actions" style="display: flex; color: #64748b; gap: 8px;">
-                <button class="icon-btn" onclick="openModal('notifications')" style="background: none; border: none; padding: 4px;">
+                <button class="icon-btn" onclick="openModal('notifications')" style="background: none; border: none; padding: 4px; position: relative;">
                     <i data-lucide="bell" style="width: 16px; height: 16px;"></i>
+                    <span id="notif-badge" style="display:none; position:absolute; top:-4px; right:-4px;
+                        background:#ef4444; color:#fff; font-size:9px; font-weight:700;
+                        min-width:16px; height:16px; border-radius:8px; padding:0 4px;
+                        display:none; align-items:center; justify-content:center;
+                        border:2px solid #fff; line-height:1;">0</span>
                 </button>
                 <button class="icon-btn" onclick="window.location.reload()" style="background: none; border: none; padding: 4px;">
                     <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
@@ -291,6 +296,59 @@
                 document.getElementById('sidebarName').textContent = firstName;
                 document.getElementById('sidebarAvatar').textContent = initials;
                 document.getElementById('topBarUser').textContent  = `Welcome back, ${firstName}`;
+
+                // ── Check for login announcement (POST /api/v1/admin/broadcast) ──
+                // The backend stores these as notifications with type != "broadcast"
+                // We show the latest unread one as a popup on every fresh login session
+                try {
+                    const annRes = await api.getNotifications();
+                    let allNotifs = [];
+                    const d = annRes?.data;
+                    if (Array.isArray(d?.notifications))      allNotifs = d.notifications;
+                    else if (Array.isArray(d?.data))          allNotifs = d.data;
+                    else if (Array.isArray(d))                allNotifs = d;
+                    else if (Array.isArray(annRes?.notifications)) allNotifs = annRes.notifications;
+                    else if (Array.isArray(annRes?.results))  allNotifs = annRes.results;
+
+                    // Track which announcement was last shown so we don't repeat it
+                    const lastShownId = localStorage.getItem('last_shown_announcement');
+
+                    // Find the latest unread announcement:
+                    // - NOT type "broadcast" (those are bell-only)
+                    // - Unread
+                    // - Not already shown this session
+                    const announcement = allNotifs.find(n => {
+                        const id     = n._id || n.id || '';
+                        const isRead = n.isRead || n.read || n.seen || false;
+                        const type   = (n.type || '').toLowerCase();
+                        return !isRead && type !== 'broadcast' && id !== lastShownId;
+                    });
+
+                    if (announcement) {
+                        const id  = announcement._id || announcement.id || '';
+                        const type = (announcement.type || 'info').toLowerCase();
+                        const typeIcon = { info:'ℹ️', alert:'🚨', update:'🔄', promo:'📢', warning:'⚠️' }[type] || '📣';
+                        const msg = announcement.message || announcement.body || announcement.content || '';
+
+                        setTimeout(() => {
+                            showModal(
+                                `${typeIcon} ${announcement.title || 'Announcement'}`,
+                                `<div style="padding:8px 0 4px;">
+                                    <p style="color:#334155;font-size:14px;line-height:1.65;margin:0;">${msg}</p>
+                                </div>`,
+                                `<button onclick="closeModal()" class="btn-primary" style="flex:1;">Got it</button>`
+                            );
+                            if (document.getElementById('modalFooter')) {
+                                document.getElementById('modalFooter').style.display = 'flex';
+                            }
+                            // Remember we showed this one — don't show again until a new one arrives
+                            if (id) {
+                                localStorage.setItem('last_shown_announcement', id);
+                                api.markNotificationRead(id).catch(() => {});
+                            }
+                        }, 900);
+                    }
+                } catch (e) { /* silent — announcement check is non-critical */ }
 
                 // Load referral code
                 const referralCode = user.referralCode || user.referral_code || user.refCode || null;
@@ -566,6 +624,33 @@
         }
 
         lucide.createIcons();
+
+        // ── Notification badge polling ──────────────────────────────────
+        // Polls GET /api/v1/notifications/unread-count every 30s
+        // Shows red badge on the bell icon
+        async function refreshNotifBadge() {
+            try {
+                const res   = await api.getUnreadCount();
+                const count = res?.data?.count ?? res?.count ?? res?.data?.unreadCount ?? 0;
+                const badge = document.getElementById('notif-badge');
+                if (!badge) return;
+                if (count > 0) {
+                    badge.textContent   = count > 99 ? '99+' : count;
+                    badge.style.display = 'flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            } catch (e) { /* silent — badge is non-critical */ }
+        }
+
+        // Run after auth settles, then every 30 seconds
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('user_token') || sessionStorage.getItem('user_token');
+            if (token) {
+                setTimeout(refreshNotifBadge, 1500);
+                setInterval(refreshNotifBadge, 30000);
+            }
+        });
     </script>
 </body>
 </html>

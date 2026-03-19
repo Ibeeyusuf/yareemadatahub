@@ -17,7 +17,7 @@ const API_CONFIG = {
             PRICING: '/api/v1/admin/pricing',
             PROVIDERS: '/api/v1/admin/providers',
             LOGS: '/api/v1/admin/logs',
-            BROADCAST: '/api/v1/admin/broadcast',
+            BROADCAST: '/api/v1/notifications/admin/broadcast',
             SETTINGS: '/api/v1/admin/settings',
             EXPORT: '/api/v1/admin/export'
         }

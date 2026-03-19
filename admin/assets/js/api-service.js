@@ -490,8 +490,17 @@ class YareemaAPI {
 
     // ==================== NOTIFICATIONS ====================
     
+    // POST /api/v1/admin/broadcast — login announcement (popup when user logs in)
     async broadcastNotification(notificationData) {
         return await this.request('/api/v1/admin/broadcast', {
+            method: 'POST',
+            body: notificationData
+        });
+    }
+
+    // POST /api/v1/notifications/admin/broadcast — bell notification (user sees in bell modal)
+    async bellBroadcast(notificationData) {
+        return await this.request('/api/v1/notifications/admin/broadcast', {
             method: 'POST',
             body: notificationData
         });
@@ -576,6 +585,96 @@ class YareemaAPI {
     async deleteAllNotifications() {
         return await this.request('/api/v1/notifications', {
             method: 'DELETE'
+        });
+    }
+
+    // ==================== VTU CONSOLE ====================
+
+    // GET /api/v1/console/providers
+    async consoleGetProviders() {
+        return await this.request('/api/v1/console/providers');
+    }
+
+    // GET /api/v1/console/providers/config
+    // Returns serviceRouting: { data, airtime, airtimepin, education, electricity, cable, airtime2cash }
+    async consoleGetConfig() {
+        return await this.request('/api/v1/console/providers/config');
+    }
+
+    // POST /api/v1/console/config
+    // body: { serviceRouting: { data, airtime, ... } }
+    async consoleSaveConfig(serviceRouting, pin) {
+        return await this.request('/api/v1/console/config', {
+            method: 'POST',
+            body: { serviceRouting, ...(pin ? { pin } : {}) }
+        });
+    }
+
+    // POST /api/v1/console/switch
+    // body: { service, provider, pin }
+    async consoleSwitchProvider(service, provider, pin) {
+        return await this.request('/api/v1/console/switch', {
+            method: 'POST',
+            body: { service, provider, ...(pin ? { pin } : {}) }
+        });
+    }
+
+    // POST /api/v1/console/health  — test all providers
+    async consoleHealthCheckAll() {
+        return await this.request('/api/v1/console/health', {
+            method: 'POST',
+            body: {}
+        });
+    }
+
+    // POST /api/v1/console/providers/:providerId/health  — test one provider
+    async consoleHealthCheckOne(providerId) {
+        return await this.request(`/api/v1/console/providers/${providerId}/health`, {
+            method: 'POST',
+            body: {}
+        });
+    }
+
+    // GET /api/v1/console/balances  — all provider balances
+    async consoleGetBalances() {
+        return await this.request('/api/v1/console/balances');
+    }
+
+    // GET /api/v1/console/logs?page=1&limit=50
+    async consoleGetLogs(page = 1, limit = 50) {
+        return await this.request(`/api/v1/console/logs?page=${page}&limit=${limit}`);
+    }
+
+    // PUT /api/v1/console/providers/:providerId/status
+    // body: { status: 'active' | 'maintenance' | 'inactive', maintenanceMessage?, maintenanceStart?, maintenanceEnd? }
+    async consoleUpdateProviderStatus(providerId, statusData) {
+        return await this.request(`/api/v1/console/providers/${providerId}/status`, {
+            method: 'PUT',
+            body: statusData
+        });
+    }
+
+    // GET /api/v1/console/providers/:providerId/stats
+    async consoleGetProviderStats(providerId) {
+        return await this.request(`/api/v1/console/providers/${providerId}/stats`);
+    }
+
+    // GET /api/v1/console/providers/:providerId/balance
+    async consoleGetProviderBalance(providerId) {
+        return await this.request(`/api/v1/console/providers/${providerId}/balance`);
+    }
+
+    // GET /api/v1/console/bill-payment/providers
+    async consoleGetBillProviders() {
+        return await this.request('/api/v1/console/bill-payment/providers');
+    }
+
+    // POST /api/v1/console/bill-payment/switch
+    // body: { service: 'electricity' | 'cable_tv', provider: 'smeplug' }
+    async consoleSwitchBillProvider(service, provider) {
+        return await this.request('/api/v1/console/bill-payment/switch', {
+            method: 'POST',
+            body: { service, provider }
         });
     }
 }

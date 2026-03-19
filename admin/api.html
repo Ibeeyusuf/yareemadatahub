@@ -4,38 +4,43 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VTU Gateway · Yareema Datahub Console</title>
-    <!-- Tailwind + Lucide + Chart.js (professional stack) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Inter font & custom smooth styles -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{primary:'#2563eb',secondary:'#7c3aed',success:'#10b981',warning:'#f59e0b',error:'#ef4444',dark:'#0f172a',light:'#f8fafc'}}}}</script>
     <style>
-        * { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
-        .glass-card { backdrop-filter: blur(2px); background: rgba(255,255,255,0.75); border: 1px solid rgba(226,232,240,0.6); }
-        .provider-badge { transition: all 0.15s ease; }
-        .service-provider-radio:checked + label { border-color: #2563eb; background-color: #f0f7ff; box-shadow: 0 4px 10px -4px rgba(37,99,235,0.2); }
-        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-        [x-cloak] { display: none !important; }
+        * { font-family: 'Inter', system-ui, sans-serif; }
         .service-card { transition: all 0.2s ease; }
-        .service-card:hover { transform: translateY(-2px); box-shadow: 0 12px 20px -12px rgba(0,0,0,0.2); }
+        .service-card:hover { transform: translateY(-2px); box-shadow: 0 12px 20px -12px rgba(0,0,0,0.15); }
+        /* radio highlight */
+        label:has(input[type=radio]:checked) { background:#eff6ff; border-radius:8px; }
+        input[type=radio]:checked + span { font-weight:600; color:#2563eb; }
+        /* log status pills */
+        .log-success { background:#dcfce7; color:#166534; }
+        .log-failed  { background:#fee2e2; color:#991b1b; }
+        .log-pending { background:#fef9c3; color:#854d0e; }
+        /* provider dot */
+        .dot { width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0; }
+        .dot-active  { background:#10b981; }
+        .dot-degraded{ background:#f59e0b; }
+        .dot-offline { background:#ef4444; }
+        .dot-unknown { background:#94a3b8; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased">
 
-<!-- mobile overlay -->
 <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
 
 <div class="w-full">
-    <!-- sidebar placeholder -->
     <div id="sidebar-placeholder"></div>
 
     <main class="lg:ml-64 flex flex-col min-h-screen">
-        <!-- header placeholder -->
         <div id="header-placeholder"></div>
 
-        <!-- MAIN CONTENT (API CONSOLE) -->
-        <div class="p-4 lg:p-8 flex-1 overflow-y-auto">
+        <div class="p-4 lg:p-8 flex-1">
             <div class="space-y-6 max-w-7xl mx-auto">
 
                 <!-- HEADER -->
@@ -44,274 +49,143 @@
                         <h2 class="text-2xl font-bold text-slate-900">🔧 API Gateway Controller</h2>
                         <p class="text-slate-500 text-sm mt-1 flex items-center gap-1">
                             <i data-lucide="network" class="w-4 h-4"></i>
-                            Configure which API provider handles each service
+                            Configure which API provider handles each VTU service
                         </p>
                     </div>
-                    <button onclick="runGlobalHealthCheck()" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200">
+                    <button onclick="runHealthCheckAll()" id="health-btn"
+                        class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition shadow-sm shadow-blue-200">
                         <i data-lucide="activity" class="w-4 h-4"></i> Test All Providers
                     </button>
                 </div>
 
-                <!-- AVAILABLE PROVIDERS STATUS -->
-                <div class="bg-white/90 backdrop-blur-sm p-5 rounded-2xl border border-slate-200 shadow-md">
-                    <div class="flex items-center gap-2 mb-4 text-slate-700">
+                <!-- PROVIDER STATUS CARDS — from GET /api/v1/console/providers -->
+                <div class="bg-white/90 p-5 rounded-2xl border border-slate-200 shadow-md">
+                    <div class="flex items-center gap-2 mb-4">
                         <i data-lucide="database" class="w-5 h-5 text-primary"></i>
-                        <span class="font-semibold text-base">Available API Providers</span>
-                        <span class="text-xs bg-slate-100 px-2 py-1 rounded-full ml-auto">3 active providers</span>
+                        <span class="font-semibold text-base text-slate-800">Available API Providers</span>
+                        <span id="provider-count" class="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded-full ml-auto">Loading...</span>
                     </div>
-
-                    <!-- Provider Status Cards -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <!-- Club Konnect -->
-                        <div class="border rounded-xl p-4 bg-gradient-to-br from-blue-50 to-white">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-2">
-                                    <i data-lucide="zap" class="w-5 h-5 text-amber-500"></i>
-                                    <span class="font-bold">Club Konnect</span>
-                                </div>
-                                <span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">98ms</span>
-                            </div>
-                            <div class="mt-2 text-xs text-slate-600">
-                                <div class="flex justify-between"><span>Balance:</span><span class="font-mono">₦245,890</span></div>
-                                <div class="flex justify-between"><span>Status:</span><span class="text-green-600">● Online</span></div>
-                            </div>
-                        </div>
-
-                        <!-- Airtime Nigeria -->
-                        <div class="border rounded-xl p-4 bg-gradient-to-br from-sky-50 to-white">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-2">
-                                    <i data-lucide="airplay" class="w-5 h-5 text-sky-600"></i>
-                                    <span class="font-bold">Airtime Nigeria</span>
-                                </div>
-                                <span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">124ms</span>
-                            </div>
-                            <div class="mt-2 text-xs text-slate-600">
-                                <div class="flex justify-between"><span>Balance:</span><span class="font-mono">₦132,450</span></div>
-                                <div class="flex justify-between"><span>Status:</span><span class="text-green-600">● Online</span></div>
-                            </div>
-                        </div>
-
-                        <!-- SMEPlug -->
-                        <div class="border rounded-xl p-4 bg-gradient-to-br from-indigo-50 to-white">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-2">
-                                    <i data-lucide="plug" class="w-5 h-5 text-indigo-500"></i>
-                                    <span class="font-bold">SMEPlug</span>
-                                </div>
-                                <span class="bg-yellow-100 text-yellow-700 text-xs px-2 py-1 rounded-full">312ms</span>
-                            </div>
-                            <div class="mt-2 text-xs text-slate-600">
-                                <div class="flex justify-between"><span>Balance:</span><span class="font-mono">₦89,200</span></div>
-                                <div class="flex justify-between"><span>Status:</span><span class="text-yellow-600">● Degraded</span></div>
-                            </div>
-                        </div>
+                    <div id="providers-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="border rounded-xl p-4 animate-pulse bg-slate-50 h-28"></div>
+                        <div class="border rounded-xl p-4 animate-pulse bg-slate-50 h-28"></div>
+                        <div class="border rounded-xl p-4 animate-pulse bg-slate-50 h-28"></div>
                     </div>
                 </div>
 
-                <!-- SERVICE PROVIDER CONFIGURATION -->
+                <!-- SERVICE ROUTING — radios set from GET /api/v1/console/providers/config -->
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden">
                     <div class="bg-slate-50 px-6 py-4 border-b border-slate-200">
                         <h3 class="font-semibold text-slate-800 flex items-center gap-2">
                             <i data-lucide="sliders" class="w-5 h-5 text-primary"></i>
                             Service Provider Routing
                         </h3>
-                        <p class="text-xs text-slate-500 mt-1">Configure which API provider handles each service type</p>
+                        <p class="text-xs text-slate-500 mt-1">Select which provider handles each service. Each save calls <code class="bg-slate-200 px-1 rounded">POST /api/v1/console/switch</code> per change</p>
                     </div>
 
                     <div class="p-6">
-                        <!-- Services Grid -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="routing-grid">
+
                             <!-- Data Service -->
                             <div class="service-card border rounded-xl p-4 bg-white">
                                 <div class="flex items-center gap-2 mb-3">
                                     <i data-lucide="wifi" class="w-5 h-5 text-blue-600"></i>
                                     <h4 class="font-semibold">Data Services</h4>
                                 </div>
-                                <div class="space-y-2">
-                                    <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50">
-                                        <input type="radio" name="dataProvider" value="clubkonnect" class="service-provider-radio" checked>
-                                        <span class="text-sm">Club Konnect</span>
-                                    </label>
-                                    <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50">
-                                        <input type="radio" name="dataProvider" value="airtimenigeria" class="service-provider-radio">
-                                        <span class="text-sm">Airtime Nigeria</span>
-                                    </label>
-                                    <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50">
-                                        <input type="radio" name="dataProvider" value="smeplug" class="service-provider-radio">
-                                        <span class="text-sm">SMEPlug</span>
-                                    </label>
-                                </div>
+                                <div class="space-y-1" id="radios-data"></div>
                                 <div class="mt-3 text-xs text-slate-400 border-t pt-2">
-                                    Current: <span class="font-medium text-blue-600">Club Konnect</span>
+                                    Current: <span id="current-data" class="font-medium text-blue-600">—</span>
                                 </div>
                             </div>
 
-                            <!-- Airtime Service -->
+                            <!-- Airtime -->
                             <div class="service-card border rounded-xl p-4 bg-white">
                                 <div class="flex items-center gap-2 mb-3">
                                     <i data-lucide="phone" class="w-5 h-5 text-green-600"></i>
                                     <h4 class="font-semibold">Airtime (VTU)</h4>
                                 </div>
-                                <div class="space-y-2">
-                                    <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50">
-                                        <input type="radio" name="airtimeProvider" value="clubkonnect" class="service-provider-radio">
-                                        <span class="text-sm">Club Konnect</span>
-                                    </label>
-                                    <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50">
-                                        <input type="radio" name="airtimeProvider" value="airtimenigeria" class="service-provider-radio" checked>
-                                        <span class="text-sm">Airtime Nigeria</span>
-                                    </label>
-                                    <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50">
-                                        <input type="radio" name="airtimeProvider" value="smeplug" class="service-provider-radio">
-                                        <span class="text-sm">SMEPlug</span>
-                                    </label>
-                                </div>
+                                <div class="space-y-1" id="radios-airtime"></div>
                                 <div class="mt-3 text-xs text-slate-400 border-t pt-2">
-                                    Current: <span class="font-medium text-green-600">Airtime Nigeria</span>
+                                    Current: <span id="current-airtime" class="font-medium text-green-600">—</span>
                                 </div>
                             </div>
 
-                            <!-- Airtime PIN Service -->
+                            <!-- Airtime PIN -->
                             <div class="service-card border rounded-xl p-4 bg-white">
                                 <div class="flex items-center gap-2 mb-3">
                                     <i data-lucide="credit-card" class="w-5 h-5 text-purple-600"></i>
-                                    <h4 class="font-semibold">Airtime PIN</h4>
+                                    <h4 class="font-semibold">Recharge PIN</h4>
                                 </div>
-                                <div class="space-y-2">
-                                    <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50">
-                                        <input type="radio" name="airtimepinProvider" value="clubkonnect" class="service-provider-radio">
-                                        <span class="text-sm">Club Konnect</span>
-                                    </label>
-                                    <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50">
-                                        <input type="radio" name="airtimepinProvider" value="airtimenigeria" class="service-provider-radio" checked>
-                                        <span class="text-sm">Airtime Nigeria</span>
-                                    </label>
-                                    <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50">
-                                        <input type="radio" name="airtimepinProvider" value="smeplug" class="service-provider-radio">
-                                        <span class="text-sm">SMEPlug</span>
-                                    </label>
-                                </div>
+                                <div class="space-y-1" id="radios-airtimepin"></div>
                                 <div class="mt-3 text-xs text-slate-400 border-t pt-2">
-                                    Current: <span class="font-medium text-purple-600">Airtime Nigeria</span>
+                                    Current: <span id="current-airtimepin" class="font-medium text-purple-600">—</span>
                                 </div>
                             </div>
 
-                            <!-- Education PIN Service -->
+                            <!-- Education -->
                             <div class="service-card border rounded-xl p-4 bg-white">
                                 <div class="flex items-center gap-2 mb-3">
                                     <i data-lucide="graduation-cap" class="w-5 h-5 text-orange-600"></i>
                                     <h4 class="font-semibold">Education PIN</h4>
                                 </div>
-                                <div class="space-y-2">
-                                    <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50">
-                                        <input type="radio" name="educationProvider" value="clubkonnect" class="service-provider-radio">
-                                        <span class="text-sm">Club Konnect</span>
-                                    </label>
-                                    <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50">
-                                        <input type="radio" name="educationProvider" value="airtimenigeria" class="service-provider-radio">
-                                        <span class="text-sm">Airtime Nigeria</span>
-                                    </label>
-                                    <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50">
-                                        <input type="radio" name="educationProvider" value="smeplug" class="service-provider-radio" checked>
-                                        <span class="text-sm">SMEPlug</span>
-                                    </label>
-                                </div>
+                                <div class="space-y-1" id="radios-education"></div>
                                 <div class="mt-3 text-xs text-slate-400 border-t pt-2">
-                                    Current: <span class="font-medium text-orange-600">SMEPlug</span>
+                                    Current: <span id="current-education" class="font-medium text-orange-600">—</span>
                                 </div>
                             </div>
 
-                            <!-- Electricity Service -->
+                            <!-- Electricity -->
                             <div class="service-card border rounded-xl p-4 bg-white">
                                 <div class="flex items-center gap-2 mb-3">
                                     <i data-lucide="zap" class="w-5 h-5 text-yellow-600"></i>
                                     <h4 class="font-semibold">Electricity</h4>
                                 </div>
-                                <div class="space-y-2">
-                                    <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50">
-                                        <input type="radio" name="electricityProvider" value="clubkonnect" class="service-provider-radio" checked>
-                                        <span class="text-sm">Club Konnect</span>
-                                    </label>
-                                    <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50">
-                                        <input type="radio" name="electricityProvider" value="airtimenigeria" class="service-provider-radio">
-                                        <span class="text-sm">Airtime Nigeria</span>
-                                    </label>
-                                    <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50">
-                                        <input type="radio" name="electricityProvider" value="smeplug" class="service-provider-radio">
-                                        <span class="text-sm">SMEPlug</span>
-                                    </label>
-                                </div>
+                                <div class="space-y-1" id="radios-electricity"></div>
                                 <div class="mt-3 text-xs text-slate-400 border-t pt-2">
-                                    Current: <span class="font-medium text-yellow-600">Club Konnect</span>
+                                    Current: <span id="current-electricity" class="font-medium text-yellow-600">—</span>
                                 </div>
                             </div>
 
-                            <!-- Cable TV Service -->
+                            <!-- Cable TV -->
                             <div class="service-card border rounded-xl p-4 bg-white">
                                 <div class="flex items-center gap-2 mb-3">
                                     <i data-lucide="tv" class="w-5 h-5 text-red-600"></i>
                                     <h4 class="font-semibold">Cable TV</h4>
                                 </div>
-                                <div class="space-y-2">
-                                    <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50">
-                                        <input type="radio" name="cableProvider" value="clubkonnect" class="service-provider-radio">
-                                        <span class="text-sm">Club Konnect</span>
-                                    </label>
-                                    <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50">
-                                        <input type="radio" name="cableProvider" value="airtimenigeria" class="service-provider-radio" checked>
-                                        <span class="text-sm">Airtime Nigeria</span>
-                                    </label>
-                                    <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50">
-                                        <input type="radio" name="cableProvider" value="smeplug" class="service-provider-radio">
-                                        <span class="text-sm">SMEPlug</span>
-                                    </label>
-                                </div>
+                                <div class="space-y-1" id="radios-cable"></div>
                                 <div class="mt-3 text-xs text-slate-400 border-t pt-2">
-                                    Current: <span class="font-medium text-red-600">Airtime Nigeria</span>
+                                    Current: <span id="current-cable" class="font-medium text-red-600">—</span>
                                 </div>
                             </div>
 
-                            <!-- Airtime2Cash Service -->
+                            <!-- Airtime2Cash -->
                             <div class="service-card border rounded-xl p-4 bg-white">
                                 <div class="flex items-center gap-2 mb-3">
                                     <i data-lucide="repeat" class="w-5 h-5 text-indigo-600"></i>
                                     <h4 class="font-semibold">Airtime2Cash</h4>
                                 </div>
-                                <div class="space-y-2">
-                                    <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50">
-                                        <input type="radio" name="airtime2cashProvider" value="clubkonnect" class="service-provider-radio">
-                                        <span class="text-sm">Club Konnect</span>
-                                    </label>
-                                    <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50">
-                                        <input type="radio" name="airtime2cashProvider" value="airtimenigeria" class="service-provider-radio">
-                                        <span class="text-sm">Airtime Nigeria</span>
-                                    </label>
-                                    <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50">
-                                        <input type="radio" name="airtime2cashProvider" value="smeplug" class="service-provider-radio" checked>
-                                        <span class="text-sm">SMEPlug</span>
-                                    </label>
-                                </div>
+                                <div class="space-y-1" id="radios-airtime2cash"></div>
                                 <div class="mt-3 text-xs text-slate-400 border-t pt-2">
-                                    Current: <span class="font-medium text-indigo-600">SMEPlug</span>
+                                    Current: <span id="current-airtime2cash" class="font-medium text-indigo-600">—</span>
                                 </div>
                             </div>
+
                         </div>
 
-                        <!-- Action Buttons -->
+                        <!-- Actions -->
                         <div class="mt-6 flex flex-wrap gap-3 justify-end border-t pt-4">
-                            <button onclick="resetToDefault()" class="px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 transition">
+                            <button onclick="resetToDefault()"
+                                class="px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 transition">
                                 Reset to Default
                             </button>
-                            <button onclick="saveProviderConfig()" class="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition flex items-center gap-2">
-                                <i data-lucide="save" class="w-4 h-4"></i>
-                                Save Configuration
+                            <button onclick="saveProviderConfig()" id="save-btn"
+                                class="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition flex items-center gap-2">
+                                <i data-lucide="save" class="w-4 h-4"></i> Save Configuration
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Current Routing Summary -->
+                <!-- ROUTING SUMMARY TABLE -->
                 <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                     <div class="px-5 py-4 border-b border-slate-100">
                         <h3 class="font-semibold text-slate-800 flex items-center gap-2">
@@ -321,155 +195,557 @@
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm">
-                            <thead class="bg-slate-50 text-slate-500 text-xs">
+                            <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
                                 <tr>
                                     <th class="px-5 py-3 text-left">Service</th>
-                                    <th class="px-5 py-3 text-left">Provider</th>
-                                    <th class="px-5 py-3 text-left">Status</th>
-                                    <th class="px-5 py-3 text-left">Last Used</th>
+                                    <th class="px-5 py-3 text-left">Active Provider</th>
+                                    <th class="px-5 py-3 text-left">Provider Status</th>
+                                    <th class="px-5 py-3 text-left">Last Checked</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                <tr><td class="px-5 py-3">Data Services</td><td><span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs">Club Konnect</span></td><td><span class="text-green-600">● Active</span></td><td>2 mins ago</td></tr>
-                                <tr><td class="px-5 py-3">Airtime (VTU)</td><td><span class="bg-sky-50 text-sky-700 px-2 py-0.5 rounded-full text-xs">Airtime Nigeria</span></td><td><span class="text-green-600">● Active</span></td><td>5 mins ago</td></tr>
-                                <tr><td class="px-5 py-3">Airtime PIN</td><td><span class="bg-sky-50 text-sky-700 px-2 py-0.5 rounded-full text-xs">Airtime Nigeria</span></td><td><span class="text-green-600">● Active</span></td><td>12 mins ago</td></tr>
-                                <tr><td class="px-5 py-3">Education PIN</td><td><span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full text-xs">SMEPlug</span></td><td><span class="text-yellow-600">● Degraded</span></td><td>25 mins ago</td></tr>
-                                <tr><td class="px-5 py-3">Electricity</td><td><span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs">Club Konnect</span></td><td><span class="text-green-600">● Active</span></td><td>3 mins ago</td></tr>
-                                <tr><td class="px-5 py-3">Cable TV</td><td><span class="bg-sky-50 text-sky-700 px-2 py-0.5 rounded-full text-xs">Airtime Nigeria</span></td><td><span class="text-green-600">● Active</span></td><td>8 mins ago</td></tr>
-                                <tr><td class="px-5 py-3">Airtime2Cash</td><td><span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full text-xs">SMEPlug</span></td><td><span class="text-green-600">● Active</span></td><td>15 mins ago</td></tr>
+                            <tbody id="routing-table" class="divide-y divide-slate-100">
+                                <tr><td colspan="4" class="px-5 py-6 text-center text-slate-400 text-xs">Loading routing...</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- API logs chart + recent activity -->
+                <!-- CHART + BALANCES -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                    <!-- chart area -->
+
+                    <!-- API Logs — from GET /api/v1/console/logs -->
                     <div class="lg:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                         <div class="flex items-center justify-between mb-3">
-                            <h3 class="font-semibold text-slate-800 flex items-center gap-2"><i data-lucide="bar-chart-3" class="w-5 h-5 text-primary"></i> API Usage by Provider</h3>
-                            <span class="text-xs bg-slate-100 px-2 py-1 rounded">last 24h</span>
+                            <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+                                <i data-lucide="terminal" class="w-5 h-5 text-primary"></i>
+                                Recent API Logs
+                            </h3>
+                            <button onclick="loadLogs()" class="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1">
+                                <i data-lucide="refresh-cw" class="w-3 h-3"></i> Refresh
+                            </button>
                         </div>
-                        <div class="h-64 w-full">
-                            <canvas id="apiChart"></canvas>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs">
+                                <thead class="text-slate-400 uppercase tracking-wider">
+                                    <tr>
+                                        <th class="pb-2 text-left">Time</th>
+                                        <th class="pb-2 text-left">Provider</th>
+                                        <th class="pb-2 text-left">Endpoint</th>
+                                        <th class="pb-2 text-left">Status</th>
+                                        <th class="pb-2 text-left">Duration</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="logs-table" class="divide-y divide-slate-50">
+                                    <tr><td colspan="5" class="py-4 text-center text-slate-400">Loading logs...</td></tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-                    <!-- provider balance -->
+
+                    <!-- Provider Balances — from GET /api/v1/console/balances -->
                     <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                        <h4 class="font-semibold text-slate-800 flex items-center gap-2 mb-3"><i data-lucide="wallet" class="w-5 h-5 text-slate-500"></i> Provider Balances</h4>
-                        <div class="space-y-3">
-                            <div><span class="text-slate-500">Club Konnect</span> <span class="float-right font-mono">₦245,890</span><div class="w-full bg-slate-100 h-1.5 rounded-full mt-1"><div class="bg-blue-600 h-1.5 rounded-full" style="width:82%"></div></div></div>
-                            <div><span class="text-slate-500">Airtime Nigeria</span> <span class="float-right font-mono">₦132,450</span><div class="w-full bg-slate-100 h-1.5 rounded-full mt-1"><div class="bg-sky-500 h-1.5 rounded-full" style="width:44%"></div></div></div>
-                            <div><span class="text-slate-500">SMEPlug</span> <span class="float-right font-mono">₦89,200</span><div class="w-full bg-slate-100 h-1.5 rounded-full mt-1"><div class="bg-indigo-400 h-1.5 rounded-full" style="width:30%"></div></div></div>
+                        <h4 class="font-semibold text-slate-800 flex items-center gap-2 mb-3">
+                            <i data-lucide="wallet" class="w-5 h-5 text-slate-500"></i>
+                            Provider Balances
+                        </h4>
+                        <div id="balances-list" class="space-y-3">
+                            <div class="animate-pulse h-6 bg-slate-100 rounded"></div>
+                            <div class="animate-pulse h-6 bg-slate-100 rounded"></div>
+                            <div class="animate-pulse h-6 bg-slate-100 rounded"></div>
                         </div>
+                        <p class="text-xs text-slate-400 mt-4 pt-3 border-t">
+                            <code class="font-mono">GET /api/v1/console/balances</code>
+                        </p>
                     </div>
                 </div>
+
             </div>
         </div>
     </main>
 </div>
 
-<!-- JS -->
 <script src="assets/js/config.js"></script>
 <script src="assets/js/api-service.js"></script>
+<script src="assets/js/utils.js"></script>
 <script src="assets/js/main.js"></script>
-<script src="assets/js/charts.js"></script>
 
 <script>
-    function refreshIcons() { if (typeof lucide !== 'undefined') lucide.createIcons(); }
+// ─── State ─────────────────────────────────────────────────────────────────────
+// providers[] — from GET /api/v1/console/providers
+// Each item: { providerId, providerName, displayName, status, color, icon, supportedServices, features }
+let providers = [];
 
-    // Save provider configuration
-    window.saveProviderConfig = function() {
-        const config = {
-            data: document.querySelector('input[name="dataProvider"]:checked')?.value,
-            airtime: document.querySelector('input[name="airtimeProvider"]:checked')?.value,
-            airtimepin: document.querySelector('input[name="airtimepinProvider"]:checked')?.value,
-            education: document.querySelector('input[name="educationProvider"]:checked')?.value,
-            electricity: document.querySelector('input[name="electricityProvider"]:checked')?.value,
-            cable: document.querySelector('input[name="cableProvider"]:checked')?.value,
-            airtime2cash: document.querySelector('input[name="airtime2cashProvider"]:checked')?.value
-        };
-        
-        console.log('Saving configuration:', config);
-        
-        // Show success message
-        alert('✅ Provider configuration saved successfully!\n\n' + 
-              'Data: ' + (config.data || 'Not set') + '\n' +
-              'Airtime: ' + (config.airtime || 'Not set') + '\n' +
-              'Airtime PIN: ' + (config.airtimepin || 'Not set') + '\n' +
-              'Education: ' + (config.education || 'Not set') + '\n' +
-              'Electricity: ' + (config.electricity || 'Not set') + '\n' +
-              'Cable TV: ' + (config.cable || 'Not set') + '\n' +
-              'Airtime2Cash: ' + (config.airtime2cash || 'Not set'));
-        
-        // Here you would typically save to backend
-    };
+// routing — from GET /api/v1/console/providers/config → data.serviceRouting
+// e.g. { data:'clubkonnect', airtime:'airtimenigeria', ... }
+let routing = {};
 
-    // Reset to default configuration
-    window.resetToDefault = function() {
-        if (confirm('Reset all services to default providers?')) {
-            document.querySelector('input[name="dataProvider"][value="clubkonnect"]').checked = true;
-            document.querySelector('input[name="airtimeProvider"][value="airtimenigeria"]').checked = true;
-            document.querySelector('input[name="airtimepinProvider"][value="airtimenigeria"]').checked = true;
-            document.querySelector('input[name="educationProvider"][value="smeplug"]').checked = true;
-            document.querySelector('input[name="electricityProvider"][value="clubkonnect"]').checked = true;
-            document.querySelector('input[name="cableProvider"][value="airtimenigeria"]').checked = true;
-            document.querySelector('input[name="airtime2cashProvider"][value="smeplug"]').checked = true;
-            
-            refreshIcons();
-            alert('Configuration reset to default');
+// originalRouting — to detect changes for POST /api/v1/console/switch
+let originalRouting = {};
+
+// The 7 services with their UI metadata
+const SERVICES = [
+    { key:'data',         label:'Data Services',  color:'text-blue-600'   },
+    { key:'airtime',      label:'Airtime (VTU)',  color:'text-green-600'  },
+    { key:'airtimepin',   label:'Recharge PIN',   color:'text-purple-600' },
+    { key:'education',    label:'Education PIN',  color:'text-orange-600' },
+    { key:'electricity',  label:'Electricity',    color:'text-yellow-600' },
+    { key:'cable',        label:'Cable TV',       color:'text-red-600'    },
+    { key:'airtime2cash', label:'Airtime2Cash',   color:'text-indigo-600' },
+];
+
+// ─── Boot ───────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+    lucide.createIcons();
+    await Promise.all([
+        loadProviders(),   // GET /api/v1/console/providers
+        loadConfig(),      // GET /api/v1/console/providers/config
+        loadBalances(),    // GET /api/v1/console/balances
+        loadLogs(),        // GET /api/v1/console/logs
+    ]);
+});
+
+// ─── 1. GET /api/v1/console/providers ─────────────────────────────────────────
+async function loadProviders() {
+    try {
+        const res = await api.consoleGetProviders();
+        // Response: { status, data: { providers:[], primaryProvider } }
+        providers = res?.data?.providers || [];
+
+        document.getElementById('provider-count').textContent =
+            `${providers.length} provider${providers.length !== 1 ? 's' : ''} active`;
+
+        document.getElementById('providers-grid').innerHTML = providers.map(p => {
+            const status = (p.status || '').toLowerCase();
+            const isActive = status === 'active';
+            const dotCls   = isActive ? 'dot-active' : status === 'degraded' ? 'dot-degraded' : 'dot-offline';
+            const statusTxt = isActive ? '● Online' : status === 'degraded' ? '● Degraded' : '● Offline';
+            const statusCls = isActive ? 'text-green-600' : status === 'degraded' ? 'text-amber-600' : 'text-red-500';
+            const msText    = p.averageResponseTime > 0
+                ? `<span class="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full font-mono">${p.averageResponseTime}ms</span>`
+                : '';
+
+            // Feature chips
+            const features = Object.entries(p.features || {})
+                .filter(([,v]) => v)
+                .map(([k]) => `<span class="bg-slate-100 text-slate-600 text-xs px-1.5 py-0.5 rounded capitalize">${k}</span>`)
+                .join('');
+
+            return `
+            <div class="border rounded-xl p-4 bg-gradient-to-br from-slate-50 to-white">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="${p.icon || 'zap'}" class="w-5 h-5" style="color:${p.color || '#64748b'}"></i>
+                        <span class="font-bold text-slate-800">${p.displayName || p.providerName}</span>
+                    </div>
+                    ${msText}
+                </div>
+                <div class="text-xs text-slate-600 space-y-0.5">
+                    <div class="flex justify-between">
+                        <span>Status</span>
+                        <span class="${statusCls} font-medium">${statusTxt}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Success rate</span>
+                        <span class="font-mono">${p.successRate ?? '—'}%</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Priority</span>
+                        <span>#${p.priority ?? '—'}</span>
+                    </div>
+                </div>
+                ${features ? `<div class="mt-2 flex flex-wrap gap-1">${features}</div>` : ''}
+            </div>`;
+        }).join('');
+
+        lucide.createIcons();
+
+    } catch (err) {
+        console.error('loadProviders:', err);
+        document.getElementById('providers-grid').innerHTML =
+            `<div class="col-span-3 py-6 text-center text-slate-400 text-sm">
+                Failed to load providers — ${err.message}
+             </div>`;
+        document.getElementById('provider-count').textContent = 'Error';
+    }
+}
+
+// ─── 2. GET /api/v1/console/providers/config ──────────────────────────────────
+// Populates all radio buttons from real serviceRouting
+async function loadConfig() {
+    try {
+        const res = await api.consoleGetConfig();
+        // Response: { data: { providers:[], serviceRouting:{}, defaults:{} } }
+        routing         = res?.data?.serviceRouting || {};
+        originalRouting = { ...routing };
+
+        // Also grab provider list if loadProviders hasn't finished yet
+        if (!providers.length && res?.data?.providers?.length) {
+            providers = res.data.providers.map(p => ({
+                providerId:   p.id,
+                providerName: p.name,
+                displayName:  p.displayName,
+                color:        p.color,
+                icon:         p.icon,
+                supportedServices: p.supportedServices,
+                features:     p.features,
+            }));
         }
-    };
 
-    // Global health check
-    window.runGlobalHealthCheck = function() {
-        alert('🏥 Running diagnostics...\n\n' +
-              '✓ Club Konnect: 98ms (Operational)\n' +
-              '✓ Airtime Nigeria: 124ms (Operational)\n' +
-              '⚠ SMEPlug: 312ms (Degraded)\n\n' +
-              'All providers reachable.');
-    };
+        buildRadioButtons();
+        buildRoutingTable();
 
-    window.toggleSidebar = function() {
-        const overlay = document.getElementById('mobile-overlay');
-        if (overlay) overlay.classList.toggle('hidden');
-    };
+    } catch (err) {
+        console.error('loadConfig:', err);
+        // Still try to build radios with whatever providers we have
+        buildRadioButtons();
+        buildRoutingTable();
+    }
+}
 
-    // Initialize on load
-    document.addEventListener('DOMContentLoaded', function() {
-        if (typeof lucide !== 'undefined') lucide.createIcons();
+// Build radio buttons for every service based on real providers list
+function buildRadioButtons() {
+    SERVICES.forEach(svc => {
+        const container = document.getElementById(`radios-${svc.key}`);
+        const currentEl = document.getElementById(`current-${svc.key}`);
+        if (!container) return;
 
-        // Initialize chart
-        const ctx = document.getElementById('apiChart')?.getContext('2d');
-        if (ctx && typeof Chart !== 'undefined') {
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
-                    datasets: [
-                        { label: 'Club Konnect', data: [22, 28, 41, 57, 49, 38], borderColor: '#2563eb', tension: 0.2, fill: false },
-                        { label: 'Airtime Nigeria', data: [15, 20, 32, 48, 44, 30], borderColor: '#0284c7', tension: 0.2 },
-                        { label: 'SMEPlug', data: [9, 18, 24, 31, 27, 22], borderColor: '#7c3aed', tension: 0.2 }
-                    ]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
+        const activeProvider = routing[svc.key] || '';
+
+        // Only show providers that support this service
+        // Map service key → supportedServices value
+        const svcMap = {
+            data: 'data_recharge', airtime: 'airtime_recharge',
+            airtimepin: 'airtime_recharge', education: 'education',
+            electricity: 'electricity', cable: 'cable_tv', airtime2cash: 'airtime_recharge'
+        };
+        const svcKey = svcMap[svc.key] || svc.key;
+
+        const eligible = providers.filter(p =>
+            !p.supportedServices || p.supportedServices.includes(svcKey)
+        );
+
+        // Fallback: show all if filter returns nothing
+        const display = eligible.length ? eligible : providers;
+
+        container.innerHTML = display.map(p => {
+            const id   = p.providerId || p.id;
+            const name = p.displayName || p.providerName;
+            const checked = id === activeProvider ? 'checked' : '';
+            return `
+            <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 cursor-pointer">
+                <input type="radio" name="${svc.key}Provider" value="${id}" ${checked}
+                    onchange="onRadioChange('${svc.key}', '${id}', '${name}')">
+                <span class="text-sm text-slate-700">${name}</span>
+            </label>`;
+        }).join('');
+
+        // Set "Current:" label
+        const activeProv = display.find(p => (p.providerId || p.id) === activeProvider);
+        if (currentEl) {
+            currentEl.textContent = activeProv
+                ? (activeProv.displayName || activeProv.providerName)
+                : (activeProvider || '—');
         }
     });
-</script>
+    lucide.createIcons();
+}
 
-<style>
-    .service-provider-radio:checked + label { 
-        border-color: #2563eb; 
-        background-color: #f5f9ff; 
+// When admin clicks a radio — update local routing state
+function onRadioChange(serviceKey, providerId, providerName) {
+    routing[serviceKey] = providerId;
+    const el = document.getElementById(`current-${serviceKey}`);
+    if (el) el.textContent = providerName;
+    buildRoutingTable();
+}
+
+// ─── 3. SAVE CONFIG ────────────────────────────────────────────────────────────
+// Strategy: for each service where the selection CHANGED, call
+//   POST /api/v1/console/switch  { service, provider }
+// Then call POST /api/v1/console/config with full serviceRouting
+window.saveProviderConfig = async function() {
+    // Prompt for admin PIN before proceeding — required for provider switching
+    const pinResult = await Swal.fire({
+        title: 'Enter Admin PIN',
+        html: '<p class="text-sm text-slate-500 mb-3">A PIN is required to change provider routing</p>' +
+              '<input type="password" id="swal-pin" maxlength="6" placeholder="Enter PIN" ' +
+              'class="swal2-input" style="letter-spacing:4px;font-size:18px;text-align:center">',
+        showCancelButton: true,
+        confirmButtonText: 'Confirm',
+        confirmButtonColor: '#2563eb',
+        cancelButtonColor: '#94a3b8',
+        didOpen: () => document.getElementById('swal-pin').focus(),
+        preConfirm: () => {
+            const pin = document.getElementById('swal-pin').value.trim();
+            if (!pin) { Swal.showValidationMessage('PIN is required'); return false; }
+            return pin;
+        }
+    });
+    if (!pinResult.isConfirmed) return;
+    const adminPin = pinResult.value;
+    const btn = document.getElementById('save-btn');
+    btn.disabled = true;
+    btn.innerHTML = `<svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25"/>
+        <path fill="currentColor" d="M4 12a8 8 0 018-8v8z" class="opacity-75"/></svg> Saving...`;
+
+    // Collect current radio selections
+    const selected = {};
+    SERVICES.forEach(svc => {
+        const el = document.querySelector(`input[name="${svc.key}Provider"]:checked`);
+        if (el) selected[svc.key] = el.value;
+    });
+
+    // Find what actually changed vs originalRouting
+    const changed = Object.entries(selected).filter(
+        ([svc, prov]) => prov && prov !== originalRouting[svc]
+    );
+
+    try {
+        // 1. POST /api/v1/console/switch for each changed service
+        if (changed.length) {
+            await Promise.all(
+                changed.map(([service, provider]) =>
+                    api.consoleSwitchProvider(service, provider, adminPin)
+                )
+            );
+        }
+
+        // 2. POST /api/v1/console/config with full routing object
+        await api.consoleSaveConfig(selected, adminPin);
+
+        // Update baseline
+        originalRouting = { ...selected };
+        routing = { ...selected };
+
+        buildRoutingTable();
+
+        // Build summary for Swal
+        const rows = SERVICES.map(svc => {
+            const prov = providers.find(p => (p.providerId || p.id) === selected[svc.key]);
+            const name = prov ? (prov.displayName || prov.providerName) : (selected[svc.key] || '—');
+            const changed_flag = changed.find(([s]) => s === svc.key) ? ' <span class="text-green-600 text-xs">✓ changed</span>' : '';
+            return `<div class="flex justify-between py-1 border-b border-slate-100 last:border-0">
+                <span class="text-slate-500">${svc.label}</span>
+                <span class="font-semibold">${name}${changed_flag}</span>
+            </div>`;
+        }).join('');
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Configuration Saved',
+            html: `<div class="text-left text-sm mt-2">${rows}</div>`,
+            confirmButtonColor: '#2563eb',
+            timer: 6000
+        });
+
+    } catch (err) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Save Failed',
+            text: err.message,
+            confirmButtonColor: '#ef4444'
+        });
     }
-    .service-card {
-        transition: all 0.2s ease;
+
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> Save Configuration';
+    lucide.createIcons();
+};
+
+// ─── 4. RESET ──────────────────────────────────────────────────────────────────
+window.resetToDefault = function() {
+    Swal.fire({
+        title: 'Reset to Default?',
+        text: 'All services will be set back to the primary provider.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#94a3b8',
+        confirmButtonText: 'Yes, Reset'
+    }).then(r => {
+        if (!r.isConfirmed) return;
+        // Reload config from server — original defaults
+        loadConfig();
+        Swal.fire({ icon: 'success', title: 'Reset to Server Defaults', timer: 1500, showConfirmButton: false });
+    });
+};
+
+// ─── 5. TEST ALL PROVIDERS — POST /api/v1/console/health ──────────────────────
+window.runHealthCheckAll = async function() {
+    const btn = document.getElementById('health-btn');
+    btn.disabled = true;
+    btn.innerHTML = `<svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25"/>
+        <path fill="currentColor" d="M4 12a8 8 0 018-8v8z" class="opacity-75"/></svg> Testing...`;
+
+    try {
+        const res = await api.consoleHealthCheckAll();
+        // Response varies — could be { data: { results:[] } } or { data: [] }
+        const results = res?.data?.results || res?.data || res?.results || [];
+
+        let html = '';
+        if (Array.isArray(results) && results.length) {
+            html = results.map(r => {
+                const ok = r.status === 'active' || r.healthy === true || r.status === 'success';
+                return `<div class="flex items-center gap-2 text-sm py-1">
+                    <span>${ok ? '✅' : ''}</span>
+                    <strong>${r.providerName || r.providerId || r.name}</strong>
+                    <span class="text-slate-500">${r.status || ''}</span>
+                    ${r.responseTime ? `<span class="font-mono text-xs text-slate-400">${r.responseTime}ms</span>` : ''}
+                </div>`;
+            }).join('');
+        } else {
+            // Fallback: run individual checks for each known provider
+            const checks = await Promise.all(
+                providers.map(async p => {
+                    const id = p.providerId || p.id;
+                    const t0 = Date.now();
+                    try {
+                        await api.consoleHealthCheckOne(id);
+                        return { name: p.displayName || p.providerName, ms: Date.now()-t0, ok: true };
+                    } catch(e) {
+                        return { name: p.displayName || p.providerName, ms: Date.now()-t0, ok: false, err: e.message };
+                    }
+                })
+            );
+            html = checks.map(c =>
+                `<div class="flex items-center gap-2 text-sm py-1">
+                    <span>${c.ok ? '✅' : '❌'}</span>
+                    <strong>${c.name}</strong>
+                    <span class="font-mono text-xs text-slate-400">${c.ms}ms</span>
+                    ${c.err ? `<span class="text-red-500 text-xs">${c.err}</span>` : ''}
+                </div>`
+            ).join('');
+        }
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Health Check Complete',
+            html: `<div class="text-left">${html || 'All providers checked.'}</div>`,
+            confirmButtonColor: '#2563eb'
+        });
+
+        // Refresh providers display after health check
+        loadProviders();
+
+    } catch (err) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Health Check Failed',
+            text: err.message,
+            confirmButtonColor: '#ef4444'
+        });
     }
-    .service-card:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="activity" class="w-4 h-4"></i> Test All Providers';
+    lucide.createIcons();
+};
+
+// ─── 6. GET /api/v1/console/balances ──────────────────────────────────────────
+async function loadBalances() {
+    try {
+        const res = await api.consoleGetBalances();
+        const balances = res?.data?.balances || [];
+
+        if (!balances.length) {
+            document.getElementById('balances-list').innerHTML =
+                '<p class="text-xs text-slate-400 text-center py-3">No balance data available</p>';
+            return;
+        }
+
+        const maxBal = Math.max(...balances.map(b => b.balance || 0), 1);
+        document.getElementById('balances-list').innerHTML = balances.map(b => {
+            const pct     = Math.round((b.balance / maxBal) * 100);
+            const updated = b.lastUpdated
+                ? new Date(b.lastUpdated).toLocaleTimeString('en-NG', { hour:'2-digit', minute:'2-digit' })
+                : null;
+            const quotaText = b.quota?.used != null && b.quota?.total
+                ? `${b.quota.used.toLocaleString()} / ${b.quota.total.toLocaleString()} quota`
+                : null;
+            return `<div>
+                <div class="flex justify-between text-xs mb-1">
+                    <span class="text-slate-600 font-medium">${b.providerName}</span>
+                    <span class="font-mono font-semibold text-slate-800">₦${Number(b.balance).toLocaleString()}</span>
+                </div>
+                <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                    <div class="h-full bg-primary rounded-full transition-all" style="width:${pct}%"></div>
+                </div>
+                <div class="flex justify-between text-xs text-slate-400 mt-0.5">
+                    <span>${quotaText || ''}</span>
+                    ${updated ? `<span>Updated ${updated}</span>` : ''}
+                </div>
+            </div>`;
+        }).join('');
+
+    } catch (err) {
+        console.error('loadBalances:', err);
+        document.getElementById('balances-list').innerHTML =
+            '<p class="text-xs text-slate-400 text-center py-3">Could not load balances</p>';
     }
-</style>
+}
+
+// ─── 7. GET /api/v1/console/logs ──────────────────────────────────────────────
+async function loadLogs() {
+    try {
+        const res = await api.consoleGetLogs(1, 50);
+        // Response: { data: { logs:[ { timestamp, provider, endpoint, status, duration } ] } }
+        const logs = res?.data?.logs || [];
+
+        document.getElementById('logs-table').innerHTML = logs.length
+            ? logs.map(l => {
+                const time = new Date(l.timestamp).toLocaleTimeString('en-NG', { hour:'2-digit', minute:'2-digit' });
+                const statusCls = l.status === 'success' ? 'log-success' : l.status === 'failed' ? 'log-failed' : 'log-pending';
+                const durationCls = l.duration < 150 ? 'text-green-600' : l.duration < 400 ? 'text-amber-600' : 'text-red-500';
+                return `
+                <tr class="hover:bg-slate-50">
+                    <td class="py-2 pr-3 text-slate-400">${time}</td>
+                    <td class="py-2 pr-3 font-medium text-slate-700 capitalize">${l.provider}</td>
+                    <td class="py-2 pr-3 font-mono text-slate-500">${l.endpoint}</td>
+                    <td class="py-2 pr-3">
+                        <span class="${statusCls} text-xs px-2 py-0.5 rounded-full font-medium capitalize">${l.status}</span>
+                    </td>
+                    <td class="py-2 ${durationCls} font-mono">${l.duration}ms</td>
+                </tr>`;
+            }).join('')
+            : `<tr><td colspan="5" class="py-6 text-center text-slate-400">No logs found</td></tr>`;
+
+    } catch (err) {
+        console.error('loadLogs:', err);
+        document.getElementById('logs-table').innerHTML =
+            `<tr><td colspan="5" class="py-4 text-center text-slate-400 text-xs">Failed to load logs — ${err.message}</td></tr>`;
+    }
+}
+
+// ─── Routing table (no API call — built from current routing state) ────────────
+function buildRoutingTable() {
+    document.getElementById('routing-table').innerHTML = SERVICES.map(svc => {
+        const activePId = routing[svc.key] || '—';
+        const prov = providers.find(p => (p.providerId || p.id) === activePId);
+        const name = prov ? (prov.displayName || prov.providerName) : activePId;
+        const status = (prov?.status || 'unknown').toLowerCase();
+        const dotCls = status === 'active' ? 'dot-active' : status === 'degraded' ? 'dot-degraded' : 'dot-offline';
+        const statusTxt = status === 'active' ? 'Online' : status === 'degraded' ? 'Degraded' : status === 'unknown' ? '—' : 'Offline';
+        const lastChecked = prov?.lastChecked
+            ? new Date(prov.lastChecked).toLocaleTimeString('en-NG', { hour:'2-digit', minute:'2-digit' })
+            : '—';
+
+        return `
+        <tr class="hover:bg-slate-50">
+            <td class="px-5 py-3 font-medium text-slate-800">${svc.label}</td>
+            <td class="px-5 py-3">
+                <span class="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-xs font-medium">${name}</span>
+            </td>
+            <td class="px-5 py-3">
+                <span class="flex items-center gap-1.5 text-xs text-slate-600">
+                    <span class="dot ${dotCls}"></span>${statusTxt}
+                </span>
+            </td>
+            <td class="px-5 py-3 text-xs text-slate-400">${lastChecked}</td>
+        </tr>`;
+    }).join('');
+}
+</script>
 
 </body>
 </html>
