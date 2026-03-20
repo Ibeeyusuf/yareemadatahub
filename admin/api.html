@@ -184,81 +184,6 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- ROUTING SUMMARY TABLE -->
-                <!-- <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div class="px-5 py-4 border-b border-slate-100">
-                        <h3 class="font-semibold text-slate-800 flex items-center gap-2">
-                            <i data-lucide="git-branch" class="w-4 h-4"></i>
-                            Current Routing Table
-                        </h3>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm">
-                            <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                                <tr>
-                                    <th class="px-5 py-3 text-left">Service</th>
-                                    <th class="px-5 py-3 text-left">Active Provider</th>
-                                    <th class="px-5 py-3 text-left">Provider Status</th>
-                                    <th class="px-5 py-3 text-left">Last Checked</th>
-                                </tr>
-                            </thead>
-                            <tbody id="routing-table" class="divide-y divide-slate-100">
-                                <tr><td colspan="4" class="px-5 py-6 text-center text-slate-400 text-xs">Loading routing...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div> -->
-
-                <!-- CHART + BALANCES -->
-                <!-- <div class="grid grid-cols-1 lg:grid-cols-3 gap-5"> -->
-
-                    <!-- API Logs — from GET /api/v1/console/logs -->
-                    <!-- <div class="lg:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                        <div class="flex items-center justify-between mb-3">
-                            <h3 class="font-semibold text-slate-800 flex items-center gap-2">
-                                <i data-lucide="terminal" class="w-5 h-5 text-primary"></i>
-                                Recent API Logs
-                            </h3>
-                            <button onclick="loadLogs()" class="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1">
-                                <i data-lucide="refresh-cw" class="w-3 h-3"></i> Refresh
-                            </button>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-xs">
-                                <thead class="text-slate-400 uppercase tracking-wider">
-                                    <tr>
-                                        <th class="pb-2 text-left">Time</th>
-                                        <th class="pb-2 text-left">Provider</th>
-                                        <th class="pb-2 text-left">Endpoint</th>
-                                        <th class="pb-2 text-left">Status</th>
-                                        <th class="pb-2 text-left">Duration</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="logs-table" class="divide-y divide-slate-50">
-                                    <tr><td colspan="5" class="py-4 text-center text-slate-400">Loading logs...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div> -->
-
-                    <!-- Provider Balances — from GET /api/v1/console/balances -->
-                    <!-- <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                        <h4 class="font-semibold text-slate-800 flex items-center gap-2 mb-3">
-                            <i data-lucide="wallet" class="w-5 h-5 text-slate-500"></i>
-                            Provider Balances
-                        </h4>
-                        <div id="balances-list" class="space-y-3">
-                            <div class="animate-pulse h-6 bg-slate-100 rounded"></div>
-                            <div class="animate-pulse h-6 bg-slate-100 rounded"></div>
-                            <div class="animate-pulse h-6 bg-slate-100 rounded"></div>
-                        </div>
-                        <p class="text-xs text-slate-400 mt-4 pt-3 border-t">
-                            <code class="font-mono">GET /api/v1/console/balances</code>
-                        </p>
-                    </div> -->
-                </div>
-
             </div>
         </div>
     </main>
@@ -271,18 +196,10 @@
 
 <script>
 // ─── State ─────────────────────────────────────────────────────────────────────
-// providers[] — from GET /api/v1/console/providers
-// Each item: { providerId, providerName, displayName, status, color, icon, supportedServices, features }
 let providers = [];
-
-// routing — from GET /api/v1/console/providers/config → data.serviceRouting
-// e.g. { data:'clubkonnect', airtime:'airtimenigeria', ... }
 let routing = {};
-
-// originalRouting — to detect changes for POST /api/v1/console/switch
 let originalRouting = {};
 
-// The 7 services with their UI metadata
 const SERVICES = [
     { key:'data',         label:'Data Services',  color:'text-blue-600'   },
     { key:'airtime',      label:'Airtime (VTU)',  color:'text-green-600'  },
@@ -297,24 +214,34 @@ const SERVICES = [
 document.addEventListener('DOMContentLoaded', async () => {
     lucide.createIcons();
     await Promise.all([
-        loadProviders(),   // GET /api/v1/console/providers
-        loadConfig(),      // GET /api/v1/console/providers/config
-        loadBalances(),    // GET /api/v1/console/balances
-        loadLogs(),        // GET /api/v1/console/logs
+        loadProviders(),
+        loadConfig(),
+        loadBalances(),
+        loadLogs(),
     ]);
 });
+
+// ─── Safe element helper ──────────────────────────────────────────────────────
+function _safeEl(id) {
+    const el = document.getElementById(id);
+    if (!el) {
+        console.warn(`Element with id '${id}' not found`);
+        return null;
+    }
+    return el;
+}
 
 // ─── 1. GET /api/v1/console/providers ─────────────────────────────────────────
 async function loadProviders() {
     try {
         const res = await api.consoleGetProviders();
-        // Response: { status, data: { providers:[], primaryProvider } }
         providers = res?.data?.providers || [];
 
-        _safeEl('provider-count').textContent =
-            `${providers.length} provider${providers.length !== 1 ? 's' : ''} active`;
+        const providerCountEl = _safeEl('provider-count');
+        if (providerCountEl) {
+            providerCountEl.textContent = `${providers.length} provider${providers.length !== 1 ? 's' : ''} active`;
+        }
 
-        // Also fetch balances so we can show real balance on each card
         let balanceMap = {};
         try {
             const balRes = await api.consoleGetBalances();
@@ -323,88 +250,86 @@ async function loadProviders() {
             });
         } catch(e) { /* balances optional on provider cards */ }
 
-        _safeEl('providers-grid').innerHTML = providers.map(p => {
-            const status    = (p.status || '').toLowerCase();
-            const isActive  = status === 'active';
-            const dotCls    = isActive ? 'dot-active' : status === 'degraded' ? 'dot-degraded' : 'dot-offline';
-            const statusTxt = isActive ? '● Online' : status === 'degraded' ? '● Degraded' : '● Offline';
-            const statusCls = isActive ? 'text-green-600' : status === 'degraded' ? 'text-amber-600' : 'text-red-500';
+        const providersGrid = _safeEl('providers-grid');
+        if (providersGrid) {
+            providersGrid.innerHTML = providers.map(p => {
+                const status    = (p.status || '').toLowerCase();
+                const isActive  = status === 'active';
+                const dotCls    = isActive ? 'dot-active' : status === 'degraded' ? 'dot-degraded' : 'dot-offline';
+                const statusTxt = isActive ? '● Online' : status === 'degraded' ? '● Degraded' : '● Offline';
+                const statusCls = isActive ? 'text-green-600' : status === 'degraded' ? 'text-amber-600' : 'text-red-500';
 
-            // Latency badge — only show if > 0 (real data)
-            const ms     = p.averageResponseTime;
-            const msBadge = ms > 0
-                ? `<span class="${ms < 200 ? 'bg-green-100 text-green-700' : ms < 500 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'} text-xs px-2 py-0.5 rounded-full font-mono">${ms}ms</span>`
-                : '';
+                const ms     = p.averageResponseTime;
+                const msBadge = ms > 0
+                    ? `<span class="${ms < 200 ? 'bg-green-100 text-green-700' : ms < 500 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'} text-xs px-2 py-0.5 rounded-full font-mono">${ms}ms</span>`
+                    : '';
 
-            // Balance from GET /api/v1/console/balances
-            const bal = balanceMap[p.providerId];
-            const balanceRow = bal
-                ? `<div class="flex justify-between">
-                       <span>Balance</span>
-                       <span class="font-mono font-semibold text-slate-800">₦${Number(bal.balance).toLocaleString()}</span>
-                   </div>`
-                : '';
+                const bal = balanceMap[p.providerId];
+                const balanceRow = bal
+                    ? `<div class="flex justify-between">
+                           <span>Balance</span>
+                           <span class="font-mono font-semibold text-slate-800">₦${Number(bal.balance).toLocaleString()}</span>
+                       </div>`
+                    : '';
 
-            // Success rate — only show if there are actual requests
-            const successRow = p.totalRequests > 0
-                ? `<div class="flex justify-between">
-                       <span>Success rate</span>
-                       <span class="font-mono">${p.successRate}%</span>
-                   </div>`
-                : '';
+                const successRow = p.totalRequests > 0
+                    ? `<div class="flex justify-between">
+                           <span>Success rate</span>
+                           <span class="font-mono">${p.successRate}%</span>
+                       </div>`
+                    : '';
 
-            // Last checked time
-            const lastChecked = p.lastChecked
-                ? new Date(p.lastChecked).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })
-                : null;
+                const lastChecked = p.lastChecked
+                    ? new Date(p.lastChecked).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })
+                    : null;
 
-            return `
-            <div class="border rounded-xl p-4 bg-gradient-to-br from-slate-50 to-white">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="${p.icon || 'zap'}" class="w-5 h-5" style="color:${p.color || '#64748b'}"></i>
-                        <span class="font-bold text-slate-800">${p.displayName || p.providerName}</span>
+                return `
+                <div class="border rounded-xl p-4 bg-gradient-to-br from-slate-50 to-white">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="${p.icon || 'zap'}" class="w-5 h-5" style="color:${p.color || '#64748b'}"></i>
+                            <span class="font-bold text-slate-800">${p.displayName || p.providerName}</span>
+                        </div>
+                        ${msBadge}
                     </div>
-                    ${msBadge}
-                </div>
-                <div class="text-xs text-slate-600 space-y-0.5">
-                    <div class="flex justify-between">
-                        <span>Status</span>
-                        <span class="${statusCls} font-medium">${statusTxt}</span>
+                    <div class="text-xs text-slate-600 space-y-0.5">
+                        <div class="flex justify-between">
+                            <span>Status</span>
+                            <span class="${statusCls} font-medium">${statusTxt}</span>
+                        </div>
+                        ${balanceRow}
+                        ${successRow}
+                        <div class="flex justify-between">
+                            <span>Priority</span>
+                            <span>#${p.priority ?? '—'}</span>
+                        </div>
+                        ${lastChecked ? `<div class="flex justify-between text-slate-400"><span>Last checked</span><span>${lastChecked}</span></div>` : ''}
                     </div>
-                    ${balanceRow}
-                    ${successRow}
-                    <div class="flex justify-between">
-                        <span>Priority</span>
-                        <span>#${p.priority ?? '—'}</span>
-                    </div>
-                    ${lastChecked ? `<div class="flex justify-between text-slate-400"><span>Last checked</span><span>${lastChecked}</span></div>` : ''}
-                </div>
-            </div>`;
-        }).join('');
-
-        lucide.createIcons();
+                </div>`;
+            }).join('');
+            lucide.createIcons();
+        }
 
     } catch (err) {
         console.error('loadProviders:', err);
-        _safeEl('providers-grid').innerHTML =
-            `<div class="col-span-3 py-6 text-center text-slate-400 text-sm">
+        const providersGrid = _safeEl('providers-grid');
+        if (providersGrid) {
+            providersGrid.innerHTML = `<div class="col-span-3 py-6 text-center text-slate-400 text-sm">
                 Failed to load providers — ${err.message}
              </div>`;
-        _safeEl('provider-count').textContent = 'Error';
+        }
+        const providerCountEl = _safeEl('provider-count');
+        if (providerCountEl) providerCountEl.textContent = 'Error';
     }
 }
 
 // ─── 2. GET /api/v1/console/providers/config ──────────────────────────────────
-// Populates all radio buttons from real serviceRouting
 async function loadConfig() {
     try {
         const res = await api.consoleGetConfig();
-        // Response: { data: { providers:[], serviceRouting:{}, defaults:{} } }
         routing         = res?.data?.serviceRouting || {};
         originalRouting = { ...routing };
 
-        // Also grab provider list if loadProviders hasn't finished yet
         if (!providers.length && res?.data?.providers?.length) {
             providers = res.data.providers.map(p => ({
                 providerId:   p.id,
@@ -418,13 +343,10 @@ async function loadConfig() {
         }
 
         buildRadioButtons();
-        buildRoutingTable();
 
     } catch (err) {
         console.error('loadConfig:', err);
-        // Still try to build radios with whatever providers we have
         buildRadioButtons();
-        buildRoutingTable();
     }
 }
 
@@ -437,8 +359,6 @@ function buildRadioButtons() {
 
         const activeProvider = routing[svc.key] || '';
 
-        // Only show providers that support this service
-        // Map service key → supportedServices value
         const svcMap = {
             data: 'data_recharge', airtime: 'airtime_recharge',
             airtimepin: 'airtime_recharge', education: 'education',
@@ -450,7 +370,6 @@ function buildRadioButtons() {
             !p.supportedServices || p.supportedServices.includes(svcKey)
         );
 
-        // Fallback: show all if filter returns nothing
         const display = eligible.length ? eligible : providers;
 
         container.innerHTML = display.map(p => {
@@ -465,9 +384,8 @@ function buildRadioButtons() {
             </label>`;
         }).join('');
 
-        // Set "Current:" label
-        const activeProv = display.find(p => (p.providerId || p.id) === activeProvider);
         if (currentEl) {
+            const activeProv = display.find(p => (p.providerId || p.id) === activeProvider);
             currentEl.textContent = activeProv
                 ? (activeProv.displayName || activeProv.providerName)
                 : (activeProvider || '—');
@@ -481,15 +399,10 @@ function onRadioChange(serviceKey, providerId, providerName) {
     routing[serviceKey] = providerId;
     const el = document.getElementById(`current-${serviceKey}`);
     if (el) el.textContent = providerName;
-    buildRoutingTable();
 }
 
 // ─── 3. SAVE CONFIG ────────────────────────────────────────────────────────────
-// Strategy: for each service where the selection CHANGED, call
-//   POST /api/v1/console/switch  { service, provider }
-// Then call POST /api/v1/console/config with full serviceRouting
 window.saveProviderConfig = async function() {
-    // Always re-query the button — never cache across async calls
     const resetBtn = () => {
         const b = document.getElementById('save-btn');
         if (b) {
@@ -507,20 +420,17 @@ window.saveProviderConfig = async function() {
             <path fill="currentColor" d="M4 12a8 8 0 018-8v8z" class="opacity-75"/></svg> Saving...`;
     }
 
-    // Collect current radio selections
     const selected = {};
     SERVICES.forEach(svc => {
         const el = document.querySelector(`input[name="${svc.key}Provider"]:checked`);
         if (el) selected[svc.key] = el.value;
     });
 
-    // Find what actually changed vs originalRouting
     const changed = Object.entries(selected).filter(
         ([svc, prov]) => prov && prov !== originalRouting[svc]
     );
 
     try {
-        // 1. POST /api/v1/console/switch for each changed service
         if (changed.length) {
             await Promise.all(
                 changed.map(([service, provider]) =>
@@ -529,16 +439,11 @@ window.saveProviderConfig = async function() {
             );
         }
 
-        // 2. POST /api/v1/console/config with full routing object
         await api.consoleSaveConfig(selected);
 
-        // Update baseline
         originalRouting = { ...selected };
         routing = { ...selected };
 
-        buildRoutingTable();
-
-        // Build summary for Swal
         const rows = SERVICES.map(svc => {
             const prov = providers.find(p => (p.providerId || p.id) === selected[svc.key]);
             const name = prov ? (prov.displayName || prov.providerName) : (selected[svc.key] || '—');
@@ -583,13 +488,12 @@ window.resetToDefault = function() {
         confirmButtonText: 'Yes, Reset'
     }).then(r => {
         if (!r.isConfirmed) return;
-        // Reload config from server — original defaults
         loadConfig();
         Swal.fire({ icon: 'success', title: 'Reset to Server Defaults', timer: 1500, showConfirmButton: false });
     });
 };
 
-// ─── 5. TEST ALL PROVIDERS — POST /api/v1/console/health ──────────────────────
+// ─── 5. TEST ALL PROVIDERS ──────────────────────────────────────────────────────
 window.runHealthCheckAll = async function() {
     const resetHealthBtn = () => {
         const b = document.getElementById('health-btn');
@@ -673,14 +577,16 @@ async function loadBalances() {
         const res = await api.consoleGetBalances();
         const balances = res?.data?.balances || [];
 
+        const balancesList = _safeEl('balances-list');
+        if (!balancesList) return;
+
         if (!balances.length) {
-            _safeEl('balances-list').innerHTML =
-                '<p class="text-xs text-slate-400 text-center py-3">No balance data available</p>';
+            balancesList.innerHTML = '<p class="text-xs text-slate-400 text-center py-3">No balance data available</p>';
             return;
         }
 
         const maxBal = Math.max(...balances.map(b => b.balance || 0), 1);
-        _safeEl('balances-list').innerHTML = balances.map(b => {
+        balancesList.innerHTML = balances.map(b => {
             const pct     = Math.round((b.balance / maxBal) * 100);
             const updated = b.lastUpdated
                 ? new Date(b.lastUpdated).toLocaleTimeString('en-NG', { hour:'2-digit', minute:'2-digit' })
@@ -705,8 +611,10 @@ async function loadBalances() {
 
     } catch (err) {
         console.error('loadBalances:', err);
-        _safeEl('balances-list').innerHTML =
-            '<p class="text-xs text-slate-400 text-center py-3">Could not load balances</p>';
+        const balancesList = _safeEl('balances-list');
+        if (balancesList) {
+            balancesList.innerHTML = '<p class="text-xs text-slate-400 text-center py-3">Could not load balances</p>';
+        }
     }
 }
 
@@ -714,10 +622,12 @@ async function loadBalances() {
 async function loadLogs() {
     try {
         const res = await api.consoleGetLogs(1, 50);
-        // Response: { data: { logs:[ { timestamp, provider, endpoint, status, duration } ] } }
         const logs = res?.data?.logs || [];
 
-        _safeEl('logs-table').innerHTML = logs.length
+        const logsTable = _safeEl('logs-table');
+        if (!logsTable) return;
+
+        logsTable.innerHTML = logs.length
             ? logs.map(l => {
                 const time = new Date(l.timestamp).toLocaleTimeString('en-NG', { hour:'2-digit', minute:'2-digit' });
                 const statusCls = l.status === 'success' ? 'log-success' : l.status === 'failed' ? 'log-failed' : 'log-pending';
@@ -737,46 +647,11 @@ async function loadLogs() {
 
     } catch (err) {
         console.error('loadLogs:', err);
-        _safeEl('logs-table').innerHTML =
-            `<tr><td colspan="5" class="py-4 text-center text-slate-400 text-xs">Failed to load logs — ${err.message}</td></tr>`;
+        const logsTable = _safeEl('logs-table');
+        if (logsTable) {
+            logsTable.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-slate-400 text-xs">Failed to load logs — ${err.message}</td></tr>`;
+        }
     }
-}
-
-// ─── Routing table (no API call — built from current routing state) ────────────
-function buildRoutingTable() {
-    _safeEl('routing-table').innerHTML = SERVICES.map(svc => {
-        const activePId = routing[svc.key] || '—';
-        const prov = providers.find(p => (p.providerId || p.id) === activePId);
-        const name = prov ? (prov.displayName || prov.providerName) : activePId;
-        const status = (prov?.status || 'unknown').toLowerCase();
-        const dotCls = status === 'active' ? 'dot-active' : status === 'degraded' ? 'dot-degraded' : 'dot-offline';
-        const statusTxt = status === 'active' ? 'Online' : status === 'degraded' ? 'Degraded' : status === 'unknown' ? '—' : 'Offline';
-        const lastChecked = prov?.lastChecked
-            ? new Date(prov.lastChecked).toLocaleTimeString('en-NG', { hour:'2-digit', minute:'2-digit' })
-            : '—';
-
-        return `
-        <tr class="hover:bg-slate-50">
-            <td class="px-5 py-3 font-medium text-slate-800">${svc.label}</td>
-            <td class="px-5 py-3">
-                <span class="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-xs font-medium">${name}</span>
-            </td>
-            <td class="px-5 py-3">
-                <span class="flex items-center gap-1.5 text-xs text-slate-600">
-                    <span class="dot ${dotCls}"></span>${statusTxt}
-                </span>
-            </td>
-            <td class="px-5 py-3 text-xs text-slate-400">${lastChecked}</td>
-        </tr>`;
-    }).join('');
-}
-
-// ─── Safe element helper — never crashes on missing elements ──────────────────
-function _safeEl(id) {
-    const el = document.getElementById(id);
-    if (el) return el;
-    // Return a dummy object so .innerHTML = and .textContent = don't crash
-    return { set innerHTML(v) {}, set textContent(v) {} };
 }
 </script>
 
