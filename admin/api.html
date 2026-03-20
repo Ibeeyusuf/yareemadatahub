@@ -185,9 +185,79 @@
                     </div>
                 </div>
 
-                
+                <!-- ROUTING SUMMARY TABLE -->
+                <!-- <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="px-5 py-4 border-b border-slate-100">
+                        <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+                            <i data-lucide="git-branch" class="w-4 h-4"></i>
+                            Current Routing Table
+                        </h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                                <tr>
+                                    <th class="px-5 py-3 text-left">Service</th>
+                                    <th class="px-5 py-3 text-left">Active Provider</th>
+                                    <th class="px-5 py-3 text-left">Provider Status</th>
+                                    <th class="px-5 py-3 text-left">Last Checked</th>
+                                </tr>
+                            </thead>
+                            <tbody id="routing-table" class="divide-y divide-slate-100">
+                                <tr><td colspan="4" class="px-5 py-6 text-center text-slate-400 text-xs">Loading routing...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div> -->
 
-             
+                <!-- CHART + BALANCES -->
+                <!-- <div class="grid grid-cols-1 lg:grid-cols-3 gap-5"> -->
+
+                    <!-- API Logs — from GET /api/v1/console/logs -->
+                    <!-- <div class="lg:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+                                <i data-lucide="terminal" class="w-5 h-5 text-primary"></i>
+                                Recent API Logs
+                            </h3>
+                            <button onclick="loadLogs()" class="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1">
+                                <i data-lucide="refresh-cw" class="w-3 h-3"></i> Refresh
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs">
+                                <thead class="text-slate-400 uppercase tracking-wider">
+                                    <tr>
+                                        <th class="pb-2 text-left">Time</th>
+                                        <th class="pb-2 text-left">Provider</th>
+                                        <th class="pb-2 text-left">Endpoint</th>
+                                        <th class="pb-2 text-left">Status</th>
+                                        <th class="pb-2 text-left">Duration</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="logs-table" class="divide-y divide-slate-50">
+                                    <tr><td colspan="5" class="py-4 text-center text-slate-400">Loading logs...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div> -->
+
+                    <!-- Provider Balances — from GET /api/v1/console/balances -->
+                    <!-- <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <h4 class="font-semibold text-slate-800 flex items-center gap-2 mb-3">
+                            <i data-lucide="wallet" class="w-5 h-5 text-slate-500"></i>
+                            Provider Balances
+                        </h4>
+                        <div id="balances-list" class="space-y-3">
+                            <div class="animate-pulse h-6 bg-slate-100 rounded"></div>
+                            <div class="animate-pulse h-6 bg-slate-100 rounded"></div>
+                            <div class="animate-pulse h-6 bg-slate-100 rounded"></div>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-4 pt-3 border-t">
+                            <code class="font-mono">GET /api/v1/console/balances</code>
+                        </p>
+                    </div> -->
+                </div>
 
             </div>
         </div>
@@ -241,7 +311,7 @@ async function loadProviders() {
         // Response: { status, data: { providers:[], primaryProvider } }
         providers = res?.data?.providers || [];
 
-        document.getElementById('provider-count').textContent =
+        _safeEl('provider-count').textContent =
             `${providers.length} provider${providers.length !== 1 ? 's' : ''} active`;
 
         // Also fetch balances so we can show real balance on each card
@@ -253,7 +323,7 @@ async function loadProviders() {
             });
         } catch(e) { /* balances optional on provider cards */ }
 
-        document.getElementById('providers-grid').innerHTML = providers.map(p => {
+        _safeEl('providers-grid').innerHTML = providers.map(p => {
             const status    = (p.status || '').toLowerCase();
             const isActive  = status === 'active';
             const dotCls    = isActive ? 'dot-active' : status === 'degraded' ? 'dot-degraded' : 'dot-offline';
@@ -317,11 +387,11 @@ async function loadProviders() {
 
     } catch (err) {
         console.error('loadProviders:', err);
-        document.getElementById('providers-grid').innerHTML =
+        _safeEl('providers-grid').innerHTML =
             `<div class="col-span-3 py-6 text-center text-slate-400 text-sm">
                 Failed to load providers — ${err.message}
              </div>`;
-        document.getElementById('provider-count').textContent = 'Error';
+        _safeEl('provider-count').textContent = 'Error';
     }
 }
 
@@ -521,15 +591,25 @@ window.resetToDefault = function() {
 
 // ─── 5. TEST ALL PROVIDERS — POST /api/v1/console/health ──────────────────────
 window.runHealthCheckAll = async function() {
+    const resetHealthBtn = () => {
+        const b = document.getElementById('health-btn');
+        if (b) {
+            b.disabled = false;
+            b.innerHTML = '<i data-lucide="activity" class="w-4 h-4"></i> Test All Providers';
+            lucide.createIcons();
+        }
+    };
+
     const btn = document.getElementById('health-btn');
-    btn.disabled = true;
-    btn.innerHTML = `<svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25"/>
-        <path fill="currentColor" d="M4 12a8 8 0 018-8v8z" class="opacity-75"/></svg> Testing...`;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25"/>
+            <path fill="currentColor" d="M4 12a8 8 0 018-8v8z" class="opacity-75"/></svg> Testing...`;
+    }
 
     try {
         const res = await api.consoleHealthCheckAll();
-        // Response varies — could be { data: { results:[] } } or { data: [] }
         const results = res?.data?.results || res?.data || res?.results || [];
 
         let html = '';
@@ -544,7 +624,6 @@ window.runHealthCheckAll = async function() {
                 </div>`;
             }).join('');
         } else {
-            // Fallback: run individual checks for each known provider
             const checks = await Promise.all(
                 providers.map(async p => {
                     const id = p.providerId || p.id;
@@ -567,6 +646,9 @@ window.runHealthCheckAll = async function() {
             ).join('');
         }
 
+        resetHealthBtn();
+        loadProviders();
+
         Swal.fire({
             icon: 'success',
             title: 'Health Check Complete',
@@ -574,10 +656,8 @@ window.runHealthCheckAll = async function() {
             confirmButtonColor: '#2563eb'
         });
 
-        // Refresh providers display after health check
-        loadProviders();
-
     } catch (err) {
+        resetHealthBtn();
         Swal.fire({
             icon: 'error',
             title: 'Health Check Failed',
@@ -585,10 +665,6 @@ window.runHealthCheckAll = async function() {
             confirmButtonColor: '#ef4444'
         });
     }
-
-    btn.disabled = false;
-    btn.innerHTML = '<i data-lucide="activity" class="w-4 h-4"></i> Test All Providers';
-    lucide.createIcons();
 };
 
 // ─── 6. GET /api/v1/console/balances ──────────────────────────────────────────
@@ -598,13 +674,13 @@ async function loadBalances() {
         const balances = res?.data?.balances || [];
 
         if (!balances.length) {
-            document.getElementById('balances-list').innerHTML =
+            _safeEl('balances-list').innerHTML =
                 '<p class="text-xs text-slate-400 text-center py-3">No balance data available</p>';
             return;
         }
 
         const maxBal = Math.max(...balances.map(b => b.balance || 0), 1);
-        document.getElementById('balances-list').innerHTML = balances.map(b => {
+        _safeEl('balances-list').innerHTML = balances.map(b => {
             const pct     = Math.round((b.balance / maxBal) * 100);
             const updated = b.lastUpdated
                 ? new Date(b.lastUpdated).toLocaleTimeString('en-NG', { hour:'2-digit', minute:'2-digit' })
@@ -629,7 +705,7 @@ async function loadBalances() {
 
     } catch (err) {
         console.error('loadBalances:', err);
-        document.getElementById('balances-list').innerHTML =
+        _safeEl('balances-list').innerHTML =
             '<p class="text-xs text-slate-400 text-center py-3">Could not load balances</p>';
     }
 }
@@ -641,7 +717,7 @@ async function loadLogs() {
         // Response: { data: { logs:[ { timestamp, provider, endpoint, status, duration } ] } }
         const logs = res?.data?.logs || [];
 
-        document.getElementById('logs-table').innerHTML = logs.length
+        _safeEl('logs-table').innerHTML = logs.length
             ? logs.map(l => {
                 const time = new Date(l.timestamp).toLocaleTimeString('en-NG', { hour:'2-digit', minute:'2-digit' });
                 const statusCls = l.status === 'success' ? 'log-success' : l.status === 'failed' ? 'log-failed' : 'log-pending';
@@ -661,14 +737,14 @@ async function loadLogs() {
 
     } catch (err) {
         console.error('loadLogs:', err);
-        document.getElementById('logs-table').innerHTML =
+        _safeEl('logs-table').innerHTML =
             `<tr><td colspan="5" class="py-4 text-center text-slate-400 text-xs">Failed to load logs — ${err.message}</td></tr>`;
     }
 }
 
 // ─── Routing table (no API call — built from current routing state) ────────────
 function buildRoutingTable() {
-    document.getElementById('routing-table').innerHTML = SERVICES.map(svc => {
+    _safeEl('routing-table').innerHTML = SERVICES.map(svc => {
         const activePId = routing[svc.key] || '—';
         const prov = providers.find(p => (p.providerId || p.id) === activePId);
         const name = prov ? (prov.displayName || prov.providerName) : activePId;
@@ -693,6 +769,14 @@ function buildRoutingTable() {
             <td class="px-5 py-3 text-xs text-slate-400">${lastChecked}</td>
         </tr>`;
     }).join('');
+}
+
+// ─── Safe element helper — never crashes on missing elements ──────────────────
+function _safeEl(id) {
+    const el = document.getElementById(id);
+    if (el) return el;
+    // Return a dummy object so .innerHTML = and .textContent = don't crash
+    return { set innerHTML(v) {}, set textContent(v) {} };
 }
 </script>
 
