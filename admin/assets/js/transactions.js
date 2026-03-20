@@ -1,5 +1,3 @@
-
-
 class TransactionsManager {
     constructor() {
         this.api = new YareemaAPI();
@@ -228,27 +226,76 @@ class TransactionsManager {
 
     async viewTransaction(txId) {
         try {
-            const response = await this.api.getTransaction(txId);
-            if (response.status === 'success') {
-                const tx = response.data.transaction;
-                
-                Swal.fire({
-                    title: 'Transaction Details',
-                    html: `
-                        <div class="text-left space-y-2">
-                            <p><strong>Reference:</strong> ${tx.reference}</p>
-                            <p><strong>User:</strong> ${tx.user?.email || 'N/A'}</p>
-                            <p><strong>Service:</strong> ${this.formatServiceType(tx.serviceType)}</p>
-                            <p><strong>Amount:</strong> ${AdminUtils.formatCurrency(tx.amount)}</p>
-                            <p><strong>Fee:</strong> ${AdminUtils.formatCurrency(tx.fee)}</p>
-                            <p><strong>Status:</strong> ${tx.status}</p>
-                            <p><strong>Date:</strong> ${AdminUtils.formatDate(tx.createdAt)}</p>
-                            ${tx.description ? `<p><strong>Description:</strong> ${tx.description}</p>` : ''}
-                        </div>
-                    `,
-                    width: 600
-                });
+            const response = await this.api.getTransactionDetails(txId);
+
+            // Normalise response shape
+            const tx = response?.data?.transaction
+                     || response?.data?.data
+                     || response?.data
+                     || response?.transaction
+                     || null;
+
+            if (!tx) {
+                AdminUtils.showToast('Transaction data not found in response', 'error');
+                return;
             }
+
+            const statusClass = AdminUtils.getStatusClass ? AdminUtils.getStatusClass(tx.status) : '';
+
+            Swal.fire({
+                title: 'Transaction Details',
+                html: `
+                    <div class="text-left space-y-3 text-sm">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="bg-slate-50 rounded-lg p-3">
+                                <p class="text-xs text-slate-400 mb-1">Reference</p>
+                                <p class="font-mono font-semibold text-slate-800 break-all">${tx.reference || 'N/A'}</p>
+                            </div>
+                            <div class="bg-slate-50 rounded-lg p-3">
+                                <p class="text-xs text-slate-400 mb-1">Status</p>
+                                <span class="px-2 py-0.5 text-xs font-semibold rounded-full ${statusClass}">${tx.status || 'N/A'}</span>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-3">
+                            <p class="text-xs text-slate-400 mb-1">User</p>
+                            <p class="font-medium text-slate-800">${tx.user?.firstName || ''} ${tx.user?.lastName || ''}</p>
+                            <p class="text-slate-500 text-xs">${tx.user?.email || tx.user?.phoneNumber || 'N/A'}</p>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="bg-slate-50 rounded-lg p-3">
+                                <p class="text-xs text-slate-400 mb-1">Service</p>
+                                <p class="font-medium text-slate-800">${this.formatServiceType(tx.serviceType)}</p>
+                            </div>
+                            <div class="bg-slate-50 rounded-lg p-3">
+                                <p class="text-xs text-slate-400 mb-1">Amount</p>
+                                <p class="font-bold text-slate-900">${AdminUtils.formatCurrency(tx.amount || 0)}</p>
+                            </div>
+                            <div class="bg-slate-50 rounded-lg p-3">
+                                <p class="text-xs text-slate-400 mb-1">Fee</p>
+                                <p class="font-semibold text-slate-700">${AdminUtils.formatCurrency(tx.fee || 0)}</p>
+                            </div>
+                        </div>
+                        ${tx.description ? `
+                        <div class="bg-slate-50 rounded-lg p-3">
+                            <p class="text-xs text-slate-400 mb-1">Description</p>
+                            <p class="text-slate-700">${tx.description}</p>
+                        </div>` : ''}
+                        ${tx.recipient || tx.phoneNumber ? `
+                        <div class="bg-slate-50 rounded-lg p-3">
+                            <p class="text-xs text-slate-400 mb-1">Recipient</p>
+                            <p class="font-medium text-slate-800">${tx.recipient || tx.phoneNumber}</p>
+                        </div>` : ''}
+                        <div class="bg-slate-50 rounded-lg p-3">
+                            <p class="text-xs text-slate-400 mb-1">Date</p>
+                            <p class="text-slate-700">${AdminUtils.formatDate(tx.createdAt)}</p>
+                        </div>
+                    </div>
+                `,
+                width: 560,
+                confirmButtonColor: '#2563eb',
+                confirmButtonText: 'Close'
+            });
+
         } catch (error) {
             AdminUtils.showToast(AdminUtils.parseErrorMessage(error), 'error');
         }

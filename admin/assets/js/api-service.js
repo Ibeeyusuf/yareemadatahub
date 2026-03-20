@@ -643,19 +643,19 @@ class YareemaAPI {
 
     // POST /api/v1/console/config
     // body: { serviceRouting: { data, airtime, ... } }
-    async consoleSaveConfig(serviceRouting, pin) {
+    async consoleSaveConfig(serviceRouting) {
         return await this.request('/api/v1/console/config', {
             method: 'POST',
-            body: { serviceRouting, ...(pin ? { pin } : {}) }
+            body: { serviceRouting }
         });
     }
 
     // POST /api/v1/console/switch
-    // body: { service, provider, pin }
-    async consoleSwitchProvider(service, provider, pin) {
+    // body: { service, providerId }  — backend requires 'providerId' not 'provider'
+    async consoleSwitchProvider(service, providerId) {
         return await this.request('/api/v1/console/switch', {
             method: 'POST',
-            body: { service, provider, ...(pin ? { pin } : {}) }
+            body: { service, providerId }
         });
     }
 
