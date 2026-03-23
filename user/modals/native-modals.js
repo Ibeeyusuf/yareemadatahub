@@ -202,30 +202,59 @@ async function loadDataPlans(network) {
         const response = await api.getDataPlans(network);
         console.log('[Data Plans] raw response:', response);
 
-        const nelloKey = NELLO_NETWORK_KEY[network.toLowerCase()] || network;
-        let products = [];
+        let plans = [];
 
-        // Nellobytes structure: response.data.MOBILE_NETWORK.MTN[0].PRODUCT[]
-        if (response.data?.MOBILE_NETWORK) {
+        // ── SMEPlug structure: response.data.mtn[] / response.data.glo[] etc.
+        const networkKey = network.toLowerCase();
+        if (response.data && Array.isArray(response.data[networkKey])) {
+            plans = response.data[networkKey].filter(p => p.price > 0); // skip price:0 (unavailable)
+        }
+
+        // ── Nellobytes fallback (old structure, keep in case API switches back)
+        if (!plans.length && response.data?.MOBILE_NETWORK) {
+            const nelloKey = { mtn: 'MTN', glo: 'Glo', '9mobile': 'm_9mobile', airtel: 'Airtel' }[networkKey] || network;
             const networkData = response.data.MOBILE_NETWORK[nelloKey];
             if (Array.isArray(networkData) && networkData[0]?.PRODUCT) {
-                products = networkData[0].PRODUCT;
+                plans = networkData[0].PRODUCT.map(p => ({
+                    id:       p.PRODUCT_ID,
+                    planName: p.PRODUCT_NAME,
+                    price:    p.PRODUCT_AMOUNT
+                }));
             }
         }
 
-        if (products.length > 0) {
-            currentDataPlans = products;
-        } else {
-            currentDataPlans = [];
+        // ── flat array fallback
+        if (!plans.length && Array.isArray(response.data)) {
+            plans = response.data.filter(p => p.price > 0);
         }
 
+        currentDataPlans = plans;
+        console.log('[Data Plans] extracted plans:', plans.length, 'plans');
         updateDataPlanDropdown();
+
     } catch (error) {
         console.error('[Data Plans] error:', error);
         if (planSelect) {
             planSelect.innerHTML = '<option value="">Failed to load plans. Please try again.</option>';
         }
     }
+}
+
+function updateDataPlanDropdown() {
+    const planSelect = document.getElementById('dataPlan');
+    if (!planSelect) return;
+
+    if (!currentDataPlans.length) {
+        planSelect.innerHTML = '<option value="">No plans available for this network</option>';
+        return;
+    }
+
+    planSelect.innerHTML = '<option value="">Choose a plan</option>' +
+        currentDataPlans.map((plan, index) => {
+            const name  = plan.planName || plan.size || plan.PRODUCT_NAME || 'Data Plan';
+            const price = plan.price    || plan.PRODUCT_AMOUNT || 0;
+            return `<option value="${index}">${name} — ₦${Math.round(Number(price)).toLocaleString()}</option>`;
+        }).join('');
 }
 
 function updateDataPlanDropdown() {

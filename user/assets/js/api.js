@@ -257,9 +257,10 @@ class YareemaUserAPI {
 
     // ==================== TELECOM ====================
 
-    async getDataPlans(network) {
-        return await this.request(`/api/v1/telecom/data/plans?source=nellobytes&network=${network.toLowerCase()}`);
-    }
+  // AFTER
+async getDataPlans(network) {
+    return await this.request(`/api/v1/telecom/data/plans?network=${network.toLowerCase()}`);
+}
 
     async purchaseData(phoneNumber, network, dataPlan, transactionPin, amount) {
         return await this.request('/api/v1/telecom/data/purchase', {
@@ -319,7 +320,7 @@ async purchaseEpin(network, amount, quantity, transactionPin) {
     }
 
     async getCablePlans(provider) {
-        return await this.request(`/api/v1/bills/cable/plans?source=nellobytes&provider=${provider.toLowerCase()}`);
+        return await this.request(`/api/v1/bills/cable/plans?provider=${provider.toLowerCase()}`);
     }
 
     async purchaseCableTV(smartCardNumber, provider, planId, months, transactionPin) {

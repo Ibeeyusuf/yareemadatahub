@@ -124,16 +124,9 @@ function renderStaffGrid(staff) {
                     <span class="text-xs text-slate-400">${timeAgo(u.lastLoginAt || u.updatedAt)}</span>
                     <div class="flex items-center gap-1">
                         <!-- Edit -->
-                        <button onclick="openEditModal('${id}')"
-                            title="Edit"
-                            class="p-1.5 text-slate-400 hover:text-primary hover:bg-blue-50 rounded-lg transition">
-                            <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
-                        </button>
+                        
                         <!-- Change Role -->
-                        <button onclick="openAssignRole('${id}','${safeName}','${role}')"
-                            class="text-xs font-semibold text-blue-600 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50">
-                            Role
-                        </button>
+                        
                         <!-- Delete -->
                         <button onclick="deleteStaff('${id}','${safeName}')"
                             title="Delete"
