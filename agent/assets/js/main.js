@@ -174,19 +174,19 @@ function initPage() {
  * Also highlights the active nav item for the current page.
  */
 function initSidebar() {
-    // 1. Populate agent info from localStorage
+    // 1. Populate sidebar immediately from cached localStorage data
     try {
-        var agent = API.getAgentData();
-        if (agent) {
+        var raw = API.getAgentData();
+        var agent = raw;
+        if (raw && !raw.firstName && !raw.fullName && !raw.email) {
+            agent = raw.user || raw.agent || (raw.data && (raw.data.user || raw.data.agent)) || raw;
+        }
+        if (agent && (agent.firstName || agent.fullName || agent.email || agent.agentInfo)) {
             var name = agent.fullName ||
                 (agent.firstName ? (agent.firstName + ' ' + (agent.lastName || '')).trim() : null) ||
-                agent.name || 'Agent';
-
+                agent.name || agent.email || 'Agent';
             var agentId = (agent.agentInfo && agent.agentInfo.agentId) ||
-                           agent.agentId || agent.id || '—';
-
-            // walletBalance stored separately under 'agentWalletBalance' key
-            // OR from dashboard stats (stored by AgentDashboard.updateStats)
+                           agent.agentId || agent.id || '\u2014';
             var balance = parseFloat(localStorage.getItem('agentWalletBalance') || '0');
 
             var nameEl   = document.getElementById('sidebarAgentName');
@@ -200,10 +200,10 @@ function initSidebar() {
             if (balEl)    balEl.textContent    = balance.toLocaleString('en-NG', { minimumFractionDigits: 2 });
         }
     } catch (e) {
-        console.error('[initSidebar] Error populating agent data:', e);
+        console.error('[initSidebar] Cache populate error:', e);
     }
 
-    // 2. Active nav highlight (handles ?type= query for service.html)
+    // 2. Active nav highlight
     try {
         var currentPage = window.location.pathname.split('/').pop() || 'dashboard.html';
         var currentType = new URLSearchParams(window.location.search).get('type');
@@ -223,67 +223,67 @@ function initSidebar() {
             }
         });
     } catch (e) {
-        console.error('[initSidebar] Error setting active nav:', e);
+        console.error('[initSidebar] Nav highlight error:', e);
     }
 
-    // 3. Fetch live wallet balance from API and update display
-    updateSidebarBalance();
+    // 3. Fetch fresh profile + wallet balance from API
+    _refreshSidebarFromAPI();
 }
 
 /**
- * updateSidebarBalance() — fetches wallet balance from API and updates sidebar.
- * Stores result in localStorage so it's available instantly on next page load.
+ * _refreshSidebarFromAPI() — fetches fresh agent profile and wallet balance
+ * from the backend and updates the sidebar. Called after DOM is ready.
  */
-async function updateSidebarBalance() {
+async function _refreshSidebarFromAPI() {
+    // Fetch fresh profile data and update name/agentId in sidebar
     try {
-        if (typeof WalletAPI === 'undefined') return;
-        var result = await WalletAPI.getBalance();
-        if (result.success && result.data) {
-            var walletData = result.data.wallet || result.data;
-            var balance = walletData.balance || walletData.availableBalance ||
-                          walletData.walletBalance || 0;
-            balance = parseFloat(balance);
+        if (typeof AgentProfile !== 'undefined') {
+            var result = await AgentProfile.getProfileData();
+            if (result.success && result.data) {
+                var agent = result.data.agent || result.data;
+                var agentInfo = agent.agentInfo || {};
 
-            localStorage.setItem('agentWalletBalance', balance.toString());
+                // Update localStorage so future page loads are instant
+                API.setAgentData(agent);
 
-            var balEl = document.getElementById('walletBalance');
-            if (balEl) balEl.textContent = balance.toLocaleString('en-NG', { minimumFractionDigits: 2 });
+                var name = agent.fullName ||
+                    (agent.firstName ? (agent.firstName + ' ' + (agent.lastName || '')).trim() : null) ||
+                    agent.name || agent.email || 'Agent';
+                var agentId = agentInfo.agentId || agent.agentId || agent.id || '\u2014';
 
-            document.querySelectorAll('[data-wallet-balance]').forEach(function(el) {
-                el.textContent = UI.formatCurrency(balance);
-            });
+                var nameEl   = document.getElementById('sidebarAgentName');
+                var idEl     = document.getElementById('sidebarAgentId');
+                var avatarEl = document.getElementById('sidebarAgentAvatar');
 
-            // Display account number — handle virtualAccount{} OR accounts[]
-            var acc = null;
-            if (walletData.accounts && walletData.accounts.length > 0) {
-                acc = walletData.accounts[0];
-            } else if (walletData.virtualAccount && walletData.virtualAccount.accountNumber) {
-                acc = walletData.virtualAccount;
-            } else {
-                // Try cached
-                try {
-                    var cached = JSON.parse(localStorage.getItem('agent_wallet_accounts') || '[]');
-                    if (cached.length > 0) acc = cached[0];
-                } catch(e) {}
-            }
-
-            if (acc && acc.accountNumber) {
-                // Cache it
-                localStorage.setItem('agent_wallet_accounts', JSON.stringify([acc]));
-
-                var acctEl = document.getElementById('agentWalletAccount');
-                if (acctEl) {
-                    acctEl.innerHTML = '<span style="cursor:pointer;" onclick="copyAgentAcct('' + acc.accountNumber + '',this)" title="Tap to copy">' +
-                        '<b>' + (acc.bankName || '') + '</b> &middot; ' + acc.accountNumber +
-                        ' <span style="font-size:11px;opacity:0.7;">&#x274F;</span></span>';
-                }
+                if (nameEl)   nameEl.textContent   = name;
+                if (idEl)     idEl.textContent     = agentId;
+                if (avatarEl) avatarEl.textContent = name.charAt(0).toUpperCase();
             }
         }
     } catch (e) {
-        // Silent — display stays at stored value
+        console.error('[Sidebar] Profile refresh error:', e);
+    }
+
+    // Fetch fresh wallet balance
+    try {
+        if (typeof updateWalletBalance === 'function') {
+            await updateWalletBalance();
+        } else if (typeof WalletAPI !== 'undefined') {
+            var r = await WalletAPI.getBalance();
+            if (r.success && r.data) {
+                var walletData = r.data.wallet || r.data;
+                var balance = parseFloat(
+                    walletData.balance || walletData.availableBalance || walletData.walletBalance || 0
+                );
+                localStorage.setItem('agentWalletBalance', balance.toString());
+                var balEl = document.getElementById('walletBalance');
+                if (balEl) balEl.textContent = balance.toLocaleString('en-NG', { minimumFractionDigits: 2 });
+            }
+        }
+    } catch (e) {
+        console.error('[Sidebar] Balance refresh error:', e);
     }
 }
-
 function copyAgentAcct(number, el) {
     navigator.clipboard.writeText(number).then(function() {
         var orig = el.innerHTML;

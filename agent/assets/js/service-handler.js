@@ -146,8 +146,14 @@ const ServiceHandler = {
         document.getElementById('page-title').textContent = `${service.name} - Yareema Agent Portal`;
         document.getElementById('service-title').textContent = service.name;
         
-        // Update header
-        updatePageTitle(service.type);
+        // Update header page title (safe call — header partial may not be in DOM yet)
+        if (typeof updatePageTitle === 'function') {
+            updatePageTitle(service.type);
+        } else {
+            // Fallback: set the title element directly if already in DOM
+            const pageTitleEl = document.getElementById('pageTitle');
+            if (pageTitleEl) pageTitleEl.textContent = service.name;
+        }
         
         // Generate form fields
         this.generateFormFields(service);

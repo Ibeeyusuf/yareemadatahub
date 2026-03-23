@@ -71,41 +71,6 @@
     </div>
 </div>
 
-<!-- Add Customer Modal -->
-<div id="addCustomerModal" class="modal">
-    <div class="modal-content bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4">
-        <div class="p-6 border-b border-slate-200 flex items-center justify-between">
-            <h3 class="text-xl font-bold text-slate-900" data-en="Add New Customer" data-ha="Ƙara Sabon Abokin Ciniki">Add New Customer</h3>
-            <button onclick="closeModal('addCustomerModal')" class="text-slate-400 hover:text-slate-600">
-                <i data-lucide="x" class="w-5 h-5"></i>
-            </button>
-        </div>
-        <form onsubmit="handleAddCustomer(event)" class="p-6 space-y-4">
-            <div>
-                <label class="block text-sm font-semibold text-slate-700 mb-2" data-en="Full Name" data-ha="Cikakken Suna">Full Name</label>
-                <input id="customerName" type="text" placeholder="Enter customer name" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
-            </div>
-            <div>
-                <label class="block text-sm font-semibold text-slate-700 mb-2" data-en="Phone Number" data-ha="Lambar Waya">Phone Number</label>
-                <input id="customerPhone" type="tel" placeholder="08012345678" pattern="[0-9]{11}" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
-            </div>
-            <div>
-                <label class="block text-sm font-semibold text-slate-700 mb-2" data-en="Email (Optional)" data-ha="Imel (Ba Dole Ba)">Email (Optional)</label>
-                <input id="customerEmail" type="email" placeholder="customer@example.com" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full">
-            </div>
-            <div id="addCustomerMsg" class="hidden text-sm p-3 rounded-lg"></div>
-            <div class="flex gap-3 pt-2">
-                <button type="submit" id="addCustomerSubmitBtn" class="flex-1 py-3 bg-yareema-primary text-white font-bold rounded-xl hover:bg-yareema-secondary transition-colors flex items-center justify-center gap-2" style="background:#1E3D5C">
-                    <span data-en="Add Customer" data-ha="Ƙara Abokin Ciniki">Add Customer</span>
-                </button>
-                <button type="button" onclick="closeModal('addCustomerModal')" class="px-6 py-3 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors">
-                    <span data-en="Cancel" data-ha="Soke">Cancel</span>
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
 <!-- Change PIN Modal -->
 <div id="changePINModal" class="modal">
     <div class="modal-content bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4">

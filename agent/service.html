@@ -15,7 +15,7 @@
     <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
     <div class="flex flex-col lg:flex-row w-full min-h-screen">
         <div id="sidebarContainer"></div>
-        <main class="flex-1 flex flex-col min-w-0 bg-slate-50">
+        <main class="lg:ml-64 flex-1 flex flex-col min-w-0 bg-slate-50">
             <div id="headerContainer"></div>
             <div class="p-4 lg:p-8 flex-1 overflow-y-auto">
                 
@@ -90,14 +90,26 @@
     <script>
         // Protect page
         Auth.protectPage();
-        
-        // Load partials
-        fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();initSidebar();});
-        fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;initHeader();lucide.createIcons();});
-        fetch('partials/modals.html').then(r=>r.text()).then(d=>{document.getElementById('modalsContainer').innerHTML=d;lucide.createIcons();});
-        
-        // Initialize service page
-        document.addEventListener('DOMContentLoaded', () => {
+
+        // Load all partials first, then init the service page
+        // This ensures initSidebar, updatePageTitle etc. have a DOM to work with
+        Promise.all([
+            fetch('partials/sidebar.html').then(r => r.text()).then(d => {
+                document.getElementById('sidebarContainer').innerHTML = d;
+                lucide.createIcons();
+                if (typeof initSidebar === 'function') initSidebar();
+            }),
+            fetch('partials/header.html').then(r => r.text()).then(d => {
+                document.getElementById('headerContainer').innerHTML = d;
+                lucide.createIcons();
+                // initHeader doesn't exist — header is self-contained, nothing to call
+            }),
+            fetch('partials/modals.html').then(r => r.text()).then(d => {
+                document.getElementById('modalsContainer').innerHTML = d;
+                lucide.createIcons();
+            })
+        ]).then(() => {
+            // All partials are in the DOM — safe to init the service handler
             ServiceHandler.init();
         });
     </script>

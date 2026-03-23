@@ -58,6 +58,12 @@ const Auth = {
                 errorMessage = 'Incorrect password. Please try again.';
             } else if (errorMessage.includes('suspended') || errorMessage.includes('Suspended')) {
                 errorMessage = 'Your account has been suspended. Please contact support.';
+            } else if (errorMessage.includes('pending') || errorMessage.includes('Pending') ||
+                       errorMessage.includes('approv') || errorMessage.includes('contact admin') ||
+                       errorMessage.includes('not active') || errorMessage.includes('not approved')) {
+                // Pass the real backend message through — it's informative and accurate.
+                // e.g. "Account pending approval. Please contact admin."
+                errorMessage = error.message;
             } else if (errorMessage.includes('verify') || errorMessage.includes('Verify')) {
                 errorMessage = 'Please verify your email before logging in.';
             }

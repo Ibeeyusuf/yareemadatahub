@@ -272,6 +272,8 @@
             await AgentDashboard.loadDashboard();
             // Reinitialize icons after dynamic content loads
             lucide.createIcons();
+            // Check for login announcement — shows popup for any unread non-broadcast notification
+            setTimeout(checkLoginAnnouncement, 1200);
         });
     </script>
 </body>
