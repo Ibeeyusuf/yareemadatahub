@@ -48,7 +48,12 @@
     <div class="main-content">
         <div class="top-bar" style="display:flex;align-items:center;gap:12px;"><button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Open menu"><i data-lucide="menu" style="width:20px;height:20px;"></i></button><h1>My Wallet</h1></div>
         <div class="wallet-card">
-            <div class="wallet-label">Available Balance</div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
+                <div class="wallet-label" style="margin-bottom: 0;">Available Balance</div>
+                <button onclick="toggleBalance()" title="Toggle balance" style="background: rgba(255,255,255,0.15); border: none; padding: 7px; border-radius: 8px; cursor: pointer;">
+                    <i data-lucide="eye" id="eyeIcon" style="width: 18px; height: 18px; color: #fff;"></i>
+                </button>
+            </div>
             <div class="wallet-balance" id="balance">₦0.00</div>
             <div style="margin-top: 24px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
                 <button class="wallet-btn" onclick="openModal('fund')"><i data-lucide="plus-circle" style="width: 20px; height: 20px;"></i><span>Fund Wallet</span></button>
@@ -72,12 +77,24 @@
             document.getElementById('sidebarAvatar').textContent = (_u.firstName[0] + (_u.lastName?.[0] || '')).toUpperCase();
         }
 
+        let hideBalance = false;
+        let actualBalance = 0;
+
+        function toggleBalance() {
+            hideBalance = !hideBalance;
+            document.getElementById('balance').textContent = hideBalance ? '₦****' : '₦' + actualBalance.toLocaleString('en-US', {minimumFractionDigits: 2});
+            document.getElementById('eyeIcon').setAttribute('data-lucide', hideBalance ? 'eye-off' : 'eye');
+            lucide.createIcons();
+        }
+
         async function load() {
             try {
                 const w = await api.getWalletBalance();
                 const walletData = w.data?.wallet || w.data || {};
-                const balance = parseFloat(walletData.balance || 0);
-                document.getElementById('balance').textContent = '₦' + balance.toLocaleString('en-US', {minimumFractionDigits: 2});
+                actualBalance = parseFloat(walletData.balance || 0);
+                if (!hideBalance) {
+                    document.getElementById('balance').textContent = '₦' + actualBalance.toLocaleString('en-US', {minimumFractionDigits: 2});
+                }
 
                 const t = await api.getTransactions({ limit: 20 });
                 const txns = t.data?.transactions || t.transactions || [];
@@ -87,20 +104,31 @@
                     electricity: {icon:'zap', bg:'#fffbeb', color:'#d97706'},
                     cable: {icon:'tv', bg:'#faf5ff', color:'#9333ea'},
                     wallet_funding: {icon:'arrow-down-circle', bg:'#dcfce7', color:'#16a34a'},
+                    fund_wallet:    {icon:'arrow-down-circle', bg:'#dcfce7', color:'#16a34a'},
                     transfer: {icon:'send', bg:'#eff6ff', color:'#1e3d5c'},
                 };
                 document.getElementById('recent').innerHTML = txns.length
                     ? txns.map(x => {
                         const t = iconMap[x.type] || {icon:'receipt', bg:'#f8fafc', color:'#64748b'};
-                        const isCredit = x.type === 'wallet_funding' || x.amount > 0;
+                        const txStatus = (x.status || x.paymentStatus || '').toUpperCase();
+                        const isFailed  = txStatus === 'FAILED';
+                        const isPending = txStatus === 'PENDING' || txStatus === 'PROCESSING';
+                        const typeNorm  = (x.type || '').toUpperCase().replace(/[\s]+/g,'_');
+                        const isCredit  = typeNorm === 'FUND_WALLET' || typeNorm === 'WALLET_FUND' || typeNorm === 'WALLET_FUNDING' || typeNorm === 'WALLET_TOPUP';
+                        const amtColor  = isFailed ? '#94a3b8' : isPending ? '#d97706' : isCredit ? '#16a34a' : '#dc2626';
+                        const prefix    = isFailed ? '' : isCredit ? '+' : '-';
+                        const statusDot = isFailed  ? `<span style="font-size:10px;color:#94a3b8;display:block;text-align:right;">Failed</span>`
+                                       : isPending ? `<span style="font-size:10px;color:#d97706;display:block;text-align:right;">Pending</span>`
+                                       : '';
                         return `<div class="activity-item">
-                            <div class="activity-icon" style="background:${t.bg};"><i data-lucide="${t.icon}" style="width:24px;height:24px;color:${t.color};"></i></div>
+                            <div class="activity-icon" style="background:${isFailed ? '#f1f5f9' : t.bg}; display:flex; align-items:center; justify-content:center; opacity:${isFailed ? '0.5' : '1'};"><i data-lucide="${t.icon}" style="width:20px;height:20px;color:${isFailed ? '#94a3b8' : t.color};"></i></div>
                             <div class="activity-info">
-                                <div class="activity-title">${x.description || x.type || 'Transaction'}</div>
+                                <div class="activity-title" style="opacity:${isFailed ? '0.55' : '1'}">${x.description || x.type || 'Transaction'}</div>
                                 <div class="activity-time">${new Date(x.createdAt).toLocaleString()}</div>
                             </div>
-                            <div class="activity-amount" style="color:${isCredit ? '#16a34a' : '#dc2626'};">
-                                ${isCredit ? '+' : '-'}₦${Math.abs(x.amount).toLocaleString('en-US', {minimumFractionDigits:2})}
+                            <div style="text-align:right;">
+                                <div class="activity-amount" style="color:${amtColor};${isFailed ? 'text-decoration:line-through;' : ''}">${prefix}₦${Math.abs(x.amount).toLocaleString('en-US', {minimumFractionDigits:2})}</div>
+                                ${statusDot}
                             </div>
                         </div>`;
                     }).join('')

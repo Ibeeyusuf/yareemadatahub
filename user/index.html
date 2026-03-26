@@ -87,49 +87,36 @@
             </div>
         </div>
 
-        <!-- Wallet Card (enhanced with package badge + embedded accounts) -->
-        <div class="wallet-card" style="padding: 0; overflow: hidden;">
+        <!-- Wallet Card -->
+        <div class="wallet-card" style="padding: 0; overflow: hidden; margin-bottom: 20px;">
+            <div style="background: linear-gradient(135deg, #1e3d5c 0%, #2d5a8a 100%); padding: 24px 20px 20px; color: #fff;">
 
-            <!-- Top gradient section: balance + package -->
-            <div style="background: linear-gradient(135deg, #1e3d5c 0%, #2d5a8a 100%); padding: 28px 28px 20px; color: #fff;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <div style="flex: 1;">
-                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
-                            <div class="wallet-label" style="margin-bottom: 0;">Available Balance</div>
-                            <!-- Package Status Badge -->
-                            <span id="packageBadge" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: 0.5px; text-transform: uppercase; display: none;">
-                                Smart Earner
-                            </span>
-                        </div>
+                <!-- Balance row -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+                    <div>
+                        <div style="font-size: 12px; opacity: 0.65; margin-bottom: 6px; letter-spacing: 0.3px;">Available Balance</div>
                         <div class="wallet-balance" id="walletBalance">₦0.00</div>
                     </div>
-                    <button onclick="toggleBalance()" title="Toggle Balance Visibility" style="background: rgba(255,255,255,0.15); border: none; padding: 8px; border-radius: 8px; cursor: pointer; flex-shrink: 0;">
-                        <i data-lucide="eye" id="eyeIcon" style="width: 20px; height: 20px; color: #fff;"></i>
+                    <button onclick="toggleBalance()" title="Toggle balance" style="background: rgba(255,255,255,0.1); border: none; padding: 8px; border-radius: 8px; cursor: pointer;">
+                        <i data-lucide="eye" id="eyeIcon" style="width: 18px; height: 18px; color: rgba(255,255,255,0.85);"></i>
                     </button>
                 </div>
-            </div>
 
-            <!-- Embedded Virtual Accounts Section -->
-            <div style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 12px 16px;">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                    <div style="display: flex; align-items: center; gap: 7px;">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1e3d5c" stroke-width="2.5"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-                        <span style="font-size: 9px; font-weight: 500; color: #1e3d5c; letter-spacing: 0.4px; text-transform: uppercase;">Fund via Bank Transfer</span>
-                    </div>
-                    <span style="background: #dcfce7; color: #16a34a; font-size: 8px; font-weight: 700; padding: 2px 6px; border-radius: 10px;">Instant</span>
-                </div>
-
-                <!-- Accounts List (populated by JS) -->
-                <div id="dashboardAccountsList">
-                    <div style="text-align: center; padding: 18px; color: #94a3b8; font-size: 13px;">
-                        <div style="width: 24px; height: 24px; border: 3px solid #e2e8f0; border-top-color: #1e3d5c; border-radius: 50%; animation: spin 0.9s linear infinite; margin: 0 auto 8px;"></div>
-                        Loading accounts...
+                <!-- Account numbers -->
+                <div id="dashboardAccountsList" style="margin-bottom: 16px;">
+                    <div style="text-align:center; padding:12px 0; color:rgba(255,255,255,0.35); font-size:12px;">
+                        <div style="width:16px;height:16px;border:2px solid rgba(255,255,255,0.15);border-top-color:rgba(255,255,255,0.7);border-radius:50%;animation:spin 0.9s linear infinite;margin:0 auto 6px;"></div>
+                        Loading...
                     </div>
                 </div>
 
-                
-            </div>
+                <!-- Fund Wallet button -->
+                <button onclick="openModal('fund')" style="width:100%;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:#fff;padding:11px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.22)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                    Fund Wallet
+                </button>
 
+            </div>
         </div>
 
         <!-- Quick Services -->
@@ -364,14 +351,6 @@
                         document.getElementById('walletBalance').textContent = `₦${actualBalance.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
                     }
 
-                    // Package / subscription badge
-                    const pkg = user.package || user.plan || user.subscription || walletData.package || null;
-                    if (pkg) {
-                        const badge = document.getElementById('packageBadge');
-                        badge.textContent = pkg;
-                        badge.style.display = 'inline-block';
-                    }
-
                     // Resolve accounts — try every known response shape
                     let accounts = [];
                     const raw = wallet.data || wallet;
@@ -401,12 +380,12 @@
                         renderDashboardAccounts(savedAccounts);
                     } else {
                         document.getElementById('dashboardAccountsList').innerHTML =
-                            `<div style="text-align:center;padding:14px;color:#94a3b8;font-size:13px;">No accounts found. <a href="wallet.html" style="color:#1e3d5c;font-weight:600;">Go to Wallet →</a></div>`;
+                            `<div style="text-align:center;padding:12px;color:rgba(255,255,255,0.4);font-size:12px;">No accounts found. <a href="wallet.html" style="color:#7dd3fc;font-weight:600;">Go to Wallet →</a></div>`;
                     }
                 } catch(e) {
                     document.getElementById('walletBalance').textContent = '₦0.00';
                     document.getElementById('dashboardAccountsList').innerHTML =
-                        `<div style="text-align:center;padding:14px;color:#94a3b8;font-size:13px;">Could not load accounts.</div>`;
+                        `<div style="text-align:center;padding:12px;color:rgba(255,255,255,0.4);font-size:12px;">Could not load accounts.</div>`;
                 }
 
                 // Load recent transactions
@@ -416,60 +395,66 @@
                     const svgIcons = {
                         data_recharge: {
                             bg: '#eff6ff',
-                            svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/>
                                 <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="#2563eb"/>
                             </svg>`
                         },
                         airtime: {
                             bg: '#f0fdf4',
-                            svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18" stroke-width="3"/>
                                 <path d="M9 7h6M9 11h4"/>
                             </svg>`
                         },
                         electricity: {
                             bg: '#fffbeb',
-                            svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="#fef3c7"/>
                                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" stroke="#d97706" stroke-width="1.5"/>
                             </svg>`
                         },
                         cable: {
                             bg: '#faf5ff',
-                            svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9333ea" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9333ea" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="2" y="7" width="20" height="13" rx="2"/><polyline points="16 2 12 7 8 2"/>
                                 <line x1="8" y1="17" x2="10" y2="17"/><line x1="14" y1="17" x2="16" y2="17"/>
                             </svg>`
                         },
                         wallet_funding: {
                             bg: '#dcfce7',
-                            svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2v20M17 7H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                            </svg>`
+                        },
+                        fund_wallet: {
+                            bg: '#dcfce7',
+                            svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M12 2v20M17 7H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
                             </svg>`
                         },
                         transfer: {
                             bg: '#eff6ff',
-                            svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1e3d5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1e3d5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
                             </svg>`
                         },
                         education: {
                             bg: '#eef2ff',
-                            svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/>
                             </svg>`
                         },
                         swap: {
                             bg: '#fff7ed',
-                            svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
                                 <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
                             </svg>`
                         },
                         default: {
                             bg: '#f1f5f9',
-                            svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                                 <polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/>
                             </svg>`
@@ -478,17 +463,27 @@
                     if (transactions.length > 0) {
                         document.getElementById('recentActivity').innerHTML = transactions.map(tx => {
                             const t = svgIcons[tx.type] || svgIcons.default;
-                            const isCredit = tx.type === 'wallet_funding' || (tx.amount > 0);
+                            const txStatus = (tx.status || tx.paymentStatus || '').toUpperCase();
+                            const isFailed  = txStatus === 'FAILED';
+                            const isPending = txStatus === 'PENDING' || txStatus === 'PROCESSING';
+                            const typeNorm  = (tx.type || '').toUpperCase().replace(/[\s]+/g,'_');
+                            const isCredit  = typeNorm === 'FUND_WALLET' || typeNorm === 'WALLET_FUND' || typeNorm === 'WALLET_FUNDING' || typeNorm === 'WALLET_TOPUP';
+                            const amtColor  = isFailed ? '#94a3b8' : isPending ? '#d97706' : isCredit ? '#16a34a' : '#dc2626';
+                            const prefix    = isFailed ? '' : isCredit ? '+' : '-';
+                            const statusDot = isFailed  ? `<span style="font-size:10px;color:#94a3b8;display:block;text-align:right;">Failed</span>`
+                                           : isPending ? `<span style="font-size:10px;color:#d97706;display:block;text-align:right;">Pending</span>`
+                                           : '';
                             return `<div class="activity-item">
-                                <div class="activity-icon" style="background:${t.bg}; display:flex; align-items:center; justify-content:center;">
+                                <div class="activity-icon" style="background:${isFailed ? '#f1f5f9' : t.bg}; display:flex; align-items:center; justify-content:center; opacity:${isFailed ? '0.5' : '1'};">
                                     ${t.svg}
                                 </div>
                                 <div class="activity-info">
-                                    <div class="activity-title">${tx.description || tx.type || 'Transaction'}</div>
+                                    <div class="activity-title" style="opacity:${isFailed ? '0.55' : '1'}">${tx.description || tx.type || 'Transaction'}</div>
                                     <div class="activity-time">${new Date(tx.createdAt).toLocaleString()}</div>
                                 </div>
-                                <div class="activity-amount" style="color:${isCredit ? '#16a34a' : '#dc2626'}">
-                                    ${isCredit ? '+' : '-'}₦${Math.abs(tx.amount).toLocaleString('en-US', {minimumFractionDigits:2})}
+                                <div style="text-align:right;">
+                                    <div class="activity-amount" style="color:${amtColor};${isFailed ? 'text-decoration:line-through;' : ''}">${prefix}₦${Math.abs(tx.amount).toLocaleString('en-US', {minimumFractionDigits:2})}</div>
+                                    ${statusDot}
                                 </div>
                             </div>`;
                         }).join('');
@@ -528,49 +523,38 @@
             const container = document.getElementById('dashboardAccountsList');
             if (!container) return;
             if (!accounts || accounts.length === 0) {
-                container.innerHTML = `<div style="text-align:center;padding:14px;color:#94a3b8;font-size:13px;">No accounts yet. <a href="wallet.html" style="color:#1e3d5c;font-weight:600;">Set up wallet →</a></div>`;
+                container.innerHTML = `<div style="text-align:center;padding:10px 0;color:rgba(255,255,255,0.4);font-size:12px;">No accounts found. <a href="wallet.html" style="color:#7dd3fc;font-weight:600;">Go to Wallet →</a></div>`;
                 return;
             }
-            container.innerHTML = accounts.map((acc, i) => {
-                const chargeInfo = getBankCharge(acc.bankName);
-                const isDefault = acc.isDefault;
-                return `
-                <div style="background:${isDefault ? '#fff' : '#fff'};border:${isDefault ? '1.5px solid #7dd3fc' : '1px solid #e2e8f0'};border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
-                    <!-- Bank icon -->
-                    <div style="width:38px;height:38px;flex-shrink:0;background:${isDefault ? 'linear-gradient(135deg,#1e3d5c,#2d5a8a)' : '#f1f5f9'};border-radius:9px;display:flex;align-items:center;justify-content:center;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${isDefault ? '#fff' : '#1e3d5c'}" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-                    </div>
-                    <!-- Bank info -->
+            container.innerHTML = accounts.map((acc, i) => `
+                <div style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.14);border-radius:10px;padding:11px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" style="flex-shrink:0;"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
                     <div style="flex:1;min-width:0;">
-                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
-                            <span style="font-size:13px;font-weight:700;color:#0f172a;">${acc.bankName || 'Bank'}</span>
-                            ${isDefault ? `<span style="background:#0284c7;color:white;font-size:9px;font-weight:700;padding:1px 7px;border-radius:10px;">PRIMARY</span>` : ''}
-                        </div>
-                        <div style="font-size:16px;font-weight:700;color:#1e3d5c;letter-spacing:2px;" id="dashAccNum_${i}">${acc.accountNumber}</div>
-                        <div style="font-size:11px;color:#64748b;margin-top:1px;">${acc.accountName || ''}</div>
+                        <div style="font-size:10px;color:rgba(255,255,255,0.5);margin-bottom:2px;">${acc.bankName || 'Bank'}</div>
+                        <div style="font-size:16px;font-weight:700;color:#fff;letter-spacing:2px;" id="dashAccNum_${i}">${acc.accountNumber}</div>
+                        <div style="font-size:10px;color:rgba(255,255,255,0.45);margin-top:1px;">${acc.accountName || ''}</div>
                     </div>
-                    <!-- Charge badge + copy -->
-                    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
-                        ${chargeInfo ? `<span style="background:${chargeInfo.color === '#16a34a' ? '#dcfce7' : '#fef3c7'};color:${chargeInfo.color};font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;">${chargeInfo.charge}</span>` : ''}
-                        <button onclick="copyDashAccount('dashAccNum_${i}', this)"
-                            style="background:#1e3d5c;color:white;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px;">
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                            Copy
-                        </button>
-                    </div>
-                </div>`;
-            }).join('');
-            if (typeof lucide !== 'undefined') lucide.createIcons();
+                    <button onclick="copyDashAccount('dashAccNum_${i}', this)"
+                        style="background:rgba(255,255,255,0.15);color:#fff;border:none;padding:6px 12px;border-radius:7px;cursor:pointer;font-size:11px;font-weight:600;flex-shrink:0;">
+                        Copy
+                    </button>
+                </div>`
+            ).join('');
         }
-
         function copyDashAccount(elemId, btn) {
             const num = document.getElementById(elemId)?.textContent?.trim();
             if (!num) return;
             navigator.clipboard.writeText(num).then(() => {
                 const orig = btn.innerHTML;
+                const origBg = btn.style.background;
                 btn.innerHTML = '✓ Copied!';
-                btn.style.background = '#16a34a';
-                setTimeout(() => { btn.innerHTML = orig; btn.style.background = '#1e3d5c'; }, 2000);
+                btn.style.background = 'rgba(74,222,128,0.3)';
+                btn.style.color = '#4ade80';
+                setTimeout(() => {
+                    btn.innerHTML = orig;
+                    btn.style.background = origBg;
+                    btn.style.color = '#fff';
+                }, 2000);
             });
         }
 

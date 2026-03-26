@@ -47,9 +47,10 @@
     <div class="main-content">
         <div class="top-bar" style="display:flex;align-items:center;gap:12px;"><button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Open menu"><i data-lucide="menu" style="width:20px;height:20px;"></i></button>
             <h1>Transaction History</h1>
-            <button class="icon-btn" onclick="loadTxns()"><i data-lucide="refresh-cw" style="width: 20px; height: 20px;"></i></button>
+            <button class="icon-btn" onclick="loadTxns(1)"><i data-lucide="refresh-cw" style="width: 20px; height: 20px;"></i></button>
         </div>
         <div class="activity-list" id="txnsList" style="min-height: 400px;"><div style="text-align: center; padding: 48px; color: #94a3b8;">Loading...</div></div>
+        <div id="txnsPagination" style="display:none; margin-top: 16px;"></div>
     </div>
     <script src="assets/js/config.js"></script>
     <script src="assets/js/api.js"></script>
@@ -57,49 +58,57 @@
     <script>
         // SVG icons per transaction type
         const txSVGs = {
+            'FUND_WALLET': {
+                bg: '#dcfce7',
+                svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 7H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`
+            },
             'WALLET_FUND': {
                 bg: '#dcfce7',
-                svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 7H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`
+                svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 7H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`
             },
             'WALLET_FUNDING': {
                 bg: '#dcfce7',
-                svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 7H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`
+                svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 7H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`
+            },
+            'AIRTIME_RECHARGE': {
+                bg: '#f0fdf4',
+                svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18" stroke-width="3"/><path d="M9 7h6M9 11h4"/></svg>`
             },
             'AIRTIME': {
                 bg: '#f0fdf4',
-                svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18" stroke-width="3"/><path d="M9 7h6M9 11h4"/></svg>`
+                svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18" stroke-width="3"/><path d="M9 7h6M9 11h4"/></svg>`
             },
             'DATA': {
                 bg: '#eff6ff',
-                svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="#2563eb"/></svg>`
+                svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="#2563eb"/></svg>`
             },
             'DATA_RECHARGE': {
                 bg: '#eff6ff',
-                svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="#2563eb"/></svg>`
+                svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="#2563eb"/></svg>`
             },
             'ELECTRICITY': {
                 bg: '#fffbeb',
-                svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="#fef3c7" stroke="#d97706"/></svg>`
+                svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="#fef3c7" stroke="#d97706"/></svg>`
             },
             'CABLE': {
                 bg: '#faf5ff',
-                svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9333ea" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="13" rx="2"/><polyline points="16 2 12 7 8 2"/><line x1="8" y1="17" x2="10" y2="17"/><line x1="14" y1="17" x2="16" y2="17"/></svg>`
+                svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9333ea" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="13" rx="2"/><polyline points="16 2 12 7 8 2"/><line x1="8" y1="17" x2="10" y2="17"/><line x1="14" y1="17" x2="16" y2="17"/></svg>`
             },
             'EDUCATION': {
                 bg: '#eef2ff',
-                svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>`
+                svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>`
             },
             'TRANSFER': {
                 bg: '#eff6ff',
-                svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1e3d5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`
+                svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1e3d5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`
             },
             'WITHDRAWAL': {
                 bg: '#fee2e2',
-                svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="8 12 12 16 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>`
+                svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="8 12 12 16 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>`
             },
             'DEFAULT': {
                 bg: '#f1f5f9',
-                svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>`
+                svg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>`
             }
         };
 
@@ -116,22 +125,26 @@
         function renderTxRow(t) {
             const typeKey = (t.type || 'DEFAULT').toUpperCase().replace(/\s/g,'_');
             const icon = txSVGs[typeKey] || txSVGs['DEFAULT'];
-            const isCredit = t.amount > 0 || t.type === 'WALLET_FUND' || t.type === 'wallet_funding';
-            const amountColor = isCredit ? '#16a34a' : '#dc2626';
-            const amountPrefix = isCredit ? '+' : '-';
+            const txStatus  = (t.status || t.paymentStatus || '').toUpperCase();
+            const isFailed  = txStatus === 'FAILED';
+            const isPending = txStatus === 'PENDING' || txStatus === 'PROCESSING';
+            const typeNorm  = (t.type || '').toUpperCase().replace(/[\s]+/g,'_');
+            const isCredit  = typeNorm === 'FUND_WALLET' || typeNorm === 'WALLET_FUND' || typeNorm === 'WALLET_FUNDING' || typeNorm === 'WALLET_TOPUP';
+            const amountColor  = isFailed ? '#94a3b8' : isPending ? '#d97706' : isCredit ? '#16a34a' : '#dc2626';
+            const amountPrefix = isFailed ? '' : isCredit ? '+' : '-';
             const absAmount = Math.abs(t.amount || 0);
 
             return `
             <div class="activity-item" onclick="showTxDetail(${JSON.stringify(t).replace(/"/g,'&quot;')})" style="cursor:pointer;">
-                <div class="activity-icon" style="background: ${icon.bg}; display:flex; align-items:center; justify-content:center;">
+                <div class="activity-icon" style="background:${isFailed ? '#f1f5f9' : icon.bg}; display:flex; align-items:center; justify-content:center; opacity:${isFailed ? '0.45' : '1'};">
                     ${icon.svg}
                 </div>
                 <div class="activity-info">
-                    <div class="activity-title">${t.description || t.type || 'Transaction'}</div>
+                    <div class="activity-title" style="opacity:${isFailed ? '0.55' : '1'}">${t.description || t.type || 'Transaction'}</div>
                     <div class="activity-time">${new Date(t.createdAt || t.date).toLocaleString('en-NG', {dateStyle:'medium', timeStyle:'short'})}</div>
                 </div>
-                <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
-                    <div class="activity-amount" style="color:${amountColor};">${amountPrefix}₦${absAmount.toLocaleString('en-US',{minimumFractionDigits:2})}</div>
+                <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:3px;">
+                    <div class="activity-amount" style="color:${amountColor};${isFailed ? 'text-decoration:line-through;' : ''}">${amountPrefix}₦${absAmount.toLocaleString('en-US',{minimumFractionDigits:2})}</div>
                     ${getStatusBadge(t.status || t.paymentStatus)}
                 </div>
             </div>`;
@@ -176,19 +189,81 @@
                 `<button onclick="closeModal()" class="btn-primary" style="width:100%;">Close</button>`);
         }
 
-        async function loadTxns() {
+        let currentPage = 1;
+        let totalPages  = 1;
+        let totalTxns   = 0;
+        const PAGE_SIZE = 15;
+
+        async function loadTxns(page = 1) {
+            currentPage = page;
             const list = document.getElementById('txnsList');
             list.innerHTML = '<div style="text-align:center;padding:48px;color:#94a3b8;">Loading...</div>';
+            document.getElementById('txnsPagination').style.display = 'none';
             try {
-                const r = await api.getTransactions();
+                const r = await api.getTransactions({ page, limit: PAGE_SIZE });
                 const txns = r.data?.transactions || r.transactions || [];
+                const pag  = r.data?.pagination || r.pagination || {};
+                totalPages = pag.pages || 1;
+                totalTxns  = pag.total || txns.length;
+
                 list.innerHTML = txns.length
                     ? txns.map(renderTxRow).join('')
                     : '<div style="text-align:center;padding:48px;color:#94a3b8;">No transactions yet</div>';
+
+                renderPagination();
                 lucide.createIcons();
             } catch (e) {
                 list.innerHTML = '<div style="text-align:center;padding:48px;color:#ef4444;">Error loading transactions</div>';
             }
+        }
+
+        function renderPagination() {
+            const wrap = document.getElementById('txnsPagination');
+            if (totalPages <= 1) { wrap.style.display = 'none'; return; }
+
+            const start = (currentPage - 1) * PAGE_SIZE + 1;
+            const end   = Math.min(currentPage * PAGE_SIZE, totalTxns);
+
+            // Build page number buttons — show up to 5 around current
+            let pages = [];
+            const delta = 2;
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
+                    pages.push(i);
+                }
+            }
+            // Insert ellipses
+            let buttons = [];
+            let prev = null;
+            for (const p of pages) {
+                if (prev && p - prev > 1) {
+                    buttons.push(`<span style="padding:0 4px;color:#94a3b8;align-self:center;">…</span>`);
+                }
+                const active = p === currentPage;
+                buttons.push(`<button onclick="loadTxns(${p})"
+                    style="min-width:34px;height:34px;padding:0 8px;border-radius:8px;border:1px solid ${active ? '#1e3d5c' : '#e2e8f0'};
+                           background:${active ? '#1e3d5c' : '#fff'};color:${active ? '#fff' : '#374151'};
+                           font-size:13px;font-weight:${active ? '700' : '500'};cursor:${active ? 'default' : 'pointer'};"
+                    ${active ? 'disabled' : ''}>${p}</button>`);
+                prev = p;
+            }
+
+            wrap.style.display = 'flex';
+            wrap.innerHTML = `
+                <div style="display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:12px;padding:12px 16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                    <span style="font-size:12px;color:#94a3b8;">${start}–${end} of ${totalTxns}</span>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <button onclick="loadTxns(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}
+                            style="width:34px;height:34px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;cursor:${currentPage === 1 ? 'default' : 'pointer'};display:flex;align-items:center;justify-content:center;opacity:${currentPage === 1 ? '0.4' : '1'};">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+                        </button>
+                        ${buttons.join('')}
+                        <button onclick="loadTxns(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}
+                            style="width:34px;height:34px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;cursor:${currentPage === totalPages ? 'default' : 'pointer'};display:flex;align-items:center;justify-content:center;opacity:${currentPage === totalPages ? '0.4' : '1'};">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                        </button>
+                    </div>
+                </div>`;
         }
 
         if (!api.getToken()) window.location.href = '../login.html'; else loadTxns();

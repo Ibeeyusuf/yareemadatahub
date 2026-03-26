@@ -202,7 +202,7 @@ body {
 }
 
 .wallet-balance {
-    font-size: 40px;
+    font-size: 32px;
     font-weight: 700;
     margin-bottom: 4px;
 }
@@ -288,8 +288,8 @@ body {
 .activity-item {
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 16px 0;
+    gap: 12px;
+    padding: 12px 0;
     border-bottom: 1px solid #f1f5f9;
 }
 
@@ -298,9 +298,10 @@ body {
 }
 
 .activity-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -308,24 +309,28 @@ body {
 
 .activity-info {
     flex: 1;
+    min-width: 0;
 }
 
 .activity-title {
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 600;
     color: #0f172a;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .activity-time {
-    font-size: 13px;
+    font-size: 11px;
     color: #94a3b8;
 }
 
 .activity-amount {
-    font-size: 16px;
-    font-weight: 600;
-    color: #0f172a;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
 }
 
 /* Section Headers */
@@ -571,7 +576,28 @@ body {
     }
 
     .wallet-balance {
-        font-size: 30px;
+        font-size: 26px;
+    }
+
+    .activity-list {
+        padding: 12px;
+    }
+
+    .activity-item {
+        gap: 10px;
+        padding: 10px 0;
+    }
+
+    .activity-title {
+        font-size: 12px;
+    }
+
+    .activity-time {
+        font-size: 10px;
+    }
+
+    .activity-amount {
+        font-size: 12px;
     }
 
     .referral-card {
