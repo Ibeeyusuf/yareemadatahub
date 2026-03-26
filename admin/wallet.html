@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body class="bg-gray-50">
+    <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
     <div class="w-full">
         <!-- Sidebar -->
         <div id="sidebar-placeholder"></div>
@@ -134,18 +135,6 @@
     <script src="assets/js/utils.js"></script>
     <script src="assets/js/wallets.js"></script>
     <script src="assets/js/main.js"></script>
-    <script>
-        lucide.createIcons();
-        
-        // Load partials
-        fetch('partials/sidebar.html').then(r => r.text()).then(html => {
-            document.getElementById('sidebar-container').innerHTML = html;
-            lucide.createIcons();
-        });
-        fetch('partials/header.html').then(r => r.text()).then(html => {
-            document.getElementById('header-container').innerHTML = html;
-            lucide.createIcons();
-        });
-    </script>
+   
 </body>
 </html>
