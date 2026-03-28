@@ -2408,3 +2408,156 @@ function showHelpModal() {
     
     showModal('Help & Support', bodyHTML, '<button onclick="closeModal()" class="btn-primary" style="width: 100%;">Close</button>');
 }
+
+// ==================== AIRTIME2CASH WHATSAPP MODAL ====================
+
+const WHATSAPP_NUMBER = '2348130228200';
+
+function openWhatsAppLang() {
+    const bodyHTML = `
+        <div style="text-align:center; padding: 8px 0 4px;">
+            <div style="width:56px;height:56px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="#16a34a"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.857L.057 23.486a.5.5 0 0 0 .612.612l5.63-1.476A11.95 11.95 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22a9.955 9.955 0 0 1-5.097-1.395l-.364-.217-3.773.989.989-3.772-.218-.365A9.955 9.955 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+            </div>
+            <p style="font-size:14px;color:#374151;margin-bottom:20px;line-height:1.6;">
+                Please select your preferred language to continue on WhatsApp.
+            </p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <button onclick="launchWhatsApp('english')"
+                    style="padding:14px 10px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;font-size:13px;font-weight:600;color:#0f172a;transition:all 0.15s;"
+                    onmouseover="this.style.borderColor='#1e3d5c';this.style.background='#f0f9ff'"
+                    onmouseout="this.style.borderColor='#e2e8f0';this.style.background='#fff'">
+                    🇬🇧 English
+                </button>
+                <button onclick="launchWhatsApp('hausa')"
+                    style="padding:14px 10px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;font-size:13px;font-weight:600;color:#0f172a;transition:all 0.15s;"
+                    onmouseover="this.style.borderColor='#1e3d5c';this.style.background='#f0f9ff'"
+                    onmouseout="this.style.borderColor='#e2e8f0';this.style.background='#fff'">
+                    🇳🇬 Hausa
+                </button>
+            </div>
+        </div>`;
+
+    showModal('Airtime to Cash',
+        bodyHTML,
+        `<button onclick="closeModal()" class="btn-secondary" style="flex:1;">Cancel</button>`
+    );
+}
+
+function launchWhatsApp(lang) {
+    const messages = {
+        english: 'Hello, I would like to convert my airtime to cash.',
+        hausa:   'Sannu, ina son canza airtime na zuwa kudi.'
+    };
+    const msg  = encodeURIComponent(messages[lang] || messages.english);
+    const url  = `https://wa.me/${WHATSAPP_NUMBER}?text=${msg}`;
+
+    // Update modal to confirmation step
+    const body = document.getElementById('modalBody');
+    if (body) {
+        body.innerHTML = `
+            <div style="text-align:center;padding:8px 0;">
+                <div style="width:56px;height:56px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="#16a34a"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.857L.057 23.486a.5.5 0 0 0 .612.612l5.63-1.476A11.95 11.95 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22a9.955 9.955 0 0 1-5.097-1.395l-.364-.217-3.773.989.989-3.772-.218-.365A9.955 9.955 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                </div>
+                <p style="font-size:14px;color:#374151;line-height:1.65;margin-bottom:6px;">
+                    Chat the number below for your <strong>Airtime to Cash</strong>
+                </p>
+                <div style="font-size:22px;font-weight:700;color:#1e3d5c;letter-spacing:1px;margin-bottom:4px;">0813 022 8200</div>
+                <p style="font-size:12px;color:#94a3b8;">You'll be redirected to WhatsApp</p>
+            </div>`;
+    }
+
+    const footer = document.getElementById('modalFooter');
+    if (footer) {
+        footer.style.display = 'flex';
+        footer.innerHTML = `
+            <button onclick="closeModal()" class="btn-secondary" style="flex:1;">Cancel</button>
+            <button onclick="window.open('${url}','_blank');closeModal();"
+                style="flex:2;padding:12px 24px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.857L.057 23.486a.5.5 0 0 0 .612.612l5.63-1.476A11.95 11.95 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22a9.955 9.955 0 0 1-5.097-1.395l-.364-.217-3.773.989.989-3.772-.218-.365A9.955 9.955 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                Chat on WhatsApp
+            </button>`;
+    }
+}
+
+// ==================== WHATSAPP FLOATING BUTTON ====================
+
+(function injectWhatsAppFAB() {
+    // Inject CSS once
+    if (!document.getElementById('wa-fab-style')) {
+        const style = document.createElement('style');
+        style.id = 'wa-fab-style';
+        style.textContent = `
+            #wa-fab {
+                position: fixed;
+                bottom: 24px;
+                right: 20px;
+                z-index: 9999;
+                width: 52px;
+                height: 52px;
+                background: #25d366;
+                border-radius: 50%;
+                box-shadow: 0 4px 16px rgba(37,211,102,0.45);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                border: none;
+                transition: transform 0.2s, box-shadow 0.2s;
+                text-decoration: none;
+            }
+            #wa-fab:hover {
+                transform: scale(1.1);
+                box-shadow: 0 6px 20px rgba(37,211,102,0.55);
+            }
+            #wa-fab-tooltip {
+                position: fixed;
+                bottom: 84px;
+                right: 20px;
+                z-index: 9998;
+                background: #1e3d5c;
+                color: #fff;
+                font-size: 12px;
+                font-weight: 600;
+                padding: 6px 12px;
+                border-radius: 20px;
+                white-space: nowrap;
+                pointer-events: none;
+                opacity: 0;
+                transform: translateY(6px);
+                transition: opacity 0.2s, transform 0.2s;
+            }
+            #wa-fab:hover + #wa-fab-tooltip,
+            #wa-fab-tooltip.visible {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // Inject button once DOM is ready
+    function injectButton() {
+        if (document.getElementById('wa-fab')) return;
+        const btn = document.createElement('button');
+        btn.id = 'wa-fab';
+        btn.title = 'Chat us on WhatsApp';
+        btn.setAttribute('aria-label', 'Chat on WhatsApp');
+        btn.onclick = () => window.open('https://wa.me/2348021580029', '_blank');
+        btn.innerHTML = `<svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.857L.057 23.486a.5.5 0 0 0 .612.612l5.63-1.476A11.95 11.95 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22a9.955 9.955 0 0 1-5.097-1.395l-.364-.217-3.773.989.989-3.772-.218-.365A9.955 9.955 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>`;
+
+        const tooltip = document.createElement('div');
+        tooltip.id = 'wa-fab-tooltip';
+        tooltip.textContent = 'Chat us on WhatsApp';
+
+        document.body.appendChild(btn);
+        document.body.appendChild(tooltip);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', injectButton);
+    } else {
+        injectButton();
+    }
+})();

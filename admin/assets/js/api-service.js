@@ -646,7 +646,7 @@ class YareemaAPI {
     async consoleSaveConfig(serviceRouting) {
         return await this.request('/api/v1/console/config', {
             method: 'POST',
-            body: { serviceRouting }
+            body: serviceRouting
         });
     }
 

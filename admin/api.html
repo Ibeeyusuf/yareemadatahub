@@ -79,7 +79,7 @@
                             <i data-lucide="sliders" class="w-5 h-5 text-primary"></i>
                             Service Provider Routing
                         </h3>
-                        <p class="text-xs text-slate-500 mt-1">Select which provider handles each service. Each save calls <code class="bg-slate-200 px-1 rounded">POST /api/v1/console/switch</code> per change</p>
+                        <p class="text-xs text-slate-500 mt-1">Select which provider handles each service. Save calls <code class="bg-slate-200 px-1 rounded">POST /api/v1/console/config</code> with all selections</p>
                     </div>
 
                     <div class="p-6">
@@ -402,6 +402,8 @@ function onRadioChange(serviceKey, providerId, providerName) {
 }
 
 // ─── 3. SAVE CONFIG ────────────────────────────────────────────────────────────
+// Backend confirmed: POST /api/v1/console/config is the single endpoint for
+// both switching providers and saving config. /switch is no longer used.
 window.saveProviderConfig = async function() {
     const resetBtn = () => {
         const b = document.getElementById('save-btn');
@@ -420,25 +422,15 @@ window.saveProviderConfig = async function() {
             <path fill="currentColor" d="M4 12a8 8 0 018-8v8z" class="opacity-75"/></svg> Saving...`;
     }
 
+    // Collect all currently selected providers
     const selected = {};
     SERVICES.forEach(svc => {
         const el = document.querySelector(`input[name="${svc.key}Provider"]:checked`);
         if (el) selected[svc.key] = el.value;
     });
 
-    const changed = Object.entries(selected).filter(
-        ([svc, prov]) => prov && prov !== originalRouting[svc]
-    );
-
     try {
-        if (changed.length) {
-            await Promise.all(
-                changed.map(([service, provider]) =>
-                    api.consoleSwitchProvider(service, provider)
-                )
-            );
-        }
-
+        // Single POST to /api/v1/console/config handles both switching and saving
         await api.consoleSaveConfig(selected);
 
         originalRouting = { ...selected };
@@ -447,10 +439,9 @@ window.saveProviderConfig = async function() {
         const rows = SERVICES.map(svc => {
             const prov = providers.find(p => (p.providerId || p.id) === selected[svc.key]);
             const name = prov ? (prov.displayName || prov.providerName) : (selected[svc.key] || '—');
-            const isChanged = changed.find(([s]) => s === svc.key);
             return `<div class="flex justify-between py-1 border-b border-slate-100 last:border-0">
                 <span class="text-slate-500">${svc.label}</span>
-                <span class="font-semibold">${name}${isChanged ? ' <span class="text-green-600 text-xs">✓</span>' : ''}</span>
+                <span class="font-semibold">${name}</span>
             </div>`;
         }).join('');
 
