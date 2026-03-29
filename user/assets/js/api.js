@@ -36,16 +36,28 @@ class YareemaUserAPI {
         try {
             const response = await fetch(url, config);
             let data;
-            try { 
-                data = await response.json(); 
-            } catch(e) { 
-                throw new Error('Invalid server response'); 
+            try {
+                data = await response.json();
+            } catch(e) {
+                throw new Error('Invalid server response');
             }
 
-            // Handle 401 — only treat as session expired if it's a token error,
-            // NOT a wrong PIN / wrong password error from a service endpoint
             if (response.status === 401 && !options.skipAuth) {
                 const msg = (data.message || data.error || data.msg || '').toLowerCase();
+            
+                // Endpoints that use 401 for business errors (wrong PIN, insufficient balance,
+                // invalid sender, etc.) — should NEVER trigger a logout redirect
+                const isServiceEndpoint = endpoint.includes('/sms/') ||
+                                          endpoint.includes('/telecom/') ||
+                                          endpoint.includes('/bills/') ||
+                                          endpoint.includes('/wallet/') ||
+                                          endpoint.includes('/remita/');
+            
+                if (isServiceEndpoint) {
+                    // Just surface the error message to the UI — don't touch the session
+                    throw new Error(data.message || data.error || data.msg || 'Request failed');
+                }
+            
                 const isTokenError = msg.includes('token') || msg.includes('jwt') ||
                                      msg.includes('expired') || msg.includes('unauthorized') ||
                                      msg.includes('not authenticated') || msg.includes('no token') ||
@@ -53,19 +65,16 @@ class YareemaUserAPI {
                 const isPinError  = msg.includes('pin') || msg.includes('incorrect') ||
                                     msg.includes('wrong') || msg.includes('invalid pin') ||
                                     msg.includes('transaction');
-
+            
                 if (isTokenError && !isPinError) {
                     this.clearToken();
                     window.location.href = '/login.html';
                     throw new Error('Session expired. Please login again.');
                 }
-                // Wrong PIN or other 401 — just throw the message so the UI can show it
                 throw new Error(data.message || data.error || data.msg || 'Invalid credentials');
             }
 
-            // For login/signup endpoints, don't treat 401 as session expired
             if (!response.ok) {
-                // Extract error message from response
                 const errorMessage = data.message || data.error || data.msg || 'Request failed';
                 throw new Error(errorMessage);
             }
@@ -87,12 +96,10 @@ class YareemaUserAPI {
                 skipAuth: true
             });
 
-            console.log('Login response:', response); // For debugging
+            console.log('Login response:', response);
 
-            // Extract token - try different possible paths
             const token = response.token || response.data?.token || response.accessToken;
-            
-            // Extract user data - try different possible paths
+
             let user = {};
             if (response.data?.user) {
                 user = response.data.user;
@@ -132,11 +139,7 @@ class YareemaUserAPI {
                 body: data,
                 skipAuth: true
             });
-            
-            return {
-                success: true,
-                ...response
-            };
+            return { success: true, ...response };
         } catch (error) {
             console.error('Registration error:', error);
             return {
@@ -257,10 +260,9 @@ class YareemaUserAPI {
 
     // ==================== TELECOM ====================
 
-  // AFTER
-async getDataPlans(network) {
-    return await this.request(`/api/v1/telecom/data/plans?network=${network.toLowerCase()}`);
-}
+    async getDataPlans(network) {
+        return await this.request(`/api/v1/telecom/data/plans?network=${network.toLowerCase()}`);
+    }
 
     async purchaseData(phoneNumber, network, dataPlan, transactionPin, amount) {
         return await this.request('/api/v1/telecom/data/purchase', {
@@ -283,25 +285,19 @@ async getDataPlans(network) {
         });
     }
 
-    // async purchaseRechargePIN(network, pinType, quantity, transactionPin) {
-    //     return await this.request('/api/v1/telecom/recharge-pin/purchase', {
-    //         method: 'POST',
-    //         body: { network: network.toLowerCase(), pinType, quantity, transactionPin }
-    //     });
-    // }
+    // ==================== RECHARGE PIN ====================
 
-    // Add this method to the YareemaUserAPI class
-async purchaseEpin(network, amount, quantity, transactionPin) {
-    return await this.request('/api/v1/telecom/epin/purchase', {
-        method: 'POST',
-        body: { 
-            network,  // This will be '01', '02', '03', or '04'
-            amount, 
-            quantity, 
-            transactionPin 
-        }
-    });
-}
+    async purchaseRechargePIN(network, pinType, quantity, transactionPin) {
+        return await this.request('/api/v1/telecom/recharge-pin/purchase', {
+            method: 'POST',
+            body: {
+                network: network.toLowerCase(),
+                pinType: String(pinType),
+                quantity,
+                transactionPin
+            }
+        });
+    }
 
     // ==================== BILLS ====================
 
@@ -336,6 +332,19 @@ async purchaseEpin(network, amount, quantity, transactionPin) {
             body: { examType, quantity, transactionPin }
         });
     }
+
+    // ==================== BULK SMS ====================
+
+    async sendBulkSMS(from, to, body, transactionPin, gateway = 'direct-corporate', appendSender = 'hosted') {
+        return await this.request('/api/v1/sms/send', {
+            method: 'POST',
+            body: { from, to, body, gateway, appendSender, transactionPin }
+        });
+    }
+
+    // async getSMSBalance() {
+    //     return await this.request('/api/v1/sms/balance');
+    // }
 
     // ==================== NOTIFICATIONS ====================
 

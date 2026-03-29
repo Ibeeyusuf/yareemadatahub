@@ -1,9 +1,9 @@
 // NATIVE HTML MODALS - NO EXTERNAL DEPENDENCIES
 
-// Modal HTML Structure
+// ==================== MODAL CORE ====================
+
 function createModalHTML() {
     if (document.getElementById('modalContainer')) return;
-    
     const modalContainer = document.createElement('div');
     modalContainer.id = 'modalContainer';
     modalContainer.innerHTML = `
@@ -22,10 +22,8 @@ function createModalHTML() {
     document.body.appendChild(modalContainer);
 }
 
-// Initialize modals on page load
 document.addEventListener('DOMContentLoaded', createModalHTML);
 
-// Show Modal
 function showModal(title, bodyHTML, footerHTML = '') {
     createModalHTML();
     const modal = document.getElementById('customModal');
@@ -36,7 +34,6 @@ function showModal(title, bodyHTML, footerHTML = '') {
     document.body.style.overflow = 'hidden';
 }
 
-// Close Modal
 function closeModal() {
     const modal = document.getElementById('customModal');
     if (modal) {
@@ -45,99 +42,153 @@ function closeModal() {
     }
 }
 
-// Success Message
+// ==================== FEEDBACK HELPERS ====================
+
+// Shows a dismissable inline error banner above the modal footer
+// Does NOT close the modal — user keeps all their form data
+function showInlineError(message) {
+    const existing = document.getElementById('inlineErrorMsg');
+    if (existing) existing.remove();
+
+    const el = document.createElement('div');
+    el.id = 'inlineErrorMsg';
+    el.style.cssText = `
+        background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;
+        padding:10px 14px;margin:0 0 12px;color:#dc2626;font-size:13px;
+        font-weight:500;display:flex;align-items:flex-start;gap:8px;
+        animation:fadeIn .15s ease;
+    `;
+    el.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626"
+             stroke-width="2" style="flex-shrink:0;margin-top:1px;">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span style="flex:1;line-height:1.45;">${message}</span>
+        <button onclick="this.parentElement.remove()"
+            style="background:none;border:none;color:#dc2626;cursor:pointer;
+                   font-size:16px;line-height:1;padding:0;flex-shrink:0;">×</button>
+    `;
+
+    const footer = document.getElementById('modalFooter');
+    if (footer) footer.insertAdjacentElement('beforebegin', el);
+
+    // Auto-dismiss after 6 seconds
+    setTimeout(() => el.remove(), 6000);
+}
+
+// Disable / re-enable the primary submit button and swap its label
+function setSubmitLoading(loading, label = 'Processing...', originalLabel = null) {
+    const btn = document.querySelector('#modalFooter .btn-primary');
+    if (!btn) return;
+    if (loading) {
+        btn._originalLabel = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = label;
+        btn.style.opacity = '0.75';
+    } else {
+        btn.disabled = false;
+        btn.textContent = originalLabel || btn._originalLabel || 'Submit';
+        btn.style.opacity = '1';
+    }
+}
+
+// Full-screen success — shown after modal closes
 function showSuccess(message) {
     showModal('Success!', `
-        <div style="text-align: center; padding: 32px;">
-            <div style="width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 50%; background: #dcfce7; display: flex; align-items: center; justify-content: center;">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2">
+        <div style="text-align:center;padding:32px;">
+            <div style="width:64px;height:64px;margin:0 auto 16px;border-radius:50%;
+                        background:#dcfce7;display:flex;align-items:center;justify-content:center;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
+                     stroke="#16a34a" stroke-width="2">
                     <polyline points="20 6 9 17 4 12"></polyline>
                 </svg>
             </div>
-            <p style="font-size: 16px; color: #0f172a;">${message}</p>
+            <p style="font-size:16px;color:#0f172a;">${message}</p>
         </div>
-    `, `<button onclick="closeModal(); window.location.reload();" class="btn-primary" style="width: 100%;">OK</button>`);
+    `, `<button onclick="closeModal();window.location.reload();"
+            class="btn-primary" style="width:100%;">OK</button>`);
 }
 
-// Error Message
+// Standalone error modal (used only for non-service errors e.g. routing)
 function showError(message) {
     showModal('Error', `
-        <div style="text-align: center; padding: 32px;">
-            <div style="width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 50%; background: #fee2e2; display: flex; align-items: center; justify-content: center;">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2">
+        <div style="text-align:center;padding:32px;">
+            <div style="width:64px;height:64px;margin:0 auto 16px;border-radius:50%;
+                        background:#fee2e2;display:flex;align-items:center;justify-content:center;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
+                     stroke="#dc2626" stroke-width="2">
                     <circle cx="12" cy="12" r="10"></circle>
                     <line x1="15" y1="9" x2="9" y2="15"></line>
                     <line x1="9" y1="9" x2="15" y2="15"></line>
                 </svg>
             </div>
-            <p style="font-size: 16px; color: #0f172a;">${message}</p>
+            <p style="font-size:16px;color:#0f172a;">${message}</p>
         </div>
-    `, `<button onclick="closeModal()" class="btn-primary" style="width: 100%;">Close</button>`);
-}
-
-// Loading State
-function showLoading(message = 'Processing...') {
-    showModal('Please Wait', `
-        <div style="text-align: center; padding: 32px;">
-            <div class="spinner"></div>
-            <p style="font-size: 16px; color: #64748b; margin-top: 16px;">${message}</p>
-        </div>
-    `, '');
+    `, `<button onclick="closeModal()" class="btn-primary" style="width:100%;">Close</button>`);
 }
 
 // ==================== MAIN MODAL ROUTER ====================
+
 function openModal(type) {
     const modalMap = {
-        'data': showDataModal,
-        'airtime': showAirtimeModal,
-        'electricity': showElectricityModal,
-        'tv': showTVModal,
-        'education': showEducationModal,
-        'sms': showSMSModal,
-        'swap': showSwapModal,
-        'rechargepin': showRechargePINModal,
-        'remita': showRemitaModal,
-        'alpha': showAlphaModal,
-        'fund': showFundModal,
-        'transfer': showTransferModal,
-        'withdraw': showWithdrawModal,
+        'data':            showDataModal,
+        'airtime':         showAirtimeModal,
+        'electricity':     showElectricityModal,
+        'tv':              showTVModal,
+        'education':       showEducationModal,
+        'sms':             showSMSModal,
+        'swap':            showSwapModal,
+        'rechargepin':     showRechargePINModal,
+        'remita':          showRemitaModal,
+        'alpha':           showAlphaModal,
+        'fund':            showFundModal,
+        'transfer':        showTransferModal,
+        'withdraw':        showWithdrawModal,
         'personaldetails': showPersonalDetailsModal,
-        'editprofile': showEditProfileModal,
-        'security': showSecurityModal,
-        'notifications': showNotificationsModal,
-        'devices': showDevicesModal,
-        'referral': showReferralModal,
-        'help': showHelpModal
+        'editprofile':     showEditProfileModal,
+        'security':        showSecurityModal,
+        'notifications':   showNotificationsModal,
+        'devices':         showDevicesModal,
+        'referral':        showReferralModal,
+        'help':            showHelpModal
     };
-
-    if (modalMap[type]) {
-        modalMap[type]();
-    } else {
-        showError('Service not available. Please try again later.');
-    }
+    if (modalMap[type]) modalMap[type]();
+    else showError('Service not available. Please try again later.');
 }
 
 // ==================== DATA MODAL ====================
+
 let selectedNetwork = 'mtn';
 let currentDataPlans = [];
 
 async function showDataModal() {
     selectedNetwork = 'mtn';
     currentDataPlans = [];
-    
-    const bodyHTML = `
+
+    showModal('Buy Data', `
         <div class="form-group">
             <label>Select Network</label>
             <div class="network-grid">
-                <button type="button" class="network-btn active" data-network="mtn" onclick="selectDataNetwork('mtn')" style="background: #FFCC00; color: #000;">MTN</button>
-                <button type="button" class="network-btn" data-network="airtel" onclick="selectDataNetwork('airtel')" style="background: #FF0000; color: #fff;">Airtel</button>
-                <button type="button" class="network-btn" data-network="glo" onclick="selectDataNetwork('glo')" style="background: #00C300; color: #fff;">Glo</button>
-                <button type="button" class="network-btn" data-network="9mobile" onclick="selectDataNetwork('9mobile')" style="background: #006400; color: #fff;">9mobile</button>
+                <button type="button" class="network-btn active" data-network="mtn"
+                    onclick="selectDataNetwork('mtn')"
+                    style="background:#FFCC00;color:#000;">MTN</button>
+                <button type="button" class="network-btn" data-network="airtel"
+                    onclick="selectDataNetwork('airtel')"
+                    style="background:#FF0000;color:#fff;">Airtel</button>
+                <button type="button" class="network-btn" data-network="glo"
+                    onclick="selectDataNetwork('glo')"
+                    style="background:#00C300;color:#fff;">Glo</button>
+                <button type="button" class="network-btn" data-network="9mobile"
+                    onclick="selectDataNetwork('9mobile')"
+                    style="background:#006400;color:#fff;">9mobile</button>
             </div>
         </div>
         <div class="form-group">
             <label>Phone Number</label>
-            <input type="tel" id="dataPhone" placeholder="08012345678" maxlength="11" class="form-input">
+            <input type="tel" id="dataPhone" placeholder="08012345678"
+                   maxlength="11" class="form-input">
         </div>
         <div class="form-group">
             <label>Select Plan</label>
@@ -147,294 +198,181 @@ async function showDataModal() {
         </div>
         <div class="form-group">
             <label>Transaction PIN</label>
-            <input type="password" id="dataPin" placeholder="Enter 4-digit PIN" maxlength="4" class="form-input">
+            <input type="password" id="dataPin" placeholder="Enter 4-digit PIN"
+                   maxlength="4" class="form-input">
         </div>
-    `;
-    
-    const footerHTML = `
+    `, `
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
         <button onclick="submitDataPurchase()" class="btn-primary">Purchase Data</button>
-    `;
-    
-    showModal('Buy Data', bodyHTML, footerHTML);
-    
-    // Load initial plans for MTN
+    `);
+
     await loadDataPlans('mtn');
 }
 
 function selectDataNetwork(network) {
     selectedNetwork = network;
-    // Update active state
     document.querySelectorAll('.network-btn').forEach(btn => {
         btn.classList.remove('active');
-        // Reset styles
-        if (btn.dataset.network === 'mtn') btn.style.cssText = 'background: #FFCC00; color: #000;';
-        if (btn.dataset.network === 'airtel') btn.style.cssText = 'background: #FF0000; color: #fff;';
-        if (btn.dataset.network === 'glo') btn.style.cssText = 'background: #00C300; color: #fff;';
-        if (btn.dataset.network === '9mobile') btn.style.cssText = 'background: #006400; color: #fff;';
+        if (btn.dataset.network === 'mtn')     btn.style.cssText = 'background:#FFCC00;color:#000;';
+        if (btn.dataset.network === 'airtel')  btn.style.cssText = 'background:#FF0000;color:#fff;';
+        if (btn.dataset.network === 'glo')     btn.style.cssText = 'background:#00C300;color:#fff;';
+        if (btn.dataset.network === '9mobile') btn.style.cssText = 'background:#006400;color:#fff;';
     });
-    
-    // Add active class to selected
     const selectedBtn = document.querySelector(`[data-network="${network}"]`);
-    selectedBtn.classList.add('active');
-    // Highlight active button
-    selectedBtn.style.cssText += '; border: 3px solid white; box-shadow: 0 0 0 2px #1e3d5c;';
-    
-    // Load plans for selected network
+    if (selectedBtn) {
+        selectedBtn.classList.add('active');
+        selectedBtn.style.cssText += ';border:3px solid white;box-shadow:0 0 0 2px #1e3d5c;';
+    }
     loadDataPlans(network);
 }
-
-// Maps UI network name → nellobytes MOBILE_NETWORK key
-const NELLO_NETWORK_KEY = {
-    'mtn':     'MTN',
-    'glo':     'Glo',
-    '9mobile': 'm_9mobile',
-    'airtel':  'Airtel'
-};
 
 async function loadDataPlans(network) {
     const planSelect = document.getElementById('dataPlan');
     if (!planSelect) return;
-
     planSelect.innerHTML = '<option value="">Loading plans...</option>';
-
     try {
         const response = await api.getDataPlans(network);
-        console.log('[Data Plans] raw response:', response);
-
         let plans = [];
-
-        // ── SMEPlug structure: response.data.mtn[] / response.data.glo[] etc.
         const networkKey = network.toLowerCase();
-        if (response.data && Array.isArray(response.data[networkKey])) {
-            plans = response.data[networkKey].filter(p => p.price > 0); // skip price:0 (unavailable)
-        }
-
-        // ── Nellobytes fallback (old structure, keep in case API switches back)
+        if (response.data && Array.isArray(response.data[networkKey]))
+            plans = response.data[networkKey].filter(p => p.price > 0);
         if (!plans.length && response.data?.MOBILE_NETWORK) {
-            const nelloKey = { mtn: 'MTN', glo: 'Glo', '9mobile': 'm_9mobile', airtel: 'Airtel' }[networkKey] || network;
-            const networkData = response.data.MOBILE_NETWORK[nelloKey];
-            if (Array.isArray(networkData) && networkData[0]?.PRODUCT) {
-                plans = networkData[0].PRODUCT.map(p => ({
-                    id:       p.PRODUCT_ID,
-                    planName: p.PRODUCT_NAME,
-                    price:    p.PRODUCT_AMOUNT
-                }));
-            }
+            const nelloKey = { mtn:'MTN', glo:'Glo', '9mobile':'m_9mobile', airtel:'Airtel' }[networkKey] || network;
+            const nd = response.data.MOBILE_NETWORK[nelloKey];
+            if (Array.isArray(nd) && nd[0]?.PRODUCT)
+                plans = nd[0].PRODUCT.map(p => ({ id: p.PRODUCT_ID, planName: p.PRODUCT_NAME, price: p.PRODUCT_AMOUNT }));
         }
-
-        // ── flat array fallback
-        if (!plans.length && Array.isArray(response.data)) {
+        if (!plans.length && Array.isArray(response.data))
             plans = response.data.filter(p => p.price > 0);
-        }
-
         currentDataPlans = plans;
-        console.log('[Data Plans] extracted plans:', plans.length, 'plans');
-        updateDataPlanDropdown();
-
-    } catch (error) {
-        console.error('[Data Plans] error:', error);
-        if (planSelect) {
-            planSelect.innerHTML = '<option value="">Failed to load plans. Please try again.</option>';
+        if (!plans.length) {
+            planSelect.innerHTML = '<option value="">No plans available for this network</option>';
+            return;
         }
-    }
-}
-
-function updateDataPlanDropdown() {
-    const planSelect = document.getElementById('dataPlan');
-    if (!planSelect) return;
-
-    if (!currentDataPlans.length) {
-        planSelect.innerHTML = '<option value="">No plans available for this network</option>';
-        return;
-    }
-
-    planSelect.innerHTML = '<option value="">Choose a plan</option>' +
-        currentDataPlans.map((plan, index) => {
-            const name  = plan.planName || plan.size || plan.PRODUCT_NAME || 'Data Plan';
-            const price = plan.price    || plan.PRODUCT_AMOUNT || 0;
-            return `<option value="${index}">${name} — ₦${Math.round(Number(price)).toLocaleString()}</option>`;
-        }).join('');
-}
-
-function updateDataPlanDropdown() {
-    const planSelect = document.getElementById('dataPlan');
-    if (!planSelect) return;
-
-    if (currentDataPlans.length > 0) {
         planSelect.innerHTML = '<option value="">Choose a plan</option>' +
-            currentDataPlans.map((plan, index) => {
+            plans.map((plan, i) => {
                 const name   = plan.PRODUCT_NAME || plan.planName || plan.name || 'Data Plan';
                 const amount = plan.PRODUCT_AMOUNT || plan.sellingPrice || plan.price || 0;
-                const label  = `${name} — ₦${Math.round(Number(amount)).toLocaleString()}`;
-                return `<option value="${index}">${label}</option>`;
+                return `<option value="${i}">${name} — ₦${Math.round(Number(amount)).toLocaleString()}</option>`;
             }).join('');
-    } else {
-        planSelect.innerHTML = '<option value="">No plans available for this network</option>';
+    } catch (error) {
+        if (planSelect) planSelect.innerHTML = '<option value="">Failed to load plans. Please try again.</option>';
     }
 }
 
 async function submitDataPurchase() {
-    const phone = document.getElementById('dataPhone').value.trim();
+    const phone     = document.getElementById('dataPhone').value.trim();
     const planIndex = document.getElementById('dataPlan').value;
-    const pin = document.getElementById('dataPin').value.trim();
+    const pin       = document.getElementById('dataPin').value.trim();
 
-    if (!phone || !/^\d{11}$/.test(phone)) {
-        showError('Please enter a valid 11-digit phone number'); return;
-    }
-    if (planIndex === '' || planIndex === null || planIndex === undefined) {
-        showError('Please select a data plan'); return;
-    }
-    if (!currentDataPlans || currentDataPlans.length === 0) {
-        showError('No plans loaded. Please close and try again.'); return;
-    }
+    if (!phone || !/^\d{11}$/.test(phone))                { showInlineError('Please enter a valid 11-digit phone number'); return; }
+    if (planIndex === '' || planIndex === null)            { showInlineError('Please select a data plan'); return; }
+    if (!currentDataPlans || !currentDataPlans.length)    { showInlineError('No plans loaded. Please close and try again.'); return; }
     const selectedPlan = currentDataPlans[planIndex];
-    if (!selectedPlan) {
-        showError('Invalid plan selected. Please try again.'); return;
-    }
-    console.log('[Data Purchase] selected plan object:', selectedPlan);
-
-    // Get the amount from the selected plan
+    if (!selectedPlan)                                    { showInlineError('Invalid plan selected. Please try again.'); return; }
     const amount = selectedPlan.PRODUCT_AMOUNT || selectedPlan.sellingPrice || selectedPlan.price || 0;
-    if (!amount || amount <= 0) {
-        showError('Could not determine plan amount. Please try again.');
-        return;
-    }
-
-    // Nellobytes PRODUCT_ID e.g. "1000.0" → send "1000" as dataPlan
-    const rawId = selectedPlan.PRODUCT_ID || selectedPlan.planId || selectedPlan.planCode || selectedPlan._id || selectedPlan.id;
-    console.log('[Data Purchase] raw PRODUCT_ID:', rawId);
-    if (!rawId) {
-        showError('Could not identify selected plan. Please try again.'); return;
-    }
-    // Strip trailing ".0" for whole-number IDs; keep decimals like "1000.01" intact
+    if (!amount || amount <= 0)                           { showInlineError('Could not determine plan amount. Please try again.'); return; }
+    const rawId  = selectedPlan.PRODUCT_ID || selectedPlan.planId || selectedPlan.planCode || selectedPlan._id || selectedPlan.id;
+    if (!rawId)                                           { showInlineError('Could not identify selected plan. Please try again.'); return; }
     const planId = String(rawId).replace(/\.0$/, '');
-    if (!pin || !/^\d{4}$/.test(pin)) {
-        showError('Please enter your 4-digit transaction PIN'); return;
-    }
+    if (!pin || !/^\d{4}$/.test(pin))                     { showInlineError('Please enter your 4-digit transaction PIN'); return; }
 
+    setSubmitLoading(true, 'Purchasing...');
     try {
-        showLoading('Purchasing data...');
-        // Pass the amount to the API
-        const response = await api.purchaseData(phone, selectedNetwork, planId, pin, amount);
+        await api.purchaseData(phone, selectedNetwork, planId, pin, amount);
         closeModal();
         setTimeout(() => {
             const planName = selectedPlan.PRODUCT_NAME || selectedPlan.planName || 'Data';
-            const formattedAmount = `₦${Math.round(Number(amount)).toLocaleString()}`;
-            showSuccess(planName + ' purchased successfully for ' + phone + '! ✅\nAmount: ' + formattedAmount);
+            showSuccess(`${planName} purchased successfully for ${phone}! ✅<br>Amount: ₦${Math.round(Number(amount)).toLocaleString()}`);
         }, 300);
     } catch (error) {
-        closeModal();
-        setTimeout(() => {
-            const msg = (error.message || '').toLowerCase();
-            if (msg.includes('pin')) showError('Invalid transaction PIN. Please try again.');
-            else if (msg.includes('balance') || msg.includes('insufficient')) showError('Insufficient wallet balance. Please fund your wallet.');
-            else showError(error.message || 'Purchase failed. Please try again.');
-        }, 300);
+        setSubmitLoading(false, '', 'Purchase Data');
+        showInlineError(error.message || 'Purchase failed. Please try again.');
     }
 }
 
 // ==================== AIRTIME MODAL ====================
+
 function showAirtimeModal() {
-    const bodyHTML = `
+    showModal('Buy Airtime', `
         <div class="form-group">
             <label>Select Network</label>
             <div class="network-grid">
-                <button type="button" class="network-btn-air active" data-network="mtn" onclick="selectAirtimeNetwork('mtn')" style="background: #FFCC00; color: #000;">MTN</button>
-                <button type="button" class="network-btn-air" data-network="airtel" onclick="selectAirtimeNetwork('airtel')" style="background: #FF0000; color: #fff;">Airtel</button>
-                <button type="button" class="network-btn-air" data-network="glo" onclick="selectAirtimeNetwork('glo')" style="background: #00C300; color: #fff;">Glo</button>
-                <button type="button" class="network-btn-air" data-network="9mobile" onclick="selectAirtimeNetwork('9mobile')" style="background: #006400; color: #fff;">9mobile</button>
+                <button type="button" class="network-btn-air active" data-network="mtn"
+                    onclick="selectAirtimeNetwork('mtn')"
+                    style="background:#FFCC00;color:#000;">MTN</button>
+                <button type="button" class="network-btn-air" data-network="airtel"
+                    onclick="selectAirtimeNetwork('airtel')"
+                    style="background:#FF0000;color:#fff;">Airtel</button>
+                <button type="button" class="network-btn-air" data-network="glo"
+                    onclick="selectAirtimeNetwork('glo')"
+                    style="background:#00C300;color:#fff;">Glo</button>
+                <button type="button" class="network-btn-air" data-network="9mobile"
+                    onclick="selectAirtimeNetwork('9mobile')"
+                    style="background:#006400;color:#fff;">9mobile</button>
             </div>
         </div>
         <div class="form-group">
             <label>Phone Number</label>
-            <input type="tel" id="airtimePhone" placeholder="08012345678" maxlength="11" class="form-input">
+            <input type="tel" id="airtimePhone" placeholder="08012345678"
+                   maxlength="11" class="form-input">
         </div>
         <div class="form-group">
             <label>Amount</label>
-            <input type="number" id="airtimeAmount" placeholder="Enter amount (min ₦50)" min="50" class="form-input">
+            <input type="number" id="airtimeAmount" placeholder="Enter amount (min ₦50)"
+                   min="50" class="form-input">
         </div>
         <div class="form-group">
             <label>Transaction PIN</label>
-            <input type="password" id="airtimePin" placeholder="Enter 4-digit PIN" maxlength="4" class="form-input">
+            <input type="password" id="airtimePin" placeholder="Enter 4-digit PIN"
+                   maxlength="4" class="form-input">
         </div>
-    `;
-    
-    const footerHTML = `
+    `, `
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
         <button onclick="submitAirtimePurchase()" class="btn-primary">Purchase Airtime</button>
-    `;
-    
-    showModal('Buy Airtime', bodyHTML, footerHTML);
+    `);
     window.selectedAirtimeNetwork = 'mtn';
 }
 
 function selectAirtimeNetwork(network) {
     window.selectedAirtimeNetwork = network;
     document.querySelectorAll('.network-btn-air').forEach(btn => btn.classList.remove('active'));
-    document.querySelector(`.network-btn-air[data-network="${network}"]`).classList.add('active');
+    const btn = document.querySelector(`.network-btn-air[data-network="${network}"]`);
+    if (btn) btn.classList.add('active');
 }
 
 async function submitAirtimePurchase() {
-    const phone = document.getElementById('airtimePhone').value;
+    const phone  = document.getElementById('airtimePhone').value.trim();
     const amount = parseInt(document.getElementById('airtimeAmount').value);
-    const pin = document.getElementById('airtimePin').value;
-    
-    // PIN Validation
-    if (!pin || pin.length !== 4) {
-        showError('Please enter your 4-digit transaction PIN');
-        return;
-    }
-    if (!/^\d+$/.test(pin)) {
-        showError('Transaction PIN must contain only numbers');
-        return;
-    }
-    
-    if (!phone || phone.length !== 11) {
-        showError('Please enter a valid 11-digit phone number');
-        return;
-    }
-    if (!amount || amount < 50) {
-        showError('Amount must be at least ₦50');
-        return;
-    }
-    
+    const pin    = document.getElementById('airtimePin').value.trim();
+
+    if (!pin || !/^\d{4}$/.test(pin))      { showInlineError('Please enter your 4-digit transaction PIN'); return; }
+    if (!phone || phone.length !== 11)     { showInlineError('Please enter a valid 11-digit phone number'); return; }
+    if (!amount || amount < 50)            { showInlineError('Amount must be at least ₦50'); return; }
+
+    setSubmitLoading(true, 'Purchasing...');
     try {
-        showLoading('Purchasing airtime...');
-        const response = await api.purchaseAirtime(phone, window.selectedAirtimeNetwork, amount, pin);
-        
+        await api.purchaseAirtime(phone, window.selectedAirtimeNetwork, amount, pin);
         closeModal();
-        setTimeout(() => {
-            showSuccess(`
-                <div style="text-align: center;">
-                    <p style="font-size: 16px; margin-bottom: 8px;">Airtime Purchase Successful! 📱</p>
-                    <p style="font-size: 14px; color: #64748b;">₦${amount} airtime sent to ${phone}</p>
-                </div>
-            `);
-        }, 300);
+        setTimeout(() => showSuccess(`
+            <div style="text-align:center;">
+                <p style="font-size:16px;margin-bottom:8px;">Airtime Purchase Successful! 📱</p>
+                <p style="font-size:14px;color:#64748b;">₦${amount} airtime sent to ${phone}</p>
+            </div>
+        `), 300);
     } catch (error) {
-        closeModal();
-        setTimeout(() => {
-            const errorMsg = error.message || '';
-            
-            if (errorMsg.toLowerCase().includes('pin')) {
-                showError('Invalid transaction PIN. Please try again.');
-            } else if (errorMsg.toLowerCase().includes('balance') || errorMsg.toLowerCase().includes('insufficient')) {
-                showError('Insufficient wallet balance. Please fund your wallet.');
-            } else {
-                showError(errorMsg || 'Airtime purchase failed. Please try again.');
-            }
-        }, 300);
+        setSubmitLoading(false, '', 'Purchase Airtime');
+        showInlineError(error.message || 'Airtime purchase failed. Please try again.');
     }
 }
 
 // ==================== ELECTRICITY MODAL ====================
-let _elecVerified = null; // stores verified customer info
+
+let _elecVerified = null;
 
 function showElectricityModal() {
     _elecVerified = null;
-
-    const bodyHTML = `
+    showModal('Pay Electricity', `
         <div id="elecStep1">
             <div class="form-group">
                 <label>Select Disco</label>
@@ -456,11 +394,13 @@ function showElectricityModal() {
                 <label>Meter Type</label>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                     <button type="button" id="prepaidBtn" onclick="selectMeterType('prepaid')"
-                        style="padding:12px;border:2px solid #1e3d5c;border-radius:8px;background:#1e3d5c;color:white;font-weight:600;cursor:pointer;">
+                        style="padding:12px;border:2px solid #1e3d5c;border-radius:8px;
+                               background:#1e3d5c;color:white;font-weight:600;cursor:pointer;">
                         Prepaid
                     </button>
                     <button type="button" id="postpaidBtn" onclick="selectMeterType('postpaid')"
-                        style="padding:12px;border:2px solid #e2e8f0;border-radius:8px;background:white;color:#64748b;font-weight:600;cursor:pointer;">
+                        style="padding:12px;border:2px solid #e2e8f0;border-radius:8px;
+                               background:white;color:#64748b;font-weight:600;cursor:pointer;">
                         Postpaid
                     </button>
                 </div>
@@ -469,67 +409,59 @@ function showElectricityModal() {
                 <label>Meter Number</label>
                 <input type="text" id="meterNumber" placeholder="Enter meter number" class="form-input">
             </div>
-            <div id="elecVerifyResult" style="display:none;"></div>
         </div>
-
         <div id="elecStep2" style="display:none;">
-            <div id="elecCustomerInfo" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px;margin-bottom:16px;"></div>
+            <div id="elecCustomerInfo"
+                 style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;
+                        padding:14px;margin-bottom:16px;"></div>
             <div class="form-group">
                 <label>Amount (₦)</label>
-                <input type="number" id="electricityAmount" placeholder="Min ₦500" min="500" class="form-input">
+                <input type="number" id="electricityAmount" placeholder="Min ₦500"
+                       min="500" class="form-input">
             </div>
             <div class="form-group">
                 <label>Phone Number</label>
-                <input type="tel" id="electricityPhone" placeholder="08012345678" maxlength="11" class="form-input">
+                <input type="tel" id="electricityPhone" placeholder="08012345678"
+                       maxlength="11" class="form-input">
             </div>
             <div class="form-group">
                 <label>Transaction PIN</label>
-                <input type="password" id="electricityPin" placeholder="Enter 4-digit PIN" maxlength="4" class="form-input">
+                <input type="password" id="electricityPin" placeholder="Enter 4-digit PIN"
+                       maxlength="4" class="form-input">
             </div>
         </div>
-    `;
-
-    const footerHTML = `
+    `, `
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
         <button id="elecPrimaryBtn" onclick="handleElectricityStep()" class="btn-primary">Verify Meter</button>
-    `;
-
-    showModal('Pay Electricity', bodyHTML, footerHTML);
+    `);
     window._elecMeterType = 'prepaid';
 }
 
 function selectMeterType(type) {
     window._elecMeterType = type;
-    const prepaidBtn  = document.getElementById('prepaidBtn');
-    const postpaidBtn = document.getElementById('postpaidBtn');
-    const activeStyle   = 'padding:12px;border:2px solid #1e3d5c;border-radius:8px;background:#1e3d5c;color:white;font-weight:600;cursor:pointer;';
-    const inactiveStyle = 'padding:12px;border:2px solid #e2e8f0;border-radius:8px;background:white;color:#64748b;font-weight:600;cursor:pointer;';
-    if (type === 'prepaid')  { prepaidBtn.style.cssText = activeStyle;  postpaidBtn.style.cssText = inactiveStyle; }
-    else                     { postpaidBtn.style.cssText = activeStyle; prepaidBtn.style.cssText  = inactiveStyle; }
+    const active   = 'padding:12px;border:2px solid #1e3d5c;border-radius:8px;background:#1e3d5c;color:white;font-weight:600;cursor:pointer;';
+    const inactive = 'padding:12px;border:2px solid #e2e8f0;border-radius:8px;background:white;color:#64748b;font-weight:600;cursor:pointer;';
+    document.getElementById('prepaidBtn').style.cssText  = type === 'prepaid'  ? active : inactive;
+    document.getElementById('postpaidBtn').style.cssText = type === 'postpaid' ? active : inactive;
 }
 
 async function handleElectricityStep() {
-    if (!_elecVerified) {
-        await verifyMeterNumber();
-    } else {
-        await submitElectricityPayment();
-    }
+    if (!_elecVerified) await verifyMeterNumber();
+    else                await submitElectricityPayment();
 }
 
 async function verifyMeterNumber() {
-    const disco      = document.getElementById('electricityDisco').value;
-    const meter      = document.getElementById('meterNumber').value.trim();
-    const meterType  = window._elecMeterType || 'prepaid';
+    const disco     = document.getElementById('electricityDisco').value;
+    const meter     = document.getElementById('meterNumber').value.trim();
+    const meterType = window._elecMeterType || 'prepaid';
 
-    if (!meter) { showError('Please enter meter number'); return; }
+    if (!meter) { showInlineError('Please enter meter number'); return; }
 
     const btn = document.getElementById('elecPrimaryBtn');
     btn.disabled = true; btn.textContent = 'Verifying...';
 
     try {
         const response = await api.verifyElectricityCustomer(meter, disco, meterType);
-        console.log('[Electricity] verify response:', response);
-
         const customer = response.data?.customer || response.data || response;
         const name     = customer.customerName || customer.name || customer.accountName || 'Customer Verified';
         const address  = customer.customerAddress || customer.address || '';
@@ -537,33 +469,30 @@ async function verifyMeterNumber() {
 
         _elecVerified = { meter, disco, meterType, customerName: name };
 
-        // Show customer info
         document.getElementById('elecCustomerInfo').innerHTML = `
             <div style="display:flex;align-items:center;gap:10px;">
-                <div style="width:36px;height:36px;background:#16a34a;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                <div style="width:36px;height:36px;background:#16a34a;border-radius:50%;
+                            display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                         stroke="white" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                 </div>
                 <div>
                     <p style="font-weight:700;color:#15803d;font-size:14px;">${name}</p>
                     ${address ? `<p style="color:#64748b;font-size:12px;">${address}</p>` : ''}
-                    <p style="color:#64748b;font-size:12px;">Meter: ${acctNum} · ${meterType.charAt(0).toUpperCase()+meterType.slice(1)}</p>
+                    <p style="color:#64748b;font-size:12px;">
+                        Meter: ${acctNum} · ${meterType.charAt(0).toUpperCase() + meterType.slice(1)}
+                    </p>
                 </div>
             </div>
         `;
 
-        // Switch to step 2
         document.getElementById('elecStep1').style.display = 'none';
         document.getElementById('elecStep2').style.display = 'block';
         btn.disabled = false; btn.textContent = 'Pay Now';
         document.getElementById('electricityAmount').focus();
-
     } catch (error) {
         btn.disabled = false; btn.textContent = 'Verify Meter';
-        const result = document.getElementById('elecVerifyResult');
-        result.style.display = 'block';
-        result.innerHTML = `<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:12px;color:#dc2626;font-size:13px;">
-            ❌ ${error.message || 'Could not verify meter. Please check the number and try again.'}
-        </div>`;
+        showInlineError(error.message || 'Could not verify meter. Please check the number and try again.');
     }
 }
 
@@ -572,12 +501,14 @@ async function submitElectricityPayment() {
     const phone  = document.getElementById('electricityPhone').value.trim();
     const pin    = document.getElementById('electricityPin').value.trim();
 
-    if (!amount || amount < 500) { showError('Amount must be at least ₦500'); return; }
-    if (!phone || phone.length !== 11) { showError('Please enter a valid 11-digit phone number'); return; }
-    if (!pin || !/^\d{4}$/.test(pin)) { showError('Please enter your 4-digit transaction PIN'); return; }
+    if (!amount || amount < 500)       { showInlineError('Amount must be at least ₦500'); return; }
+    if (!phone || phone.length !== 11) { showInlineError('Please enter a valid 11-digit phone number'); return; }
+    if (!pin || !/^\d{4}$/.test(pin))  { showInlineError('Please enter your 4-digit transaction PIN'); return; }
+
+    const btn = document.getElementById('elecPrimaryBtn');
+    btn.disabled = true; btn.textContent = 'Processing...';
 
     try {
-        showLoading('Processing payment...');
         const response = await api.purchaseElectricity(
             _elecVerified.meter, _elecVerified.disco, amount, phone, pin, _elecVerified.meterType
         );
@@ -587,8 +518,11 @@ async function submitElectricityPayment() {
             showSuccess(`
                 <div style="text-align:center;">
                     <p style="font-size:16px;margin-bottom:6px;">Payment Successful! 💡</p>
-                    <p style="font-size:14px;color:#64748b;">₦${amount.toLocaleString()} credited to meter ${_elecVerified.meter}</p>
-                    ${token ? `<div style="margin-top:12px;padding:10px;background:#f0fdf4;border-radius:8px;">
+                    <p style="font-size:14px;color:#64748b;">
+                        ₦${amount.toLocaleString()} credited to meter ${_elecVerified.meter}
+                    </p>
+                    ${token ? `
+                    <div style="margin-top:12px;padding:10px;background:#f0fdf4;border-radius:8px;">
                         <p style="font-size:11px;color:#64748b;margin-bottom:4px;">TOKEN</p>
                         <p style="font-size:18px;font-weight:700;color:#15803d;letter-spacing:2px;">${token}</p>
                     </div>` : ''}
@@ -597,36 +531,37 @@ async function submitElectricityPayment() {
             _elecVerified = null;
         }, 300);
     } catch (error) {
-        closeModal();
-        setTimeout(() => {
-            const msg = (error.message || '').toLowerCase();
-            if (msg.includes('pin'))     showError('Invalid transaction PIN. Please try again.');
-            else if (msg.includes('balance')) showError('Insufficient wallet balance.');
-            else showError(error.message || 'Payment failed. Please try again.');
-        }, 300);
+        btn.disabled = false; btn.textContent = 'Pay Now';
+        showInlineError(error.message || 'Payment failed. Please try again.');
     }
 }
 
 // ==================== TV MODAL ====================
+
 let tvPlans = [];
 
 async function showTVModal() {
     tvPlans = [];
-
-    const bodyHTML = `
+    showModal('Cable TV Subscription', `
         <div class="form-group">
             <label>Select Provider</label>
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px;">
-                <button type="button" class="tv-provider-btn" data-provider="dstv" onclick="selectTVProvider('dstv')"
-                    style="padding:10px 6px;border:2px solid #1e3d5c;border-radius:8px;background:#1e3d5c;color:white;font-weight:700;font-size:13px;cursor:pointer;">
+                <button type="button" class="tv-provider-btn" data-provider="dstv"
+                    onclick="selectTVProvider('dstv')"
+                    style="padding:10px 6px;border:2px solid #1e3d5c;border-radius:8px;
+                           background:#1e3d5c;color:white;font-weight:700;font-size:13px;cursor:pointer;">
                     DSTV
                 </button>
-                <button type="button" class="tv-provider-btn" data-provider="gotv" onclick="selectTVProvider('gotv')"
-                    style="padding:10px 6px;border:2px solid #e2e8f0;border-radius:8px;background:white;color:#64748b;font-weight:700;font-size:13px;cursor:pointer;">
+                <button type="button" class="tv-provider-btn" data-provider="gotv"
+                    onclick="selectTVProvider('gotv')"
+                    style="padding:10px 6px;border:2px solid #e2e8f0;border-radius:8px;
+                           background:white;color:#64748b;font-weight:700;font-size:13px;cursor:pointer;">
                     GOTV
                 </button>
-                <button type="button" class="tv-provider-btn" data-provider="startimes" onclick="selectTVProvider('startimes')"
-                    style="padding:10px 6px;border:2px solid #e2e8f0;border-radius:8px;background:white;color:#64748b;font-weight:700;font-size:13px;cursor:pointer;">
+                <button type="button" class="tv-provider-btn" data-provider="startimes"
+                    onclick="selectTVProvider('startimes')"
+                    style="padding:10px 6px;border:2px solid #e2e8f0;border-radius:8px;
+                           background:white;color:#64748b;font-weight:700;font-size:13px;cursor:pointer;">
                     Startimes
                 </button>
             </div>
@@ -640,7 +575,9 @@ async function showTVModal() {
             <select id="tvPlan" class="form-input">
                 <option value="">Loading packages...</option>
             </select>
-            <div id="tvPlanPrice" style="display:none;margin-top:6px;padding:8px 12px;background:#f0fdf4;border-radius:6px;color:#15803d;font-size:13px;font-weight:600;"></div>
+            <div id="tvPlanPrice"
+                 style="display:none;margin-top:6px;padding:8px 12px;background:#f0fdf4;
+                        border-radius:6px;color:#15803d;font-size:13px;font-weight:600;"></div>
         </div>
         <div class="form-group">
             <label>Duration (Months)</label>
@@ -654,16 +591,13 @@ async function showTVModal() {
         </div>
         <div class="form-group">
             <label>Transaction PIN</label>
-            <input type="password" id="tvPin" placeholder="Enter 4-digit PIN" maxlength="4" class="form-input">
+            <input type="password" id="tvPin" placeholder="Enter 4-digit PIN"
+                   maxlength="4" class="form-input">
         </div>
-    `;
-
-    const footerHTML = `
+    `, `
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
         <button onclick="submitTVSubscription()" class="btn-primary">Subscribe</button>
-    `;
-
-    showModal('Cable TV Subscription', bodyHTML, footerHTML);
+    `);
     window._tvProvider = 'dstv';
     await loadTVPlans('dstv');
 }
@@ -683,72 +617,39 @@ async function loadTVPlans(provider) {
     const planSelect = document.getElementById('tvPlan');
     const priceTag   = document.getElementById('tvPlanPrice');
     if (!planSelect) return;
-
     planSelect.innerHTML = '<option value="">Loading packages...</option>';
     if (priceTag) priceTag.style.display = 'none';
-
     try {
         const response = await api.getCablePlans(provider);
-        console.log('[Cable TV] plans response:', response);
-
         let plans = [];
-
-        // Check if the response has the expected structure
         if (response.data?.TV_ID) {
-            // Map provider names to the keys in the response
-            const providerMap = {
-                'dstv': 'DStv',
-                'gotv': 'GOtv',
-                'startimes': 'Startimes',
-                'showmax': 'Showmax'
-            };
-            
-            const responseProviderKey = providerMap[provider.toLowerCase()];
-            
-            if (responseProviderKey && response.data.TV_ID[responseProviderKey]) {
-                const providerData = response.data.TV_ID[responseProviderKey];
-                if (Array.isArray(providerData) && providerData[0]?.PRODUCT) {
-                    plans = providerData[0].PRODUCT;
-                }
+            const providerMap = { dstv:'DStv', gotv:'GOtv', startimes:'Startimes', showmax:'Showmax' };
+            const key = providerMap[provider.toLowerCase()];
+            if (key && response.data.TV_ID[key]) {
+                const d = response.data.TV_ID[key];
+                if (Array.isArray(d) && d[0]?.PRODUCT) plans = d[0].PRODUCT;
             }
         }
-        
-        // Fallback: try alternative paths if the above didn't work
         if (!plans.length) {
-            // Try other possible paths
             const cableData = response.data?.CABLE_TV || response.data?.cable || response.data?.plans;
             if (cableData) {
-                const providerKey = provider.toUpperCase();
-                const providerData = cableData[providerKey] || cableData[provider] || cableData[provider.toLowerCase()];
-                if (Array.isArray(providerData) && providerData[0]?.PRODUCT) {
-                    plans = providerData[0].PRODUCT;
-                } else if (Array.isArray(providerData)) {
-                    plans = providerData;
-                }
+                const pd = cableData[provider.toUpperCase()] || cableData[provider] || cableData[provider.toLowerCase()];
+                if (Array.isArray(pd) && pd[0]?.PRODUCT) plans = pd[0].PRODUCT;
+                else if (Array.isArray(pd)) plans = pd;
             }
         }
-
-        // Final fallback: flat array at response.data
-        if (!plans.length && Array.isArray(response.data)) {
-            plans = response.data;
-        }
-
+        if (!plans.length && Array.isArray(response.data)) plans = response.data;
         tvPlans = plans;
-        console.log('[Cable TV] extracted plans:', plans);
-
         if (plans.length > 0) {
             planSelect.innerHTML = '<option value="">Choose package</option>' +
                 plans.map((plan, idx) => {
-                    // Note: In your sample, fields are PACKAGE_NAME, PACKAGE_AMOUNT, PACKAGE_ID
-                    // (not PRODUCT_NAME, PRODUCT_AMOUNT, PRODUCT_CODE)
                     const name   = plan.PACKAGE_NAME || plan.PRODUCT_NAME || plan.planName || plan.name || 'Package';
                     const amount = plan.PACKAGE_AMOUNT || plan.PRODUCT_AMOUNT || plan.sellingPrice || plan.price || plan.amount || 0;
                     const planId = plan.PACKAGE_ID || plan.PRODUCT_CODE || plan.planCode || plan._id || plan.id || plan.planId;
-                    
-                    return `<option value="${idx}" data-amount="${Math.round(Number(amount))}" data-plan-id="${planId}">${name} — ₦${Math.round(Number(amount)).toLocaleString()}</option>`;
+                    return `<option value="${idx}" data-amount="${Math.round(Number(amount))}" data-plan-id="${planId}">
+                        ${name} — ₦${Math.round(Number(amount)).toLocaleString()}
+                    </option>`;
                 }).join('');
-
-            // Show price on select
             planSelect.onchange = () => {
                 const opt = planSelect.options[planSelect.selectedIndex];
                 const amt = opt?.dataset?.amount;
@@ -764,8 +665,7 @@ async function loadTVPlans(provider) {
             planSelect.innerHTML = '<option value="">No packages available for this provider</option>';
         }
     } catch (error) {
-        console.error('[Cable TV] error:', error);
-        planSelect.innerHTML = '<option value="">Failed to load packages. Please try again.</option>';
+        if (planSelect) planSelect.innerHTML = '<option value="">Failed to load packages. Please try again.</option>';
     }
 }
 
@@ -776,26 +676,19 @@ async function submitTVSubscription() {
     const months    = parseInt(document.getElementById('tvMonths').value) || 1;
     const pin       = document.getElementById('tvPin').value.trim();
 
-    if (!smartCard)                        { showError('Please enter smart card / IUC number'); return; }
-    if (planIdx === '' || planIdx === null) { showError('Please select a package'); return; }
-    if (!tvPlans.length)                   { showError('No packages loaded. Please try again.'); return; }
-    if (!pin || !/^\d{4}$/.test(pin))      { showError('Please enter your 4-digit transaction PIN'); return; }
+    if (!smartCard)                         { showInlineError('Please enter smart card / IUC number'); return; }
+    if (planIdx === '' || planIdx === null)  { showInlineError('Please select a package'); return; }
+    if (!tvPlans.length)                    { showInlineError('No packages loaded. Please try again.'); return; }
+    if (!pin || !/^\d{4}$/.test(pin))       { showInlineError('Please enter your 4-digit transaction PIN'); return; }
 
     const plan = tvPlans[planIdx];
-    if (!plan) { showError('Invalid package selected'); return; }
-
-    // Use the correct field name from your sample response
+    if (!plan) { showInlineError('Invalid package selected'); return; }
     const planId = plan.PACKAGE_ID || plan.PRODUCT_CODE || plan.planCode || plan._id || plan.id || plan.planId;
-    if (!planId) { 
-        console.error('Plan object:', plan);
-        showError('Could not identify selected package. Please try again.'); 
-        return; 
-    }
+    if (!planId) { showInlineError('Could not identify selected package. Please try again.'); return; }
 
+    setSubmitLoading(true, 'Subscribing...');
     try {
-        showLoading('Processing subscription...');
-        const response = await api.purchaseCableTV(smartCard, provider, planId, months, pin);
-
+        await api.purchaseCableTV(smartCard, provider, planId, months, pin);
         closeModal();
         setTimeout(() => {
             const planName = plan.PACKAGE_NAME || plan.PRODUCT_NAME || plan.planName || 'Package';
@@ -808,23 +701,20 @@ async function submitTVSubscription() {
             `);
         }, 300);
     } catch (error) {
-        closeModal();
-        setTimeout(() => {
-            const msg = (error.message || '').toLowerCase();
-            if (msg.includes('pin'))          showError('Invalid transaction PIN. Please try again.');
-            else if (msg.includes('smart') || msg.includes('card') || msg.includes('iuc'))
-                                              showError('Invalid smart card number. Please verify.');
-            else if (msg.includes('balance')) showError('Insufficient wallet balance.');
-            else                              showError(error.message || 'Subscription failed. Please try again.');
-        }, 300);
+        setSubmitLoading(false, '', 'Subscribe');
+        showInlineError(error.message || 'Subscription failed. Please try again.');
     }
 }
 
 // ==================== EDUCATION MODAL ====================
+
 function showEducationModal() {
-    const bodyHTML = `
-        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;margin-bottom:16px;">
-            <p style="color:#1d4ed8;font-size:13px;margin:0;">📚 Scratch cards will be sent to your registered email address after purchase.</p>
+    showModal('Education PIN', `
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;
+                    padding:12px 14px;margin-bottom:16px;">
+            <p style="color:#1d4ed8;font-size:13px;margin:0;">
+                📚 Scratch cards will be sent to your registered email address after purchase.
+            </p>
         </div>
         <div class="form-group">
             <label>Exam Type</label>
@@ -845,28 +735,21 @@ function showEducationModal() {
                 <option value="10">10 PINs</option>
             </select>
         </div>
-        <div id="eduPriceTag" style="display:none;padding:10px 14px;background:#f0fdf4;border-radius:8px;margin-bottom:4px;color:#15803d;font-size:13px;font-weight:600;"></div>
+        <div id="eduPriceTag"
+             style="display:none;padding:10px 14px;background:#f0fdf4;border-radius:8px;
+                    margin-bottom:4px;color:#15803d;font-size:13px;font-weight:600;"></div>
         <div class="form-group">
             <label>Transaction PIN</label>
-            <input type="password" id="eduPin" placeholder="Enter 4-digit PIN" maxlength="4" class="form-input">
+            <input type="password" id="eduPin" placeholder="Enter 4-digit PIN"
+                   maxlength="4" class="form-input">
         </div>
-    `;
-
-    const footerHTML = `
+    `, `
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
         <button onclick="submitEducationPurchase()" class="btn-primary">Purchase</button>
-    `;
-
-    showModal('Education PIN', bodyHTML, footerHTML);
+    `);
 }
 
-// Exam prices (approximate — backend confirms actual price)
-const EDU_PRICES = {
-    waecdirect: 3800,
-    neco:       1000,
-    jamb:       700,
-    nabteb:     900
-};
+const EDU_PRICES = { waecdirect: 3800, neco: 1000, jamb: 700, nabteb: 900 };
 
 function updateEduPrice() {
     const examType = document.getElementById('examType')?.value;
@@ -887,42 +770,35 @@ async function submitEducationPurchase() {
     const quantity = parseInt(document.getElementById('eduQuantity').value);
     const pin      = document.getElementById('eduPin').value.trim();
 
-    if (!pin || !/^\d{4}$/.test(pin)) {
-        showError('Please enter your 4-digit transaction PIN'); return;
-    }
-    if (!quantity || quantity < 1) {
-        showError('Please select a valid quantity'); return;
-    }
+    if (!pin || !/^\d{4}$/.test(pin)) { showInlineError('Please enter your 4-digit transaction PIN'); return; }
+    if (!quantity || quantity < 1)    { showInlineError('Please select a valid quantity'); return; }
 
     const examLabels = { waecdirect: 'WAEC', neco: 'NECO', jamb: 'JAMB', nabteb: 'NABTEB' };
     const label = examLabels[examType] || examType.toUpperCase();
 
+    setSubmitLoading(true, 'Purchasing...');
     try {
-        showLoading(`Purchasing ${label} PIN${quantity > 1 ? 's' : ''}...`);
-        const response = await api.purchaseEducationPIN(examType, quantity, pin);
-
+        await api.purchaseEducationPIN(examType, quantity, pin);
         closeModal();
-        setTimeout(() => {
-            showSuccess(`
-                <div style="text-align:center;">
-                    <p style="font-size:16px;margin-bottom:6px;">Purchase Successful! 📚</p>
-                    <p style="font-size:14px;color:#64748b;">${quantity} × ${label} PIN${quantity > 1 ? 's' : ''} purchased</p>
-                    <p style="font-size:13px;color:#94a3b8;margin-top:6px;">Check your email for the scratch card(s)</p>
-                </div>
-            `);
-        }, 300);
+        setTimeout(() => showSuccess(`
+            <div style="text-align:center;">
+                <p style="font-size:16px;margin-bottom:6px;">Purchase Successful! 📚</p>
+                <p style="font-size:14px;color:#64748b;">
+                    ${quantity} × ${label} PIN${quantity > 1 ? 's' : ''} purchased
+                </p>
+                <p style="font-size:13px;color:#94a3b8;margin-top:6px;">
+                    Check your email for the scratch card(s)
+                </p>
+            </div>
+        `), 300);
     } catch (error) {
-        closeModal();
-        setTimeout(() => {
-            const msg = (error.message || '').toLowerCase();
-            if (msg.includes('pin'))          showError('Invalid transaction PIN. Please try again.');
-            else if (msg.includes('balance')) showError('Insufficient wallet balance.');
-            else                              showError(error.message || 'Purchase failed. Please try again.');
-        }, 300);
+        setSubmitLoading(false, '', 'Purchase');
+        showInlineError(error.message || 'Purchase failed. Please try again.');
     }
 }
 
 // ==================== RECHARGE PIN MODAL ====================
+
 function showRechargePINModal() {
     showModal('Recharge PIN', `
         <div class="form-group">
@@ -949,7 +825,8 @@ function showRechargePINModal() {
         </div>
         <div class="form-group">
             <label>Transaction PIN</label>
-            <input type="password" id="pinTxPin" placeholder="Enter 4-digit PIN" maxlength="4" class="form-input">
+            <input type="password" id="pinTxPin" placeholder="Enter 4-digit PIN"
+                   maxlength="4" class="form-input">
         </div>
     `, `
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
@@ -958,91 +835,99 @@ function showRechargePINModal() {
 }
 
 async function submitRechargePIN() {
-    const network = document.getElementById('pinNetwork').value;
-    const amount = document.getElementById('pinType').value;
+    const network  = document.getElementById('pinNetwork').value;
+    const amount   = document.getElementById('pinType').value;
     const quantity = parseInt(document.getElementById('pinQuantity').value);
-    const pin = document.getElementById('pinTxPin').value;
+    const pin      = document.getElementById('pinTxPin').value.trim();
 
-    // PIN Validation
-    if (!pin || pin.length !== 4) {
-        showError('Please enter your 4-digit transaction PIN');
-        return;
-    }
-    if (!/^\d+$/.test(pin)) {
-        showError('Transaction PIN must contain only numbers');
-        return;
-    }
+    if (!pin || !/^\d{4}$/.test(pin))       { showInlineError('Please enter your valid 4-digit transaction PIN'); return; }
+    if (!quantity || quantity < 1 || quantity > 10) { showInlineError('Please enter a valid quantity (1–10)'); return; }
 
-    if (!quantity || quantity < 1) {
-        showError('Please enter a valid quantity');
-        return;
-    }
-
-    // Map network names to their IDs based on the backend structure
-    const networkIdMap = {
-        'mtn': '01',
-        'glo': '02',
-        '9mobile': '03',
-        'airtel': '04'
-    };
-
-    const networkId = networkIdMap[network];
-    
-    if (!networkId) {
-        showError('Invalid network selected');
-        return;
-    }
-
+    setSubmitLoading(true, 'Purchasing...');
     try {
-        showLoading('Purchasing recharge PIN...');
-        
-        // Pass networkId as the 'network' parameter
-        const response = await api.purchaseEpin(networkId, amount, quantity, pin);
-        
-        closeModal();
-        
-        // Handle success
-        setTimeout(() => {
-            // Calculate total with discount
-            const discountRates = {
-                'mtn': 0.99,      // 1% discount
-                'glo': 0.98,      // 2% discount
-                '9mobile': 0.95,  // 5% discount
-                'airtel': 0.98    // 2% discount
-            };
-            const discountRate = discountRates[network] || 1;
-            const subtotal = parseInt(amount) * quantity;
-            const totalPaid = Math.round(subtotal * discountRate);
-            
-            showSuccess(`
-                <div style="text-align: center;">
-                    <p style="font-size: 16px; margin-bottom: 8px;">PIN Purchase Successful! 🔐</p>
-                    <p style="font-size: 14px; color: #64748b;">${quantity} x ₦${amount} ${network.toUpperCase()} PIN(s)</p>
-                    <p style="font-size: 13px; color: #16a34a; margin: 4px 0;">Total Paid: ₦${totalPaid.toLocaleString()}</p>
-                    <p style="font-size: 13px; color: #94a3b8; margin-top: 8px;">PINs have been sent to your email</p>
-                </div>
-            `);
-        }, 300);
-        
-    } catch (error) {
+        const response = await api.purchaseRechargePIN(network, amount, quantity, pin);
+        const pins = response.data?.pins || [];
+        const ref  = response.data?.reference || response.data?.orderId || '';
+
         closeModal();
         setTimeout(() => {
-            const errorMsg = error.message || '';
-            
-            if (errorMsg.toLowerCase().includes('pin')) {
-                showError('Invalid transaction PIN. Please try again.');
-            } else if (errorMsg.toLowerCase().includes('balance')) {
-                showError('Insufficient wallet balance.');
-            } else {
-                showError(errorMsg || 'Purchase failed. Please try again.');
+            if (pins.length === 0) {
+                showSuccess(`
+                    <div style="text-align:center;">
+                        <p style="font-size:16px;margin-bottom:6px;">Purchase Successful! 🔐</p>
+                        <p style="font-size:14px;color:#64748b;">
+                            ${quantity} × ₦${amount} ${network.toUpperCase()} PIN${quantity > 1 ? 's' : ''}
+                        </p>
+                        <p style="font-size:13px;color:#94a3b8;margin-top:6px;">PINs have been sent to your email</p>
+                        ${ref ? `<p style="font-size:11px;color:#cbd5e1;margin-top:4px;">Ref: ${ref}</p>` : ''}
+                    </div>
+                `);
+                return;
             }
+
+            const pinCards = pins.map((p, i) => `
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;
+                            padding:12px 14px;margin-bottom:8px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <div>
+                            <p style="font-size:11px;color:#94a3b8;margin:0 0 3px;">
+                                PIN ${i + 1} · ${p.mobilenetwork || network.toUpperCase()} · ₦${p.amount || amount}
+                            </p>
+                            <p style="font-size:20px;font-weight:700;color:#1e3d5c;
+                                      letter-spacing:3px;margin:0;" id="rpin_${i}">${p.pin}</p>
+                            ${p.sno ? `<p style="font-size:10px;color:#cbd5e1;margin:4px 0 0;">S/N: ${p.sno}</p>` : ''}
+                        </div>
+                        <button onclick="copyPinToClipboard('rpin_${i}', this)"
+                            style="background:#1e3d5c;color:white;border:none;padding:6px 12px;
+                                   border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;
+                                   white-space:nowrap;flex-shrink:0;margin-left:10px;">
+                            Copy
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            showModal('🔐 Recharge PINs', `
+                <div>
+                    <div style="background:#dcfce7;border:1px solid #bbf7d0;border-radius:10px;
+                                padding:10px 14px;margin-bottom:14px;
+                                display:flex;align-items:center;gap:8px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                             stroke="#16a34a" stroke-width="2.5">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span style="color:#15803d;font-size:13px;font-weight:600;">
+                            ${pins.length} × ₦${amount} ${network.toUpperCase()}
+                            PIN${pins.length > 1 ? 's' : ''} purchased
+                        </span>
+                    </div>
+                    ${pinCards}
+                    ${ref ? `<p style="font-size:11px;color:#cbd5e1;text-align:center;margin-top:8px;">Ref: ${ref}</p>` : ''}
+                </div>
+            `, `<button onclick="closeModal()" class="btn-primary" style="width:100%;">Done</button>`);
         }, 300);
+
+    } catch (error) {
+        setSubmitLoading(false, '', 'Purchase PIN');
+        showInlineError(error.message || 'Purchase failed. Please try again.');
     }
 }
 
-// ==================== SWAP/AIRTIME2CASH MODAL ====================
+function copyPinToClipboard(elemId, btn) {
+    const pin = document.getElementById(elemId)?.textContent?.trim();
+    if (!pin) return;
+    navigator.clipboard.writeText(pin).then(() => {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '✓ Copied!';
+        btn.style.background = '#16a34a';
+        setTimeout(() => { btn.innerHTML = orig; btn.style.background = '#1e3d5c'; }, 2000);
+    });
+}
+
+// ==================== SWAP / AIRTIME2CASH MODAL ====================
+
 function showSwapModal() {
-    const bodyHTML = `
+    showModal('Airtime to Cash', `
         <div class="form-group">
             <label>Network</label>
             <select id="swapNetwork" class="form-input">
@@ -1054,31 +939,35 @@ function showSwapModal() {
         </div>
         <div class="form-group">
             <label>Phone Number</label>
-            <input type="tel" id="swapPhone" placeholder="08012345678" maxlength="11" class="form-input">
+            <input type="tel" id="swapPhone" placeholder="08012345678"
+                   maxlength="11" class="form-input">
         </div>
         <div class="form-group">
             <label>Airtime Amount</label>
-            <input type="number" id="swapAmount" placeholder="Enter amount (min ₦500)" min="500" class="form-input" oninput="updateSwapPreview()">
+            <input type="number" id="swapAmount" placeholder="Enter amount (min ₦500)"
+                   min="500" class="form-input" oninput="updateSwapPreview()">
         </div>
-        <div id="swapPreview" style="padding: 16px; background: #fef3c7; border-radius: 8px; margin-bottom: 16px; display: none;">
-            <p style="font-size: 14px; color: #92400e;">You will receive: <strong id="swapReceive">₦0.00</strong> (85% of airtime value)</p>
+        <div id="swapPreview"
+             style="padding:16px;background:#fef3c7;border-radius:8px;
+                    margin-bottom:16px;display:none;">
+            <p style="font-size:14px;color:#92400e;">
+                You will receive: <strong id="swapReceive">₦0.00</strong>
+                (85% of airtime value)
+            </p>
         </div>
         <div class="form-group">
             <label>Transaction PIN</label>
-            <input type="password" id="swapPin" placeholder="Enter 4-digit PIN" maxlength="4" class="form-input">
+            <input type="password" id="swapPin" placeholder="Enter 4-digit PIN"
+                   maxlength="4" class="form-input">
         </div>
-    `;
-    
-    const footerHTML = `
+    `, `
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
         <button onclick="submitAirtimeSwap()" class="btn-primary">Convert to Cash</button>
-    `;
-    
-    showModal('Airtime to Cash', bodyHTML, footerHTML);
+    `);
 }
 
 function updateSwapPreview() {
-    const amount = parseInt(document.getElementById('swapAmount').value) || 0;
+    const amount  = parseInt(document.getElementById('swapAmount').value) || 0;
     const receive = amount * 0.85;
     document.getElementById('swapReceive').textContent = `₦${receive.toLocaleString()}`;
     document.getElementById('swapPreview').style.display = amount > 0 ? 'block' : 'none';
@@ -1086,241 +975,169 @@ function updateSwapPreview() {
 
 async function submitAirtimeSwap() {
     const network = document.getElementById('swapNetwork').value;
-    const phone = document.getElementById('swapPhone').value;
-    const amount = parseInt(document.getElementById('swapAmount').value);
-    const pin = document.getElementById('swapPin').value;
-    
-    // Validate PIN format first (client-side)
-    if (!pin || pin.length !== 4) {
-        showError('Please enter your 4-digit transaction PIN');
-        return;
-    }
-    if (!/^\d+$/.test(pin)) {
-        showError('Transaction PIN must contain only numbers');
-        return;
-    }
-    
-    // Other validations
-    if (!phone || phone.length !== 11) {
-        showError('Please enter a valid 11-digit phone number');
-        return;
-    }
-    if (!amount || amount < 500) {
-        showError('Minimum swap amount is ₦500');
-        return;
-    }
-    
+    const phone   = document.getElementById('swapPhone').value.trim();
+    const amount  = parseInt(document.getElementById('swapAmount').value);
+    const pin     = document.getElementById('swapPin').value.trim();
+
+    if (!pin || !/^\d{4}$/.test(pin))      { showInlineError('Please enter your 4-digit transaction PIN'); return; }
+    if (!phone || phone.length !== 11)     { showInlineError('Please enter a valid 11-digit phone number'); return; }
+    if (!amount || amount < 500)           { showInlineError('Minimum swap amount is ₦500'); return; }
+
+    setSubmitLoading(true, 'Processing...');
     try {
-        showLoading('Processing your swap...');
-        
-        const response = await api.swapAirtime(phone, network, amount, pin);
-        
-        // Success
+        await api.swapAirtime(phone, network, amount, pin);
         const cashValue = amount * 0.85;
         closeModal();
+        setTimeout(() => showSuccess(`
+            <div style="text-align:center;">
+                <p style="font-size:16px;margin-bottom:8px;">Swap Successful! 🎉</p>
+                <p style="font-size:14px;color:#64748b;">
+                    ₦${amount.toLocaleString()} airtime converted to
+                </p>
+                <p style="font-size:24px;font-weight:700;color:#16a34a;">
+                    ₦${cashValue.toLocaleString()}
+                </p>
+            </div>
+        `), 300);
+    } catch (error) {
+        setSubmitLoading(false, '', 'Convert to Cash');
+        showInlineError(error.message || 'Unable to complete swap. Please try again.');
+    }
+}
+
+// ==================== BULK SMS MODAL ====================
+
+async function showSMSModal() {
+    let smsBalance = null;
+    try {
+        const balRes = await api.getSMSBalance();
+        smsBalance = balRes.data?.balance ?? balRes.balance ?? balRes.data?.units ?? balRes.units ?? null;
+    } catch(e) { /* silent */ }
+
+    showModal('Bulk SMS', `
+
+        <div class="form-group">
+            <label>Sender ID
+                <span style="color:#94a3b8;font-weight:400;font-size:12px;">(max 11 chars)</span>
+            </label>
+            <input type="text" id="smsSender" value="Yareema" maxlength="11"
+                   class="form-input" placeholder="e.g. YareemaData">
+        </div>
+        <div class="form-group">
+            <label>Recipients
+                <span style="color:#94a3b8;font-weight:400;font-size:12px;">(comma-separated)</span>
+            </label>
+            <textarea id="smsPhones" rows="3" class="form-input"
+                placeholder="08012345678, 09050030090, ..."
+                style="resize:vertical;" oninput="calcSMSCost()"></textarea>
+            <small style="color:#94a3b8;">Separate multiple numbers with commas</small>
+        </div>
+        <div class="form-group">
+            <label>Message</label>
+            <textarea id="smsMessage" rows="4" maxlength="160" class="form-input"
+                placeholder="Type your message here..."
+                style="resize:vertical;" oninput="calcSMSCost()"></textarea>
+            <div style="display:flex;justify-content:space-between;margin-top:4px;">
+                <small style="color:#94a3b8;">Max 160 chars per page</small>
+                <small id="smsCharCount" style="color:#94a3b8;">0 / 160</small>
+            </div>
+        </div>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;
+                    padding:12px 14px;margin-bottom:14px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                <span style="color:#64748b;font-size:13px;">Recipients</span>
+                <span id="smsRecipientCount" style="color:#1e3d5c;font-weight:700;font-size:13px;">0</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                <span style="color:#64748b;font-size:13px;">Pages</span>
+                <span id="smsPageCount" style="color:#1e3d5c;font-weight:700;font-size:13px;">1</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+                <span style="color:#64748b;font-size:13px;">Est. Units Used</span>
+                <span id="smsUnitsUsed" style="color:#1e3d5c;font-weight:700;font-size:13px;">0</span>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Transaction PIN</label>
+            <input type="password" id="smsPin" maxlength="4"
+                   placeholder="Enter 4-digit PIN" class="form-input">
+        </div>
+    `, `
+        <button onclick="closeModal()" class="btn-secondary">Cancel</button>
+        <button onclick="submitBulkSMS()" class="btn-primary">Send SMS</button>
+    `);
+
+    document.getElementById('smsMessage')?.addEventListener('input', function() {
+        const el = document.getElementById('smsCharCount');
+        if (el) el.textContent = this.value.length + ' / 160';
+        calcSMSCost();
+    });
+}
+
+function calcSMSCost() {
+    const phones = (document.getElementById('smsPhones')?.value || '')
+                       .split(',').map(p => p.trim()).filter(Boolean);
+    const msgLen = (document.getElementById('smsMessage')?.value || '').length;
+    const pages  = Math.max(1, Math.ceil(msgLen / 160));
+    const units  = phones.length * pages;
+    const rc = document.getElementById('smsRecipientCount');
+    const pc = document.getElementById('smsPageCount');
+    const uc = document.getElementById('smsUnitsUsed');
+    if (rc) rc.textContent = phones.length;
+    if (pc) pc.textContent = pages;
+    if (uc) uc.textContent = units;
+}
+
+async function submitBulkSMS() {
+    const sender  = (document.getElementById('smsSender')?.value  || '').trim();
+    const phones  = (document.getElementById('smsPhones')?.value  || '')
+                        .split(',').map(p => p.trim()).filter(Boolean);
+    const message = (document.getElementById('smsMessage')?.value || '').trim();
+    const pin     = (document.getElementById('smsPin')?.value     || '').trim();
+
+    if (!sender)              { showInlineError('Please enter a Sender ID'); return; }
+    if (sender.length > 11)   { showInlineError('Sender ID must be max 11 characters'); return; }
+    if (phones.length === 0)  { showInlineError('Please enter at least one recipient number'); return; }
+    if (!message)             { showInlineError('Please enter a message'); return; }
+    if (!/^\d{4}$/.test(pin)) { showInlineError('Please enter your 4-digit transaction PIN'); return; }
+
+    const invalid = phones.filter(p => !/^\d{10,14}$/.test(p));
+    if (invalid.length > 0) {
+        showInlineError(`Invalid number(s): ${invalid.slice(0, 3).join(', ')}${invalid.length > 3 ? '…' : ''}`);
+        return;
+    }
+
+    setSubmitLoading(true, 'Sending...');
+    try {
+        const response = await api.sendBulkSMS(sender, phones.join(','), message, pin);
+        closeModal();
         setTimeout(() => {
+            const sent = response.data?.sent ?? response.data?.messageCount ?? phones.length;
             showSuccess(`
-                <div style="text-align: center;">
-                    <p style="font-size: 16px; margin-bottom: 8px;">Swap Successful! 🎉</p>
-                    <p style="font-size: 14px; color: #64748b;">₦${amount.toLocaleString()} airtime converted to</p>
-                    <p style="font-size: 24px; font-weight: 700; color: #16a34a;">₦${cashValue.toLocaleString()}</p>
+                <div style="text-align:center;">
+                    <p style="font-size:16px;margin-bottom:6px;">SMS Sent Successfully! 📨</p>
+                    <p style="font-size:14px;color:#64748b;">
+                        ${sent} message${sent !== 1 ? 's' : ''} delivered
+                    </p>
+                    ${response.data?.reference
+                        ? `<p style="font-size:11px;color:#cbd5e1;margin-top:6px;">Ref: ${response.data.reference}</p>`
+                        : ''}
                 </div>
             `);
         }, 300);
-        
     } catch (error) {
-        console.error('Swap error:', error);
-        
-        const errorMsg = error.message || '';
-        
-        // Close loading modal
-        closeModal();
-        
-        // Show appropriate error message after a tiny delay
-        setTimeout(() => {
-            // Check for PIN-related errors
-            if (errorMsg.toLowerCase().includes('pin')) {
-                showError(`
-                    <div style="text-align: center;">
-                        <p style="margin-bottom: 8px;">Invalid Transaction PIN</p>
-                        <p style="font-size: 13px; color: #64748b;">Please check your PIN and try again</p>
-                    </div>
-                `);
-            }
-            // Check for balance errors
-            else if (errorMsg.toLowerCase().includes('balance') || errorMsg.toLowerCase().includes('insufficient')) {
-                showError(`
-                    <div style="text-align: center;">
-                        <p style="margin-bottom: 8px;">Insufficient Balance</p>
-                        <p style="font-size: 13px; color: #64748b;">Please fund your wallet and try again</p>
-                    </div>
-                `);
-            }
-            // Session expired
-            else if (errorMsg.toLowerCase().includes('session') || errorMsg.toLowerCase().includes('login')) {
-                showError(`
-                    <div style="text-align: center;">
-                        <p style="margin-bottom: 8px;">Session Expired</p>
-                        <p style="font-size: 13px; color: #64748b;">Please login again to continue</p>
-                    </div>
-                `);
-                setTimeout(() => {
-                    window.location.href = '/login.html';
-                }, 2000);
-            }
-            else {
-                showError(`
-                    <div style="text-align: center;">
-                        <p>Unable to complete swap</p>
-                        <p style="font-size: 13px; color: #64748b; margin-top: 4px;">${errorMsg || 'Please try again'}</p>
-                    </div>
-                `);
-            }
-        }, 300);
+        setSubmitLoading(false, '', 'Send SMS');
+        showInlineError(error.message || 'Failed to send SMS. Please try again.');
     }
 }
 
-// SMS, Remita, Alpha services
-function showSMSModal() { 
-    showModal('Bulk SMS', `
-        <form id="smsForm" style="padding: 24px;">
-            <div style="margin-bottom: 20px;">
-                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Sender ID</label>
-                <input type="text" id="smsSender" placeholder="e.g., YareemaData" maxlength="11" required
-                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px;">
-                <p style="color: #64748b; font-size: 12px; margin-top: 4px;">Max 11 characters</p>
-            </div>
+// ==================== OTHER SERVICES ====================
 
-            <div style="margin-bottom: 20px;">
-                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Phone Numbers</label>
-                <textarea id="smsPhones" placeholder="Enter phone numbers separated by commas&#10;e.g., 08012345678, 08087654321" rows="4" required
-                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px; resize: vertical;"></textarea>
-                <p style="color: #64748b; font-size: 12px; margin-top: 4px;">Separate multiple numbers with commas</p>
-            </div>
-
-            <div style="margin-bottom: 20px;">
-                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Message</label>
-                <textarea id="smsMessage" placeholder="Type your message here..." rows="5" maxlength="160" required
-                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px; resize: vertical;"></textarea>
-                <div style="display: flex; justify-content: space-between; margin-top: 4px;">
-                    <p style="color: #64748b; font-size: 12px;">Max 160 characters per page</p>
-                    <p id="smsCharCount" style="color: #64748b; font-size: 12px;">0/160</p>
-                </div>
-            </div>
-
-            <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                    <span style="color: #64748b; font-size: 14px;">Recipients:</span>
-                    <span id="smsRecipientCount" style="color: #1e3d5c; font-weight: 600;">0</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                    <span style="color: #64748b; font-size: 14px;">Pages:</span>
-                    <span id="smsPageCount" style="color: #1e3d5c; font-weight: 600;">1</span>
-                </div>
-                <div style="display: flex; justify-content: space-between;">
-                    <span style="color: #64748b; font-size: 14px;">Estimated Cost:</span>
-                    <span id="smsCost" style="color: #1e3d5c; font-weight: 600;">₦0.00</span>
-                </div>
-            </div>
-
-            <div style="margin-bottom: 20px;">
-                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Transaction PIN</label>
-                <input type="password" id="smsPin" placeholder="Enter 4-digit PIN" maxlength="4" pattern="[0-9]{4}" required
-                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px;">
-            </div>
-        </form>
-    `, `
-        <button type="button" onclick="closeModal()" style="padding: 12px 24px; background: #f1f5f9; border: none; border-radius: 8px; cursor: pointer; margin-right: 8px;">Cancel</button>
-        <button type="submit" form="smsForm" class="btn-primary" style="padding: 12px 24px;">Send SMS</button>
-    `);
-
-    // Add character counter
-    document.getElementById('smsMessage').addEventListener('input', function() {
-        const length = this.value.length;
-        document.getElementById('smsCharCount').textContent = length + '/160';
-        const pages = Math.ceil(length / 160) || 1;
-        document.getElementById('smsPageCount').textContent = pages;
-        calculateSMSCost();
-    });
-
-    // Add recipient counter
-    document.getElementById('smsPhones').addEventListener('input', calculateSMSCost);
-
-    document.getElementById('smsForm').addEventListener('submit', handleSMSSend);
-}
-
-function calculateSMSCost() {
-    const phonesText = document.getElementById('smsPhones').value;
-    const message = document.getElementById('smsMessage').value;
-    
-    const phones = phonesText.split(',').map(p => p.trim()).filter(p => p.length > 0);
-    const recipientCount = phones.length;
-    const pages = Math.ceil(message.length / 160) || 1;
-    const costPerPage = 4; // ₦4 per page
-    const totalCost = recipientCount * pages * costPerPage;
-
-    document.getElementById('smsRecipientCount').textContent = recipientCount;
-    document.getElementById('smsPageCount').textContent = pages;
-    document.getElementById('smsCost').textContent = '₦' + totalCost.toFixed(2);
-}
-
-async function handleSMSSend(e) {
-    e.preventDefault();
-    
-    const sender = document.getElementById('smsSender').value;
-    const phonesText = document.getElementById('smsPhones').value;
-    const message = document.getElementById('smsMessage').value;
-    const pin = document.getElementById('smsPin').value;
-
-    const phones = phonesText.split(',').map(p => p.trim()).filter(p => p.length > 0);
-
-    if (phones.length === 0) {
-        showError('Please enter at least one phone number');
-        return;
-    }
-
-    if (message.length === 0) {
-        showError('Please enter a message');
-        return;
-    }
-
-    if (pin.length !== 4) {
-        showError('Transaction PIN must be 4 digits');
-        return;
-    }
-
-    showLoading('Sending SMS...');
-
-    try {
-        // This would call api.sendBulkSMS() when backend implements it
-        const response = await api.request('/api/v1/sms/send', {
-            method: 'POST',
-            body: {
-                sender: sender,
-                recipients: phones,
-                message: message,
-                transactionPin: pin
-            }
-        });
-
-        closeModal();
-        showSuccess(response.message || 'SMS sent successfully!');
-    } catch (error) {
-        closeModal();
-        showError(error.message || 'Failed to send SMS. Please try again.');
-    }
-}
-
-function showRemitaModal() { 
-    window.location.href = 'rrr-payment.html';
-}
-
-function showAlphaModal() { 
-    showError('This service is currently unavailable. Please contact support.'); 
-}
+function showRemitaModal() { window.location.href = 'rrr-payment.html'; }
+function showAlphaModal()  { showError('This service is currently unavailable. Please contact support.'); }
 
 // ==================== FUND WALLET MODAL ====================
-// Helpers
+
 function _fundStep(show) {
     ['fundLoadingStep','fundVerifyStep','fundAccountStep'].forEach(id => {
         const el = document.getElementById(id);
@@ -1340,29 +1157,24 @@ function _saveWalletAccounts(accounts) {
     try {
         const key = _walletCacheKey();
         if (key) localStorage.setItem(key, JSON.stringify(accounts));
-        // Also save legacy key for set-pin.html compatibility
         localStorage.setItem('wallet_accounts', JSON.stringify(accounts));
     } catch(e) {}
 }
 
 function _loadWalletAccounts() {
     try {
-        // Prefer user-specific key
         const key = _walletCacheKey();
         if (key) {
             const data = localStorage.getItem(key);
             if (data) return JSON.parse(data);
         }
-        // Fallback: only use generic cache if it belongs to current user
         const generic = localStorage.getItem('wallet_accounts');
         if (!generic) return null;
         const accounts = JSON.parse(generic);
-        // Validate: account name should match current user's name
         const u = JSON.parse(localStorage.getItem('user_data') || '{}');
         const userName = (u.firstName || '').toLowerCase();
         if (userName && accounts[0]?.accountName) {
             if (!accounts[0].accountName.toLowerCase().includes(userName)) {
-                // This cache belongs to a different user — clear it
                 localStorage.removeItem('wallet_accounts');
                 return null;
             }
@@ -1374,79 +1186,58 @@ function _loadWalletAccounts() {
 function showFundModal() {
     showModal('Fund Wallet', `
         <div id="fundModalWrap" style="padding:4px 0;">
-
-            <!-- Step: Loading -->
             <div id="fundLoadingStep" style="text-align:center;padding:48px 0;">
-                <div style="width:48px;height:48px;border:4px solid #e2e8f0;border-top-color:#1e3d5c;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px;"></div>
-                <p style="color:#1e3d5c;font-weight:600;font-size:15px;" id="fundLoadingText">Checking your wallet...</p>
+                <div style="width:48px;height:48px;border:4px solid #e2e8f0;border-top-color:#1e3d5c;
+                            border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px;"></div>
+                <p style="color:#1e3d5c;font-weight:600;font-size:15px;" id="fundLoadingText">
+                    Checking your wallet...
+                </p>
             </div>
-
-                        <div id="fundVerifyStep" style="display:none;"></div>
-
-            <!-- Step: Account Details -->
+            <div id="fundVerifyStep" style="display:none;"></div>
             <div id="fundAccountStep" style="display:none;">
                 <p style="color:#64748b;margin-bottom:14px;font-size:13px;font-weight:500;">
                     Transfer to any of your dedicated accounts below:
                 </p>
                 <div id="fundAccountsList"></div>
-
-                <div style="background:#fef3c7;padding:12px 14px;border-radius:8px;border-left:3px solid #f59e0b;margin-bottom:16px;">
-                    <p style="color:#92400e;font-size:12px;margin:0;line-height:1.5;">⚡ <strong>Instant funding</strong> — funds reflect within 1–5 minutes of transfer</p>
+                <div style="background:#fef3c7;padding:12px 14px;border-radius:8px;
+                            border-left:3px solid #f59e0b;margin-bottom:16px;">
+                    <p style="color:#92400e;font-size:12px;margin:0;line-height:1.5;">
+                        ⚡ <strong>Instant funding</strong> — funds reflect within 1–5 minutes of transfer
+                    </p>
                 </div>
-
                 <button onclick="closeModal()" class="btn-primary" style="width:100%;margin-top:4px;">Close</button>
             </div>
-
         </div>
     `, '');
-
     _initFundModal();
 }
 
 async function _initFundModal() {
-    // 1. Check localStorage cache first — instant, no API call
     const cached = _loadWalletAccounts();
-    if (cached && cached.length > 0) {
-        _renderFundAccounts(cached);
-        return;
-    }
+    if (cached && cached.length > 0) { _renderFundAccounts(cached); return; }
 
-    // 2. No cache — fetch from wallet balance endpoint
     _fundStep('fundLoadingStep');
     try {
         const response = await api.getWalletBalance();
-        const wallet = response.data?.wallet || response.data || {};
-
-        // Backend returns wallet.virtualAccount{} OR wallet.accounts[]
-        let accounts = [];
-        if (wallet.accounts?.length > 0) {
-            accounts = wallet.accounts;
-        } else if (wallet.virtualAccount?.accountNumber) {
-            accounts = [{ ...wallet.virtualAccount, isDefault: true }];
-        }
+        const wallet   = response.data?.wallet || response.data || {};
+        let accounts   = [];
+        if (wallet.accounts?.length > 0) accounts = wallet.accounts;
+        else if (wallet.virtualAccount?.accountNumber) accounts = [{ ...wallet.virtualAccount, isDefault: true }];
 
         if (accounts.length > 0) {
             _saveWalletAccounts(accounts);
             _renderFundAccounts(accounts);
         } else {
-            // No accounts yet — try wallet create
             _fundStep('fundLoadingStep');
             document.getElementById('fundLoadingText').textContent = 'Setting up your accounts...';
             try {
                 const createResp = await api.createWalletAccount({});
-                const w = createResp.data?.wallet || createResp.data || {};
-                let accs = [];
-                if (w.accounts?.length > 0) {
-                    accs = w.accounts;
-                } else if (w.virtualAccount?.accountNumber) {
-                    accs = [{ ...w.virtualAccount, isDefault: true }];
-                }
-                if (accs.length > 0) {
-                    _saveWalletAccounts(accs);
-                    _renderFundAccounts(accs);
-                } else {
-                    _showFundError('Your wallet accounts are being prepared. Please try again in a few minutes.');
-                }
+                const w   = createResp.data?.wallet || createResp.data || {};
+                let accs  = [];
+                if (w.accounts?.length > 0) accs = w.accounts;
+                else if (w.virtualAccount?.accountNumber) accs = [{ ...w.virtualAccount, isDefault: true }];
+                if (accs.length > 0) { _saveWalletAccounts(accs); _renderFundAccounts(accs); }
+                else _showFundError('Your wallet accounts are being prepared. Please try again in a few minutes.');
             } catch (e) {
                 _showFundError(e.message || 'Could not load account details. Please try again.');
             }
@@ -1461,8 +1252,13 @@ function _showFundError(message) {
     if (!body) return;
     body.innerHTML = `
         <div style="text-align:center;padding:40px 20px;">
-            <div style="width:56px;height:56px;background:#fee2e2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <div style="width:56px;height:56px;background:#fee2e2;border-radius:50%;
+                        display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
             </div>
             <p style="font-weight:600;color:#0f172a;margin-bottom:6px;">Unable to Load Account</p>
             <p style="font-size:13px;color:#64748b;line-height:1.5;">${message}</p>
@@ -1474,34 +1270,44 @@ function _showFundError(message) {
 function _renderFundAccounts(accounts) {
     const container = document.getElementById('fundAccountsList');
     if (!container) return;
-
     container.innerHTML = accounts.map((acc, i) => `
         <div style="background:${acc.isDefault ? 'linear-gradient(135deg,#f0f9ff,#e0f2fe)' : '#f8fafc'};
              border:${acc.isDefault ? '1.5px solid #7dd3fc' : '1px solid #e2e8f0'};
              border-radius:14px;padding:16px;margin-bottom:10px;position:relative;">
-            ${acc.isDefault ? `<span style="position:absolute;top:10px;right:12px;background:#0284c7;color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:0.5px;">PRIMARY</span>` : ''}
+            ${acc.isDefault ? `<span style="position:absolute;top:10px;right:12px;background:#0284c7;color:white;
+                font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:0.5px;">
+                PRIMARY</span>` : ''}
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-                <div style="width:36px;height:36px;background:${acc.isDefault ? '#0284c7' : '#1e3d5c'};border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                <div style="width:36px;height:36px;background:${acc.isDefault ? '#0284c7' : '#1e3d5c'};
+                            border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <rect x="2" y="5" width="20" height="14" rx="2"/>
+                        <line x1="2" y1="10" x2="22" y2="10"/>
+                    </svg>
                 </div>
                 <div>
                     <div style="font-weight:700;color:#0f172a;font-size:14px;">${acc.bankName || 'Bank'}</div>
                     <div style="color:#64748b;font-size:12px;">${acc.accountName || ''}</div>
                 </div>
             </div>
-            <div style="display:flex;align-items:center;justify-content:space-between;background:white;border-radius:8px;padding:10px 14px;border:1px solid #e2e8f0;">
-                <span style="font-size:22px;font-weight:700;color:#1e3d5c;letter-spacing:3px;" id="accNum_${i}">${acc.accountNumber}</span>
+            <div style="display:flex;align-items:center;justify-content:space-between;background:white;
+                        border-radius:8px;padding:10px 14px;border:1px solid #e2e8f0;">
+                <span style="font-size:22px;font-weight:700;color:#1e3d5c;letter-spacing:3px;"
+                      id="accNum_${i}">${acc.accountNumber}</span>
                 <button onclick="copyFundAccount('accNum_${i}', this)"
-                    style="background:#1e3d5c;color:white;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px;white-space:nowrap;">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    style="background:#1e3d5c;color:white;border:none;padding:6px 12px;border-radius:6px;
+                           cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;
+                           gap:4px;white-space:nowrap;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+                        <rect x="9" y="9" width="13" height="13" rx="2"/>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    </svg>
                     Copy
                 </button>
             </div>
         </div>
     `).join('');
-
     _fundStep('fundAccountStep');
-    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function copyFundAccount(elemId, btn) {
@@ -1523,29 +1329,22 @@ function selectIdType(type) {
     const bvnBtn = document.getElementById('bvnBtn');
     const label  = document.getElementById('idInputLabel');
     const input  = document.getElementById('idNumberInput');
-
-    const activeStyle  = 'padding:14px;border:2px solid #1e3d5c;border-radius:10px;background:#1e3d5c;color:white;cursor:pointer;font-weight:700;font-size:14px;transition:all 0.2s;';
+    const activeStyle   = 'padding:14px;border:2px solid #1e3d5c;border-radius:10px;background:#1e3d5c;color:white;cursor:pointer;font-weight:700;font-size:14px;transition:all 0.2s;';
     const inactiveStyle = 'padding:14px;border:2px solid #e2e8f0;border-radius:10px;background:white;color:#64748b;cursor:pointer;font-weight:700;font-size:14px;transition:all 0.2s;';
-
     if (type === 'nin') {
         ninBtn.style.cssText = activeStyle;  bvnBtn.style.cssText = inactiveStyle;
-        ninBtn.textContent = '🪪 NIN';       bvnBtn.textContent = '🏦 BVN';
-        label.textContent = 'NIN (11 digits)';
-        input.placeholder = 'Enter your NIN';
-        input.maxLength   = 11;
+        ninBtn.textContent = '🪪 NIN'; bvnBtn.textContent = '🏦 BVN';
+        label.textContent = 'NIN (11 digits)'; input.placeholder = 'Enter your NIN'; input.maxLength = 11;
     } else {
         bvnBtn.style.cssText = activeStyle;  ninBtn.style.cssText = inactiveStyle;
-        bvnBtn.textContent = '🏦 BVN';       ninBtn.textContent = '🪪 NIN';
-        label.textContent = 'BVN (11 digits)';
-        input.placeholder = 'Enter your BVN';
-        input.maxLength   = 11;
+        bvnBtn.textContent = '🏦 BVN'; ninBtn.textContent = '🪪 NIN';
+        label.textContent = 'BVN (11 digits)'; input.placeholder = 'Enter your BVN'; input.maxLength = 11;
     }
 }
 
 async function submitIdVerification() {
     const idNumber = document.getElementById('idNumberInput').value.trim();
     if (!/^\d{11}$/.test(idNumber)) {
-        // Inline error — don't use showError which would replace the modal
         const input = document.getElementById('idNumberInput');
         input.style.borderColor = '#dc2626';
         input.style.boxShadow   = '0 0 0 3px rgba(220,38,38,0.1)';
@@ -1558,35 +1357,20 @@ async function submitIdVerification() {
         input.parentNode.appendChild(err);
         return;
     }
-
     const btn = document.getElementById('verifySubmitBtn');
-    btn.disabled    = true;
-    btn.textContent = 'Setting up your account...';
-    btn.style.opacity = '0.7';
+    btn.disabled = true; btn.textContent = 'Setting up your account...'; btn.style.opacity = '0.7';
     _fundStep('fundLoadingStep');
     document.getElementById('fundLoadingText').textContent = 'Creating your wallet accounts...';
-
     try {
         const payload  = _selectedIdType === 'nin' ? { nin: idNumber } : { bvn: idNumber };
         const response = await api.createWalletAccount(payload);
-
-        // Only proceed on success status
-        if (response.status !== 'success' && !response.data) {
+        if (response.status !== 'success' && !response.data)
             throw new Error(response.message || 'Wallet creation failed');
-        }
-
         const wallet   = response.data?.wallet || response.data || response;
         const accounts = wallet.accounts || [];
-
-        if (accounts.length > 0) {
-            _saveWalletAccounts(accounts);
-            // Show success screen BEFORE account details
-            _showWalletCreatedSuccess(wallet, accounts);
-        } else {
-            throw new Error('No accounts were created. Please try again or contact support.');
-        }
+        if (accounts.length > 0) { _saveWalletAccounts(accounts); _showWalletCreatedSuccess(wallet, accounts); }
+        else throw new Error('No accounts were created. Please try again or contact support.');
     } catch (err) {
-        // Come back to verify form with inline error — never flash success
         _fundStep('fundVerifyStep');
         const btn2 = document.getElementById('verifySubmitBtn');
         if (btn2) { btn2.disabled = false; btn2.textContent = 'Create My Wallet Account →'; btn2.style.opacity = '1'; }
@@ -1601,39 +1385,53 @@ async function submitIdVerification() {
 }
 
 function _showWalletCreatedSuccess(wallet, accounts) {
-    const primaryAcc = accounts.find(a => a.isDefault) || accounts[0];
     document.getElementById('modalTitle').textContent = '🎉 Wallet Created!';
     document.getElementById('modalBody').innerHTML = `
         <div style="text-align:center;padding:8px 0 20px;">
-            <div style="width:72px;height:72px;margin:0 auto 16px;border-radius:50%;background:linear-gradient(135deg,#dcfce7,#bbf7d0);display:flex;align-items:center;justify-content:center;">
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <div style="width:72px;height:72px;margin:0 auto 16px;border-radius:50%;
+                        background:linear-gradient(135deg,#dcfce7,#bbf7d0);
+                        display:flex;align-items:center;justify-content:center;">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
+                     stroke="#16a34a" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
-            <h3 style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:6px;">Wallet Created Successfully!</h3>
-            <p style="color:#64748b;font-size:14px;">Your dedicated bank accounts are ready. Transfer money to fund your wallet instantly.</p>
+            <h3 style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:6px;">
+                Wallet Created Successfully!
+            </h3>
+            <p style="color:#64748b;font-size:14px;">
+                Your dedicated bank accounts are ready. Transfer money to fund your wallet instantly.
+            </p>
         </div>
-
         <div style="margin-bottom:16px;">
-            <p style="font-size:13px;font-weight:600;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">Your Accounts (${accounts.length})</p>
+            <p style="font-size:13px;font-weight:600;color:#64748b;margin-bottom:10px;
+                       text-transform:uppercase;letter-spacing:0.5px;">
+                Your Accounts (${accounts.length})
+            </p>
             ${accounts.map((acc, i) => `
                 <div style="background:${acc.isDefault ? 'linear-gradient(135deg,#f0f9ff,#e0f2fe)' : '#f8fafc'};
                      border:${acc.isDefault ? '1.5px solid #7dd3fc' : '1px solid #e2e8f0'};
                      border-radius:14px;padding:14px;margin-bottom:8px;position:relative;">
-                    ${acc.isDefault ? `<span style="position:absolute;top:10px;right:12px;background:#0284c7;color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">PRIMARY</span>` : ''}
+                    ${acc.isDefault ? `<span style="position:absolute;top:10px;right:12px;background:#0284c7;
+                        color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">
+                        PRIMARY</span>` : ''}
                     <div style="font-weight:700;color:#0f172a;font-size:14px;margin-bottom:2px;">${acc.bankName}</div>
                     <div style="color:#64748b;font-size:12px;margin-bottom:8px;">${acc.accountName}</div>
-                    <div style="display:flex;align-items:center;justify-content:space-between;background:white;border-radius:8px;padding:8px 12px;border:1px solid #e2e8f0;">
-                        <span style="font-size:20px;font-weight:700;color:#1e3d5c;letter-spacing:3px;" id="succNum_${i}">${acc.accountNumber}</span>
+                    <div style="display:flex;align-items:center;justify-content:space-between;background:white;
+                                border-radius:8px;padding:8px 12px;border:1px solid #e2e8f0;">
+                        <span style="font-size:20px;font-weight:700;color:#1e3d5c;letter-spacing:3px;"
+                              id="succNum_${i}">${acc.accountNumber}</span>
                         <button onclick="copyFundAccount('succNum_${i}', this)"
-                            style="background:#1e3d5c;color:white;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;">
+                            style="background:#1e3d5c;color:white;border:none;padding:5px 10px;
+                                   border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;">
                             Copy
                         </button>
                     </div>
                 </div>
             `).join('')}
         </div>
-
         <div style="background:#fef3c7;padding:12px 14px;border-radius:8px;border-left:3px solid #f59e0b;">
-            <p style="color:#92400e;font-size:12px;margin:0;">⚡ <strong>Instant funding</strong> — funds reflect within 1–5 minutes</p>
+            <p style="color:#92400e;font-size:12px;margin:0;">
+                ⚡ <strong>Instant funding</strong> — funds reflect within 1–5 minutes
+            </p>
         </div>
     `;
     document.getElementById('modalFooter').innerHTML = `
@@ -1654,10 +1452,15 @@ function _goToFundAccountStep() {
             <div id="fundLoadingStep" style="display:none;"></div>
             <div id="fundVerifyStep"  style="display:none;"></div>
             <div id="fundAccountStep" style="display:none;">
-                <p style="color:#64748b;margin-bottom:14px;font-size:13px;font-weight:500;">Transfer to any account below:</p>
+                <p style="color:#64748b;margin-bottom:14px;font-size:13px;font-weight:500;">
+                    Transfer to any account below:
+                </p>
                 <div id="fundAccountsList"></div>
-                <div style="background:#fef3c7;padding:12px 14px;border-radius:8px;border-left:3px solid #f59e0b;margin-bottom:16px;">
-                    <p style="color:#92400e;font-size:12px;margin:0;">⚡ <strong>Instant funding</strong> — funds reflect within 1–5 minutes</p>
+                <div style="background:#fef3c7;padding:12px 14px;border-radius:8px;
+                            border-left:3px solid #f59e0b;margin-bottom:16px;">
+                    <p style="color:#92400e;font-size:12px;margin:0;">
+                        ⚡ <strong>Instant funding</strong> — funds reflect within 1–5 minutes
+                    </p>
                 </div>
                 <button onclick="closeModal()" class="btn-primary" style="width:100%;margin-top:4px;">Close</button>
             </div>
@@ -1667,41 +1470,32 @@ function _goToFundAccountStep() {
 }
 
 // ==================== PAYMENT POLLING ====================
+
 let _pollInterval = null;
 let _pollAttempts = 0;
-const POLL_MAX = 24; // 24 x 5s = 2 minutes
+const POLL_MAX = 24;
 
 function startPaymentPolling() {
     _pollAttempts = 0;
     const btn = document.getElementById('confirmedTransferBtn');
     if (btn) { btn.disabled = true; btn.textContent = 'Checking...'; }
     document.getElementById('paymentConfirmSection').style.display = 'block';
-
     api.getWalletBalance().then(w => {
         window._balanceBeforeFund = parseFloat(w.data?.balance || w.balance || 0);
     }).catch(() => { window._balanceBeforeFund = 0; });
-
     _pollInterval = setInterval(_checkPaymentReceived, 5000);
 }
 
 async function _checkPaymentReceived() {
     _pollAttempts++;
-    const progress = (_pollAttempts / POLL_MAX) * 100;
     const bar = document.getElementById('pollProgressBar');
-    if (bar) bar.style.width = progress + '%';
-
+    if (bar) bar.style.width = ((_pollAttempts / POLL_MAX) * 100) + '%';
     try {
-        const w = await api.getWalletBalance();
+        const w          = await api.getWalletBalance();
         const newBalance = parseFloat(w.data?.balance || w.balance || 0);
         const credited   = newBalance - (window._balanceBeforeFund || 0);
-        if (credited > 0) {
-            clearInterval(_pollInterval);
-            closeModal();
-            showPaymentSuccess(newBalance, credited);
-            return;
-        }
+        if (credited > 0) { clearInterval(_pollInterval); closeModal(); showPaymentSuccess(newBalance, credited); return; }
     } catch (e) { console.warn('Poll check error:', e); }
-
     if (_pollAttempts >= POLL_MAX) {
         clearInterval(_pollInterval);
         const statusEl = document.getElementById('pollStatusText');
@@ -1718,7 +1512,6 @@ async function _checkPaymentReceived() {
     }
 }
 
-// Silent poll — used after Paystack/Flutterwave redirect back
 function startSilentPoll() {
     api.getWalletBalance().then(w => {
         window._balanceBeforeFund = parseFloat(w.data?.balance || w.balance || 0);
@@ -1727,7 +1520,7 @@ function startSilentPoll() {
     const silentInterval = setInterval(async () => {
         attempts++;
         try {
-            const w = await api.getWalletBalance();
+            const w          = await api.getWalletBalance();
             const newBalance = parseFloat(w.data?.balance || w.balance || 0);
             const credited   = newBalance - (window._balanceBeforeFund || 0);
             if (credited > 0) { clearInterval(silentInterval); showPaymentSuccess(newBalance, credited); }
@@ -1737,10 +1530,11 @@ function startSilentPoll() {
 }
 
 function showPaymentSuccess(newBalance, credited) {
-    const fmt    = (n) => '₦' + n.toLocaleString('en-US', { minimumFractionDigits: 2 });
+    const fmt = (n) => '₦' + n.toLocaleString('en-US', { minimumFractionDigits: 2 });
     showModal('Payment Received! 🎉', `
         <div style="text-align:center;padding:32px;">
-            <div style="width:80px;height:80px;margin:0 auto 20px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;">
+            <div style="width:80px;height:80px;margin:0 auto 20px;border-radius:50%;background:#dcfce7;
+                        display:flex;align-items:center;justify-content:center;">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5">
                     <polyline points="20 6 9 17 4 12"></polyline>
                 </svg>
@@ -1749,217 +1543,148 @@ function showPaymentSuccess(newBalance, credited) {
             <p style="font-size:36px;font-weight:700;color:#16a34a;margin-bottom:4px;">${fmt(credited)}</p>
             <p style="color:#64748b;font-size:14px;">New Balance: <strong style="color:#1e3d5c;">${fmt(newBalance)}</strong></p>
         </div>
-    `, `<button onclick="closeModal(); location.reload();" class="btn-primary" style="width:100%;">Done</button>`);
-
+    `, `<button onclick="closeModal();location.reload();" class="btn-primary" style="width:100%;">Done</button>`);
     const balEl = document.getElementById('balance');
     if (balEl) balEl.textContent = fmt(newBalance);
 }
 
+// ==================== TRANSFER MODAL ====================
+
 function showTransferModal() {
     showModal('Transfer Funds', `
-        <form id="transferForm" style="padding: 24px;">
-            <div style="margin-bottom: 20px;">
-                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Recipient Email or Phone</label>
-                <input type="text" id="transferRecipient" placeholder="Enter email or phone number" required
-                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px;">
-            </div>
-
-            <div style="margin-bottom: 20px;">
-                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Amount</label>
-                <input type="number" id="transferAmount" placeholder="0.00" min="100" required
-                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px;">
-            </div>
-
-            <div style="margin-bottom: 20px;">
-                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Transaction PIN</label>
-                <input type="password" id="transferPin" placeholder="Enter 4-digit PIN" maxlength="4" pattern="[0-9]{4}" required
-                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px;">
-            </div>
-
-            <div style="margin-bottom: 20px;">
-                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Narration (Optional)</label>
-                <input type="text" id="transferNarration" placeholder="What's this for?"
-                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px;">
-            </div>
-        </form>
+        <div class="form-group">
+            <label>Recipient Email or Phone</label>
+            <input type="text" id="transferRecipient"
+                   placeholder="Enter email or phone number" class="form-input">
+        </div>
+        <div class="form-group">
+            <label>Amount</label>
+            <input type="number" id="transferAmount" placeholder="0.00" min="100" class="form-input">
+        </div>
+        <div class="form-group">
+            <label>Transaction PIN</label>
+            <input type="password" id="transferPin" placeholder="Enter 4-digit PIN"
+                   maxlength="4" class="form-input">
+        </div>
+        <div class="form-group">
+            <label>Narration (Optional)</label>
+            <input type="text" id="transferNarration" placeholder="What's this for?" class="form-input">
+        </div>
     `, `
-        <button type="button" onclick="closeModal()" style="padding: 12px 24px; background: #f1f5f9; border: none; border-radius: 8px; cursor: pointer; margin-right: 8px;">Cancel</button>
-        <button type="submit" form="transferForm" class="btn-primary" style="padding: 12px 24px;">Transfer</button>
+        <button onclick="closeModal()" class="btn-secondary">Cancel</button>
+        <button onclick="handleTransfer()" class="btn-primary">Transfer</button>
     `);
-
-    document.getElementById('transferForm').addEventListener('submit', handleTransfer);
 }
 
-async function handleTransfer(e) {
-    e.preventDefault();
-    
-    const recipient = document.getElementById('transferRecipient').value;
-    const amount = parseFloat(document.getElementById('transferAmount').value);
-    const pin = document.getElementById('transferPin').value;
-    const narration = document.getElementById('transferNarration').value;
+async function handleTransfer() {
+    const recipient = document.getElementById('transferRecipient').value.trim();
+    const amount    = parseFloat(document.getElementById('transferAmount').value);
+    const pin       = document.getElementById('transferPin').value.trim();
+    const narration = document.getElementById('transferNarration').value.trim();
 
-    if (amount < 100) {
-        showError('Minimum transfer amount is ₦100');
-        return;
-    }
+    if (!recipient)                   { showInlineError('Please enter recipient email or phone'); return; }
+    if (!amount || amount < 100)      { showInlineError('Minimum transfer amount is ₦100'); return; }
+    if (!/^\d{4}$/.test(pin))         { showInlineError('Please enter your 4-digit transaction PIN'); return; }
 
-    if (pin.length !== 4) {
-        showError('Transaction PIN must be 4 digits');
-        return;
-    }
-
-    showLoading('Processing transfer...');
-
+    setSubmitLoading(true, 'Transferring...');
     try {
         const response = await api.transferFunds({
-            recipientEmail: recipient,
-            description: narration,
-            amount: amount,
-            transactionPin: pin,
+            recipientEmail: recipient, description: narration, amount, transactionPin: pin
         });
-
         closeModal();
-        showSuccess(response.message || 'Transfer successful!');
+        setTimeout(() => showSuccess(response.message || 'Transfer successful!'), 300);
     } catch (error) {
-        closeModal();
-        showError(error.message || 'Transfer failed. Please try again.');
+        setSubmitLoading(false, '', 'Transfer');
+        showInlineError(error.message || 'Transfer failed. Please try again.');
     }
 }
+
+// ==================== WITHDRAW MODAL ====================
 
 function showWithdrawModal() {
     showModal('Withdraw Funds', `
-        <form id="withdrawForm" style="padding: 24px;">
-            <div style="margin-bottom: 20px;">
-                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Bank</label>
-                <select id="withdrawBank" required
-                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px;">
-                    <option value="">Select Bank</option>
-                </select>
-            </div>
-
-            <div style="margin-bottom: 20px;">
-                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Account Number</label>
-                <input type="text" id="withdrawAccountNumber" placeholder="0123456789" maxlength="10" pattern="[0-9]{10}" required
-                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px;">
-                <div id="accountNameDisplay" style="margin-top: 8px; color: #16a34a; font-size: 14px;"></div>
-            </div>
-
-            <div style="margin-bottom: 20px;">
-                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Amount</label>
-                <input type="number" id="withdrawAmount" placeholder="0.00" min="1000" required
-                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px;">
-                <p style="color: #64748b; font-size: 12px; margin-top: 4px;">Minimum: ₦1,000</p>
-            </div>
-
-            <div style="margin-bottom: 20px;">
-                <label style="display: block; color: #64748b; font-size: 14px; margin-bottom: 8px;">Transaction PIN</label>
-                <input type="password" id="withdrawPin" placeholder="Enter 4-digit PIN" maxlength="4" pattern="[0-9]{4}" required
-                    style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 15px;">
-            </div>
-        </form>
+        <div class="form-group">
+            <label>Bank</label>
+            <select id="withdrawBank" class="form-input">
+                <option value="">Select Bank</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Account Number</label>
+            <input type="text" id="withdrawAccountNumber" placeholder="0123456789"
+                   maxlength="10" class="form-input">
+            <div id="accountNameDisplay" style="margin-top:8px;color:#16a34a;font-size:14px;"></div>
+        </div>
+        <div class="form-group">
+            <label>Amount</label>
+            <input type="number" id="withdrawAmount" placeholder="0.00" min="1000" class="form-input">
+            <small style="color:#64748b;">Minimum: ₦1,000</small>
+        </div>
+        <div class="form-group">
+            <label>Transaction PIN</label>
+            <input type="password" id="withdrawPin" placeholder="Enter 4-digit PIN"
+                   maxlength="4" class="form-input">
+        </div>
     `, `
-        <button type="button" onclick="closeModal()" style="padding: 12px 24px; background: #f1f5f9; border: none; border-radius: 8px; cursor: pointer; margin-right: 8px;">Cancel</button>
-        <button type="submit" form="withdrawForm" class="btn-primary" style="padding: 12px 24px;">Withdraw</button>
+        <button onclick="closeModal()" class="btn-secondary">Cancel</button>
+        <button onclick="handleWithdraw()" class="btn-primary">Withdraw</button>
     `);
-
     loadBanks();
-    document.getElementById('withdrawForm').addEventListener('submit', handleWithdraw);
     document.getElementById('withdrawAccountNumber').addEventListener('blur', verifyAccountNumber);
 }
 
 async function loadBanks() {
-    // Load Nigerian banks
     const banks = [
-        'Access Bank', 'GTBank', 'First Bank', 'UBA', 'Zenith Bank',
-        'Ecobank', 'Fidelity Bank', 'FCMB', 'Sterling Bank', 'Union Bank',
-        'Stanbic IBTC', 'Polaris Bank', 'Wema Bank', 'Keystone Bank'
+        'Access Bank','GTBank','First Bank','UBA','Zenith Bank','Ecobank',
+        'Fidelity Bank','FCMB','Sterling Bank','Union Bank','Stanbic IBTC',
+        'Polaris Bank','Wema Bank','Keystone Bank'
     ];
-    
     const select = document.getElementById('withdrawBank');
+    if (!select) return;
     banks.forEach(bank => {
-        const option = document.createElement('option');
-        option.value = bank.toLowerCase().replace(/\s+/g, '-');
-        option.textContent = bank;
-        select.appendChild(option);
+        const opt = document.createElement('option');
+        opt.value = bank.toLowerCase().replace(/\s+/g, '-');
+        opt.textContent = bank;
+        select.appendChild(opt);
     });
 }
 
 async function verifyAccountNumber() {
     const accountNumber = document.getElementById('withdrawAccountNumber').value;
-    const bank = document.getElementById('withdrawBank').value;
-    const display = document.getElementById('accountNameDisplay');
-
-    if (accountNumber.length !== 10 || !bank) {
-        display.textContent = '';
-        return;
-    }
-
+    const bank          = document.getElementById('withdrawBank').value;
+    const display       = document.getElementById('accountNameDisplay');
+    if (accountNumber.length !== 10 || !bank) { display.textContent = ''; return; }
     display.textContent = 'Verifying account...';
-
-    // This would call a real API to verify account
-    // For now, show placeholder
-    setTimeout(() => {
-        display.textContent = 'Account Name: [Verification pending]';
-    }, 1000);
+    setTimeout(() => { display.textContent = 'Account Name: [Verification pending]'; }, 1000);
 }
 
-async function handleWithdraw(e) {
-    e.preventDefault();
-    
-    const bank = document.getElementById('withdrawBank').value;
-    const accountNumber = document.getElementById('withdrawAccountNumber').value;
-    const amount = parseFloat(document.getElementById('withdrawAmount').value);
-    const pin = document.getElementById('withdrawPin').value;
+async function handleWithdraw() {
+    const bank          = document.getElementById('withdrawBank').value;
+    const accountNumber = document.getElementById('withdrawAccountNumber').value.trim();
+    const amount        = parseFloat(document.getElementById('withdrawAmount').value);
+    const pin           = document.getElementById('withdrawPin').value.trim();
 
-    if (amount < 1000) {
-        showError('Minimum withdrawal amount is ₦1,000');
-        return;
-    }
+    if (!bank)                        { showInlineError('Please select a bank'); return; }
+    if (accountNumber.length !== 10)  { showInlineError('Please enter a valid 10-digit account number'); return; }
+    if (!amount || amount < 1000)     { showInlineError('Minimum withdrawal amount is ₦1,000'); return; }
+    if (!/^\d{4}$/.test(pin))         { showInlineError('Please enter your 4-digit transaction PIN'); return; }
 
-    if (pin.length !== 4) {
-        showError('Transaction PIN must be 4 digits');
-        return;
-    }
-
-    showLoading('Processing withdrawal...');
-
+    setSubmitLoading(true, 'Processing...');
     try {
-        const response = await api.withdrawFunds({
-            bankCode: bank,
-            accountNumber: accountNumber,
-            amount: amount,
-            transactionPin: pin
-        });
-
+        const response = await api.withdrawFunds({ bankCode: bank, accountNumber, amount, transactionPin: pin });
         closeModal();
-        showSuccess(response.message || 'Withdrawal request submitted!');
+        setTimeout(() => showSuccess(response.message || 'Withdrawal request submitted!'), 300);
     } catch (error) {
-        closeModal();
-        showError(error.message || 'Withdrawal failed. Please try again.');
-    }
-}
-
-function copyToClipboard(text) {
-    if (navigator.clipboard) {
-        navigator.clipboard.writeText(text).then(() => {
-            showSuccess('Account number copied!');
-        });
-    } else {
-        // Fallback for older browsers
-        const textarea = document.createElement('textarea');
-        textarea.value = text;
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
-        showSuccess('Account number copied!');
+        setSubmitLoading(false, '', 'Withdraw');
+        showInlineError(error.message || 'Withdrawal failed. Please try again.');
     }
 }
 
 // ==================== PROFILE MODALS ====================
+
 function showPersonalDetailsModal() {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const bodyHTML = `
+    showModal('Personal Details', `
         <div class="profile-details">
             <div class="detail-row">
                 <span class="detail-label">Full Name</span>
@@ -1975,17 +1700,17 @@ function showPersonalDetailsModal() {
             </div>
             <div class="detail-row">
                 <span class="detail-label">Account Created</span>
-                <span class="detail-value">${user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}</span>
+                <span class="detail-value">
+                    ${user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                </span>
             </div>
         </div>
-    `;
-    
-    showModal('Personal Details', bodyHTML, '<button onclick="closeModal()" class="btn-primary" style="width: 100%;">Close</button>');
+    `, `<button onclick="closeModal()" class="btn-primary" style="width:100%;">Close</button>`);
 }
 
 function showEditProfileModal() {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const bodyHTML = `
+    showModal('Edit Profile', `
         <div class="form-group">
             <label>First Name</label>
             <input type="text" id="editFirstName" value="${user.firstName || ''}" class="form-input">
@@ -1997,73 +1722,62 @@ function showEditProfileModal() {
         <div class="form-group">
             <label>Email</label>
             <input type="email" id="editEmail" value="${user.email || ''}" class="form-input" disabled>
-            <small style="color: #64748b;">Email cannot be changed</small>
+            <small style="color:#64748b;">Email cannot be changed</small>
         </div>
         <div class="form-group">
             <label>Phone Number</label>
             <input type="tel" id="editPhone" value="${user.phoneNumber || ''}" class="form-input" disabled>
-            <small style="color: #64748b;">Phone cannot be changed</small>
+            <small style="color:#64748b;">Phone cannot be changed</small>
         </div>
-    `;
-    
-    const footerHTML = `
+    `, `
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
         <button onclick="submitProfileEdit()" class="btn-primary">Save Changes</button>
-    `;
-    
-    showModal('Edit Profile', bodyHTML, footerHTML);
+    `);
 }
 
 async function submitProfileEdit() {
-    const firstName = document.getElementById('editFirstName').value;
-    const lastName = document.getElementById('editLastName').value;
-    
-    if (!firstName || !lastName) {
-        showError('Please fill in all fields');
-        return;
-    }
-    
+    const firstName = document.getElementById('editFirstName').value.trim();
+    const lastName  = document.getElementById('editLastName').value.trim();
+    if (!firstName || !lastName) { showInlineError('Please fill in all fields'); return; }
+    setSubmitLoading(true, 'Saving...');
     try {
-        showLoading('Saving changes...');
         await api.updateProfile({ firstName, lastName });
-        
-        // Update local storage
         const user = JSON.parse(localStorage.getItem('user') || '{}');
-        user.firstName = firstName;
-        user.lastName = lastName;
+        user.firstName = firstName; user.lastName = lastName;
         localStorage.setItem('user', JSON.stringify(user));
-        
-        showSuccess('Profile updated successfully!');
+        closeModal();
+        setTimeout(() => showSuccess('Profile updated successfully!'), 300);
     } catch (error) {
-        showError(error.message || 'Failed to update profile');
+        setSubmitLoading(false, '', 'Save Changes');
+        showInlineError(error.message || 'Failed to update profile');
     }
 }
 
 function showSecurityModal() {
-    const bodyHTML = `
-        <div style="display: flex; flex-direction: column; gap: 12px;">
-            <button onclick="closeModal(); setTimeout(() => changePassword(), 300)" class="security-option">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    showModal('Security Settings', `
+        <div style="display:flex;flex-direction:column;gap:12px;">
+            <button onclick="closeModal();setTimeout(()=>changePassword(),300)" class="security-option">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2">
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                     <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                 </svg>
                 <span>Change Password</span>
             </button>
-            <button onclick="closeModal(); setTimeout(() => setTransactionPIN(), 300)" class="security-option">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <button onclick="closeModal();setTimeout(()=>setTransactionPIN(),300)" class="security-option">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="10"></circle>
                     <path d="M12 6v6l4 2"></path>
                 </svg>
                 <span>Set Transaction PIN</span>
             </button>
         </div>
-    `;
-    
-    showModal('Security Settings', bodyHTML, '<button onclick="closeModal()" class="btn-secondary" style="width: 100%;">Close</button>');
+    `, `<button onclick="closeModal()" class="btn-secondary" style="width:100%;">Close</button>`);
 }
 
 function changePassword() {
-    const bodyHTML = `
+    showModal('Change Password', `
         <div class="form-group">
             <label>Current Password</label>
             <input type="password" id="currentPassword" class="form-input">
@@ -2076,136 +1790,116 @@ function changePassword() {
             <label>Confirm Password</label>
             <input type="password" id="confirmPassword" class="form-input">
         </div>
-    `;
-    
-    const footerHTML = `
+    `, `
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
         <button onclick="submitPasswordChange()" class="btn-primary">Change Password</button>
-    `;
-    
-    showModal('Change Password', bodyHTML, footerHTML);
+    `);
 }
 
 async function submitPasswordChange() {
     const current = document.getElementById('currentPassword').value;
     const newPass = document.getElementById('newPassword').value;
     const confirm = document.getElementById('confirmPassword').value;
-    
-    if (!current || !newPass || !confirm) {
-        showError('Please fill in all fields');
-        return;
-    }
-    if (newPass !== confirm) {
-        showError('Passwords do not match');
-        return;
-    }
-    if (newPass.length < 6) {
-        showError('Password must be at least 6 characters');
-        return;
-    }
-    
+    if (!current || !newPass || !confirm) { showInlineError('Please fill in all fields'); return; }
+    if (newPass !== confirm)              { showInlineError('Passwords do not match'); return; }
+    if (newPass.length < 6)              { showInlineError('Password must be at least 6 characters'); return; }
+    setSubmitLoading(true, 'Changing...');
     try {
-        showLoading('Changing password...');
         await api.changePassword(current, newPass);
-        showSuccess('Password changed successfully!');
+        closeModal();
+        setTimeout(() => showSuccess('Password changed successfully!'), 300);
     } catch (error) {
-        showError(error.message || 'Failed to change password');
+        setSubmitLoading(false, '', 'Change Password');
+        showInlineError(error.message || 'Failed to change password');
     }
 }
 
 function setTransactionPIN() {
-    const bodyHTML = `
+    showModal('Set Transaction PIN', `
         <div class="form-group">
             <label>New PIN</label>
-            <input type="password" id="newPIN" maxlength="4" placeholder="Enter 4-digit PIN" class="form-input">
+            <input type="password" id="newPIN" maxlength="4"
+                   placeholder="Enter 4-digit PIN" class="form-input">
         </div>
         <div class="form-group">
             <label>Confirm PIN</label>
-            <input type="password" id="confirmPIN" maxlength="4" placeholder="Re-enter PIN" class="form-input">
+            <input type="password" id="confirmPIN" maxlength="4"
+                   placeholder="Re-enter PIN" class="form-input">
         </div>
-    `;
-    
-    const footerHTML = `
+    `, `
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
         <button onclick="submitPINChange()" class="btn-primary">Set PIN</button>
-    `;
-    
-    showModal('Set Transaction PIN', bodyHTML, footerHTML);
+    `);
 }
 
 async function submitPINChange() {
-    const newPin = document.getElementById('newPIN').value;
+    const newPin     = document.getElementById('newPIN').value;
     const confirmPin = document.getElementById('confirmPIN').value;
-    
-    if (!newPin || !confirmPin) {
-        showError('Please fill in all fields');
-        return;
-    }
-    if (newPin.length !== 4) {
-        showError('PIN must be 4 digits');
-        return;
-    }
-    if (newPin !== confirmPin) {
-        showError('PINs do not match');
-        return;
-    }
-    
+    if (!newPin || !confirmPin) { showInlineError('Please fill in all fields'); return; }
+    if (newPin.length !== 4)    { showInlineError('PIN must be 4 digits'); return; }
+    if (newPin !== confirmPin)  { showInlineError('PINs do not match'); return; }
+    setSubmitLoading(true, 'Setting...');
     try {
-        showLoading('Setting PIN...');
         await api.setTransactionPIN(newPin, confirmPin);
-        showSuccess('Transaction PIN set successfully!');
+        closeModal();
+        setTimeout(() => showSuccess('Transaction PIN set successfully!'), 300);
     } catch (error) {
-        showError(error.message || 'Failed to set PIN');
+        setSubmitLoading(false, '', 'Set PIN');
+        showInlineError(error.message || 'Failed to set PIN');
     }
 }
+
+// ==================== NOTIFICATIONS MODAL ====================
 
 function showNotificationsModal() {
     showModal('Notifications', `
         <div id="notifLoadingState" style="text-align:center;padding:40px 0;">
-            <div style="width:36px;height:36px;border:3px solid #e2e8f0;border-top-color:#1e3d5c;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px;"></div>
+            <div style="width:36px;height:36px;border:3px solid #e2e8f0;border-top-color:#1e3d5c;
+                        border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px;"></div>
             <p style="color:#64748b;font-size:14px;">Loading notifications...</p>
         </div>
         <div id="notifList" style="display:none;"></div>
     `, `
-        <button onclick="markAllNotifsRead()" id="markAllBtn" class="btn-secondary" style="flex:1;">Mark all read</button>
+        <button onclick="markAllNotifsRead()" id="markAllBtn" class="btn-secondary" style="flex:1;">
+            Mark all read
+        </button>
         <button onclick="closeModal()" class="btn-primary" style="flex:1;">Close</button>
     `);
     document.getElementById('modalFooter').style.display = 'flex';
     document.getElementById('modalFooter').style.gap = '10px';
-
-    // Clear the bell badge when user opens notifications
     const badge = document.getElementById('notif-badge');
     if (badge) badge.style.display = 'none';
-
     _loadNotifications();
 }
 
 async function _loadNotifications() {
     try {
         const response = await api.getNotifications();
-
-        // Handle every possible response shape the backend might return:
-        // { data: { notifications: [] } }  — standard
-        // { data: [] }                      — flat array in data
-        // { notifications: [] }             — top level
-        // { data: { data: [] } }            — nested
         let notifications = [];
         const d = response?.data;
-        if (Array.isArray(d?.notifications))       notifications = d.notifications;
-        else if (Array.isArray(d?.data))           notifications = d.data;
-        else if (Array.isArray(d))                 notifications = d;
+        if (Array.isArray(d?.notifications))          notifications = d.notifications;
+        else if (Array.isArray(d?.data))              notifications = d.data;
+        else if (Array.isArray(d))                    notifications = d;
         else if (Array.isArray(response?.notifications)) notifications = response.notifications;
-        else if (Array.isArray(response?.results)) notifications = response.results;
-
+        else if (Array.isArray(response?.results))    notifications = response.results;
         _renderNotifications(notifications);
     } catch (err) {
         const el = document.getElementById('notifLoadingState');
         if (el) el.innerHTML = `
             <div style="text-align:center;padding:40px 0;">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" style="margin:0 auto 10px;display:block;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"
+                     style="margin:0 auto 10px;display:block;">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
                 <p style="color:#dc2626;font-size:14px;margin:0;">Failed to load notifications</p>
                 <p style="color:#94a3b8;font-size:12px;margin:6px 0 0;">${err.message || 'Please try again'}</p>
-                <button onclick="_loadNotifications()" style="margin-top:14px;padding:8px 20px;background:#1e3d5c;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;">Retry</button>
+                <button onclick="_loadNotifications()"
+                    style="margin-top:14px;padding:8px 20px;background:#1e3d5c;color:#fff;
+                           border:none;border-radius:8px;font-size:13px;cursor:pointer;">
+                    Retry
+                </button>
             </div>`;
     }
 }
@@ -2220,8 +1914,10 @@ function _renderNotifications(notifications) {
         list.style.display = 'block';
         list.innerHTML = `
             <div style="text-align:center;padding:48px 0;">
-                <div style="width:56px;height:56px;background:#f1f5f9;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2">
+                <div style="width:56px;height:56px;background:#f1f5f9;border-radius:50%;
+                            display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                         stroke="#94a3b8" stroke-width="2">
                         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                         <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
                     </svg>
@@ -2239,19 +1935,16 @@ function _renderNotifications(notifications) {
         const title   = n.title || n.subject || 'Notification';
         const message = n.message || n.body || n.content || n.description || '';
         const time    = n.createdAt || n.timestamp || n.date || null;
-        const typeIcon = _notifIcon(n.type || n.category || n.notificationType || '');
-
         return `
         <div id="notif_${id}" onclick="readNotif('${id}', this)"
             style="display:flex;align-items:flex-start;gap:12px;
                    background:${isRead ? 'transparent' : '#f0f7ff'};
-                   border-radius:10px;padding:12px;margin-bottom:6px;
-                   cursor:pointer;transition:background .15s;
+                   border-radius:10px;padding:12px;margin-bottom:6px;cursor:pointer;
                    border:1px solid ${isRead ? 'transparent' : '#dbeafe'};">
             <div style="width:38px;height:38px;border-radius:50%;
                         background:${isRead ? '#f1f5f9' : '#dbeafe'};
                         display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                ${typeIcon}
+                ${_notifIcon(n.type || n.category || n.notificationType || '')}
             </div>
             <div style="flex:1;min-width:0;">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
@@ -2276,7 +1969,6 @@ function _notifIcon(type) {
         return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
     if (t.includes('broadcast') || t.includes('promo') || t.includes('update'))
         return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>';
-    // default bell icon
     return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
 }
 
@@ -2286,23 +1978,23 @@ function _timeAgoNotif(d) {
     if (s < 3600)   return Math.floor(s / 60) + 'm ago';
     if (s < 86400)  return Math.floor(s / 3600) + 'h ago';
     if (s < 604800) return Math.floor(s / 86400) + 'd ago';
-    return new Date(d).toLocaleDateString('en-NG', { day:'numeric', month:'short' });
+    return new Date(d).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' });
 }
 
 async function readNotif(id, el) {
-    if (!id || el.dataset.read === 'true') return; // already read
+    if (!id || el.dataset.read === 'true') return;
     try {
         await api.markNotificationRead(id);
-        el.dataset.read        = 'true';
-        el.style.background    = 'transparent';
-        el.style.border        = '1px solid transparent';
-        const dot = el.querySelector('span[style*="background:#2563eb"]');
-        if (dot) dot.remove();
+        el.dataset.read     = 'true';
+        el.style.background = 'transparent';
+        el.style.border     = '1px solid transparent';
+        const dot     = el.querySelector('span[style*="background:#2563eb"]');
         const iconBox = el.querySelector('div[style*="background:#dbeafe"]');
-        if (iconBox) iconBox.style.background = '#f1f5f9';
         const titleEl = el.querySelector('p');
+        if (dot)     dot.remove();
+        if (iconBox) iconBox.style.background = '#f1f5f9';
         if (titleEl) titleEl.style.fontWeight = '500';
-    } catch (e) { /* silent — UI already updated */ }
+    } catch (e) { /* silent */ }
 }
 
 async function markAllNotifsRead() {
@@ -2310,103 +2002,94 @@ async function markAllNotifsRead() {
     if (btn) { btn.disabled = true; btn.textContent = 'Marking...'; }
     try {
         await api.markAllNotificationsRead();
-
-        // Update every unread item in the list
         document.querySelectorAll('#notifList > div[id^="notif_"]').forEach(el => {
             el.dataset.read     = 'true';
             el.style.background = 'transparent';
             el.style.border     = '1px solid transparent';
-            const dot = el.querySelector('span[style*="background:#2563eb"]');
-            if (dot) dot.remove();
+            const dot     = el.querySelector('span[style*="background:#2563eb"]');
             const iconBox = el.querySelector('div[style*="background:#dbeafe"]');
-            if (iconBox) iconBox.style.background = '#f1f5f9';
             const titleEl = el.querySelector('p');
+            if (dot)     dot.remove();
+            if (iconBox) iconBox.style.background = '#f1f5f9';
             if (titleEl) titleEl.style.fontWeight = '500';
         });
-
-        // Clear bell badge
         const badge = document.getElementById('notif-badge');
         if (badge) badge.style.display = 'none';
-
         if (btn) { btn.disabled = false; btn.textContent = 'All read ✓'; }
     } catch (e) {
         if (btn) { btn.disabled = false; btn.textContent = 'Mark all read'; }
     }
 }
 
+// ==================== REMAINING PROFILE MODALS ====================
+
 function showDevicesModal() {
-    const bodyHTML = `
+    showModal('Device Management', `
         <div class="device-item">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1e3d5c" stroke-width="2">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
+                 stroke="#1e3d5c" stroke-width="2">
                 <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
                 <line x1="12" y1="18" x2="12.01" y2="18"></line>
             </svg>
-            <div style="flex: 1;">
+            <div style="flex:1;">
                 <div><strong>Current Device</strong></div>
-                <small style="color: #64748b;">Last active: Just now</small>
+                <small style="color:#64748b;">Last active: Just now</small>
             </div>
-            <span style="padding: 4px 12px; background: #dcfce7; color: #16a34a; border-radius: 12px; font-size: 12px; font-weight: 600;">Active</span>
+            <span style="padding:4px 12px;background:#dcfce7;color:#16a34a;
+                         border-radius:12px;font-size:12px;font-weight:600;">Active</span>
         </div>
-    `;
-    
-    showModal('Device Management', bodyHTML, '<button onclick="closeModal()" class="btn-primary" style="width: 100%;">Close</button>');
+    `, `<button onclick="closeModal()" class="btn-primary" style="width:100%;">Close</button>`);
 }
 
 function showReferralModal() {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const referralCode = user.referralCode || 'REF123456';
-    
-    const bodyHTML = `
-        <div style="text-align: center;">
-            <p style="color: #64748b; margin-bottom: 24px;">Share your referral code and earn rewards!</p>
-            <div style="padding: 24px; background: #eff6ff; border-radius: 12px; margin-bottom: 24px;">
-                <p style="font-size: 12px; color: #64748b; margin-bottom: 8px;">Your Referral Code</p>
-                <p style="font-size: 32px; font-weight: 700; color: #1e3d5c; letter-spacing: 2px;">${referralCode}</p>
+    showModal('Referral Program', `
+        <div style="text-align:center;">
+            <p style="color:#64748b;margin-bottom:24px;">Share your referral code and earn rewards!</p>
+            <div style="padding:24px;background:#eff6ff;border-radius:12px;margin-bottom:24px;">
+                <p style="font-size:12px;color:#64748b;margin-bottom:8px;">Your Referral Code</p>
+                <p style="font-size:32px;font-weight:700;color:#1e3d5c;letter-spacing:2px;">${referralCode}</p>
             </div>
-            <button onclick="copyReferralCode('${referralCode}')" class="btn-primary" style="width: 100%; margin-bottom: 24px;">
+            <button onclick="copyReferralCode('${referralCode}')"
+                    class="btn-primary" style="width:100%;margin-bottom:24px;">
                 Copy Code
             </button>
-            <div style="text-align: left;">
-                <p style="font-weight: 600; margin-bottom: 12px;">How it works:</p>
-                <ul style="color: #64748b; padding-left: 20px;">
+            <div style="text-align:left;">
+                <p style="font-weight:600;margin-bottom:12px;">How it works:</p>
+                <ul style="color:#64748b;padding-left:20px;">
                     <li>Share your code with friends</li>
                     <li>They sign up using your code</li>
                     <li>You both get ₦500 bonus!</li>
                 </ul>
             </div>
         </div>
-    `;
-    
-    showModal('Referral Program', bodyHTML, '<button onclick="closeModal()" class="btn-secondary" style="width: 100%;">Close</button>');
+    `, `<button onclick="closeModal()" class="btn-secondary" style="width:100%;">Close</button>`);
 }
 
 function copyReferralCode(code) {
-    navigator.clipboard.writeText(code).then(() => {
-        showSuccess('Referral code copied to clipboard!');
-    }).catch(() => {
-        showError('Failed to copy code');
-    });
+    navigator.clipboard.writeText(code)
+        .then(() => showSuccess('Referral code copied to clipboard!'))
+        .catch(() => showError('Failed to copy code'));
 }
 
 function showHelpModal() {
-    const bodyHTML = `
-        <div style="display: flex; flex-direction: column; gap: 12px;">
+    showModal('Help & Support', `
+        <div style="display:flex;flex-direction:column;gap:12px;">
             <div class="help-item">
                 <strong>📞 Contact Support</strong>
-                <p style="color: #64748b; margin-top: 4px;">support@yareemadata.com</p>
+                <p style="color:#64748b;margin-top:4px;">support@yareemadata.com</p>
             </div>
             <div class="help-item">
                 <strong>💬 Live Chat</strong>
-                <p style="color: #64748b; margin-top: 4px;">Chat with our support team</p>
+                <p style="color:#64748b;margin-top:4px;">Chat with our support team</p>
             </div>
             <div class="help-item">
                 <strong>📖 FAQ</strong>
-                <p style="color: #64748b; margin-top: 4px;">Find answers to common questions</p>
+                <p style="color:#64748b;margin-top:4px;">Find answers to common questions</p>
             </div>
         </div>
-    `;
-    
-    showModal('Help & Support', bodyHTML, '<button onclick="closeModal()" class="btn-primary" style="width: 100%;">Close</button>');
+    `, `<button onclick="closeModal()" class="btn-primary" style="width:100%;">Close</button>`);
 }
 
 // ==================== AIRTIME2CASH WHATSAPP MODAL ====================
@@ -2414,34 +2097,32 @@ function showHelpModal() {
 const WHATSAPP_NUMBER = '2348130228200';
 
 function openWhatsAppLang() {
-    const bodyHTML = `
-        <div style="text-align:center; padding: 8px 0 4px;">
-            <div style="width:56px;height:56px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="#16a34a"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.857L.057 23.486a.5.5 0 0 0 .612.612l5.63-1.476A11.95 11.95 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22a9.955 9.955 0 0 1-5.097-1.395l-.364-.217-3.773.989.989-3.772-.218-.365A9.955 9.955 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+    showModal('Airtime to Cash', `
+        <div style="text-align:center;padding:8px 0 4px;">
+            <div style="width:56px;height:56px;background:#dcfce7;border-radius:50%;
+                        display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="#16a34a">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                    <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.857L.057 23.486a.5.5 0 0 0 .612.612l5.63-1.476A11.95 11.95 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22a9.955 9.955 0 0 1-5.097-1.395l-.364-.217-3.773.989.989-3.772-.218-.365A9.955 9.955 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+                </svg>
             </div>
             <p style="font-size:14px;color:#374151;margin-bottom:20px;line-height:1.6;">
                 Please select your preferred language to continue on WhatsApp.
             </p>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                 <button onclick="launchWhatsApp('english')"
-                    style="padding:14px 10px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;font-size:13px;font-weight:600;color:#0f172a;transition:all 0.15s;"
-                    onmouseover="this.style.borderColor='#1e3d5c';this.style.background='#f0f9ff'"
-                    onmouseout="this.style.borderColor='#e2e8f0';this.style.background='#fff'">
+                    style="padding:14px 10px;border-radius:10px;border:1.5px solid #e2e8f0;
+                           background:#fff;cursor:pointer;font-size:13px;font-weight:600;color:#0f172a;">
                     🇬🇧 English
                 </button>
                 <button onclick="launchWhatsApp('hausa')"
-                    style="padding:14px 10px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;font-size:13px;font-weight:600;color:#0f172a;transition:all 0.15s;"
-                    onmouseover="this.style.borderColor='#1e3d5c';this.style.background='#f0f9ff'"
-                    onmouseout="this.style.borderColor='#e2e8f0';this.style.background='#fff'">
+                    style="padding:14px 10px;border-radius:10px;border:1.5px solid #e2e8f0;
+                           background:#fff;cursor:pointer;font-size:13px;font-weight:600;color:#0f172a;">
                     🇳🇬 Hausa
                 </button>
             </div>
-        </div>`;
-
-    showModal('Airtime to Cash',
-        bodyHTML,
-        `<button onclick="closeModal()" class="btn-secondary" style="flex:1;">Cancel</button>`
-    );
+        </div>
+    `, `<button onclick="closeModal()" class="btn-secondary" style="flex:1;">Cancel</button>`);
 }
 
 function launchWhatsApp(lang) {
@@ -2449,33 +2130,41 @@ function launchWhatsApp(lang) {
         english: 'Hello, I would like to convert my airtime to cash.',
         hausa:   'Sannu, ina son canza airtime na zuwa kudi.'
     };
-    const msg  = encodeURIComponent(messages[lang] || messages.english);
-    const url  = `https://wa.me/${WHATSAPP_NUMBER}?text=${msg}`;
-
-    // Update modal to confirmation step
-    const body = document.getElementById('modalBody');
+    const msg = encodeURIComponent(messages[lang] || messages.english);
+    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${msg}`;
+    const body   = document.getElementById('modalBody');
+    const footer = document.getElementById('modalFooter');
     if (body) {
         body.innerHTML = `
             <div style="text-align:center;padding:8px 0;">
-                <div style="width:56px;height:56px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="#16a34a"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.857L.057 23.486a.5.5 0 0 0 .612.612l5.63-1.476A11.95 11.95 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22a9.955 9.955 0 0 1-5.097-1.395l-.364-.217-3.773.989.989-3.772-.218-.365A9.955 9.955 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                <div style="width:56px;height:56px;background:#dcfce7;border-radius:50%;
+                            display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="#16a34a">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                        <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.857L.057 23.486a.5.5 0 0 0 .612.612l5.63-1.476A11.95 11.95 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22a9.955 9.955 0 0 1-5.097-1.395l-.364-.217-3.773.989.989-3.772-.218-.365A9.955 9.955 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+                    </svg>
                 </div>
                 <p style="font-size:14px;color:#374151;line-height:1.65;margin-bottom:6px;">
                     Chat the number below for your <strong>Airtime to Cash</strong>
                 </p>
-                <div style="font-size:22px;font-weight:700;color:#1e3d5c;letter-spacing:1px;margin-bottom:4px;">0813 022 8200</div>
+                <div style="font-size:22px;font-weight:700;color:#1e3d5c;letter-spacing:1px;margin-bottom:4px;">
+                    0813 022 8200
+                </div>
                 <p style="font-size:12px;color:#94a3b8;">You'll be redirected to WhatsApp</p>
             </div>`;
     }
-
-    const footer = document.getElementById('modalFooter');
     if (footer) {
         footer.style.display = 'flex';
         footer.innerHTML = `
             <button onclick="closeModal()" class="btn-secondary" style="flex:1;">Cancel</button>
             <button onclick="window.open('${url}','_blank');closeModal();"
-                style="flex:2;padding:12px 24px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.857L.057 23.486a.5.5 0 0 0 .612.612l5.63-1.476A11.95 11.95 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22a9.955 9.955 0 0 1-5.097-1.395l-.364-.217-3.773.989.989-3.772-.218-.365A9.955 9.955 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                style="flex:2;padding:12px 24px;background:#16a34a;color:#fff;border:none;
+                       border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;
+                       display:flex;align-items:center;justify-content:center;gap:8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                    <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.857L.057 23.486a.5.5 0 0 0 .612.612l5.63-1.476A11.95 11.95 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22a9.955 9.955 0 0 1-5.097-1.395l-.364-.217-3.773.989.989-3.772-.218-.365A9.955 9.955 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+                </svg>
                 Chat on WhatsApp
             </button>`;
     }
@@ -2484,60 +2173,29 @@ function launchWhatsApp(lang) {
 // ==================== WHATSAPP FLOATING BUTTON ====================
 
 (function injectWhatsAppFAB() {
-    // Inject CSS once
     if (!document.getElementById('wa-fab-style')) {
         const style = document.createElement('style');
         style.id = 'wa-fab-style';
         style.textContent = `
             #wa-fab {
-                position: fixed;
-                bottom: 24px;
-                right: 20px;
-                z-index: 9999;
-                width: 52px;
-                height: 52px;
-                background: #25d366;
-                border-radius: 50%;
-                box-shadow: 0 4px 16px rgba(37,211,102,0.45);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                border: none;
-                transition: transform 0.2s, box-shadow 0.2s;
-                text-decoration: none;
+                position:fixed;bottom:24px;right:20px;z-index:9999;
+                width:52px;height:52px;background:#25d366;border-radius:50%;
+                box-shadow:0 4px 16px rgba(37,211,102,0.45);
+                display:flex;align-items:center;justify-content:center;
+                cursor:pointer;border:none;transition:transform .2s,box-shadow .2s;
             }
-            #wa-fab:hover {
-                transform: scale(1.1);
-                box-shadow: 0 6px 20px rgba(37,211,102,0.55);
-            }
+            #wa-fab:hover { transform:scale(1.1); box-shadow:0 6px 20px rgba(37,211,102,0.55); }
             #wa-fab-tooltip {
-                position: fixed;
-                bottom: 84px;
-                right: 20px;
-                z-index: 9998;
-                background: #1e3d5c;
-                color: #fff;
-                font-size: 12px;
-                font-weight: 600;
-                padding: 6px 12px;
-                border-radius: 20px;
-                white-space: nowrap;
-                pointer-events: none;
-                opacity: 0;
-                transform: translateY(6px);
-                transition: opacity 0.2s, transform 0.2s;
+                position:fixed;bottom:84px;right:20px;z-index:9998;
+                background:#1e3d5c;color:#fff;font-size:12px;font-weight:600;
+                padding:6px 12px;border-radius:20px;white-space:nowrap;
+                pointer-events:none;opacity:0;transform:translateY(6px);
+                transition:opacity .2s,transform .2s;
             }
-            #wa-fab:hover + #wa-fab-tooltip,
-            #wa-fab-tooltip.visible {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            #wa-fab:hover + #wa-fab-tooltip { opacity:1; transform:translateY(0); }
         `;
         document.head.appendChild(style);
     }
-
-    // Inject button once DOM is ready
     function injectButton() {
         if (document.getElementById('wa-fab')) return;
         const btn = document.createElement('button');
@@ -2545,19 +2203,16 @@ function launchWhatsApp(lang) {
         btn.title = 'Chat us on WhatsApp';
         btn.setAttribute('aria-label', 'Chat on WhatsApp');
         btn.onclick = () => window.open('https://wa.me/2348021580029', '_blank');
-        btn.innerHTML = `<svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.857L.057 23.486a.5.5 0 0 0 .612.612l5.63-1.476A11.95 11.95 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22a9.955 9.955 0 0 1-5.097-1.395l-.364-.217-3.773.989.989-3.772-.218-.365A9.955 9.955 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>`;
-
+        btn.innerHTML = `<svg width="26" height="26" viewBox="0 0 24 24" fill="white">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.857L.057 23.486a.5.5 0 0 0 .612.612l5.63-1.476A11.95 11.95 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22a9.955 9.955 0 0 1-5.097-1.395l-.364-.217-3.773.989.989-3.772-.218-.365A9.955 9.955 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+        </svg>`;
         const tooltip = document.createElement('div');
         tooltip.id = 'wa-fab-tooltip';
         tooltip.textContent = 'Chat us on WhatsApp';
-
         document.body.appendChild(btn);
         document.body.appendChild(tooltip);
     }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', injectButton);
-    } else {
-        injectButton();
-    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectButton);
+    else injectButton();
 })();
