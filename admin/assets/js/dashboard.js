@@ -117,7 +117,7 @@ class AdminDashboard {
                     ${tx.user?.email || tx.user?.phoneNumber || 'N/A'}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    ${this.formatServiceType(tx.serviceType)}
+                    ${this.formatServiceType(tx.type)}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     ${AdminUtils.formatCurrency(tx.amount || 0)}

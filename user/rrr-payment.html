@@ -8,6 +8,9 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/style.css">
+
+    <!-- Remita Inline SDK (DEMO) — swap URL for live when ready -->
+    <script src="https://demo.remita.net/payment/v1/remita-pay-inline.bundle.js"></script>
 </head>
 <body>
     <!-- Sidebar Navigation -->
@@ -16,7 +19,7 @@
             <img src="assets/images/logo.png" alt="Logo">
             <h1>Yareema Data Hub</h1>
         </div>
-        
+
         <div class="sidebar-nav">
             <a href="index.html" class="nav-item">
                 <i data-lucide="home" style="width: 20px; height: 20px;"></i>
@@ -39,7 +42,7 @@
                 <span>Profile</span>
             </a>
         </div>
-        
+
         <div class="sidebar-footer">
             <div class="user-profile" onclick="window.location.href='profile.html'">
                 <div class="user-avatar" id="sidebarAvatar">U</div>
@@ -66,15 +69,24 @@
             </div>
         </div>
 
-        <!-- STATE 1: Enter RRR (Default) -->
+        <!-- STATE 1: Enter RRR -->
         <div id="enterRRRState" style="display: block;">
             <div style="background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 600px;">
+
+                <!-- Info banner -->
+                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; display: flex; gap: 10px; align-items: flex-start;">
+                    <i data-lucide="info" style="width: 18px; height: 18px; color: #2563eb; flex-shrink: 0; margin-top: 1px;"></i>
+                    <p style="font-size: 13px; color: #1e40af; margin: 0; line-height: 1.5;">
+                        Enter your RRR number and Remita will securely display your invoice details and handle your payment.
+                    </p>
+                </div>
+
                 <div class="form-group">
                     <label>Remita Retrieval Reference (RRR)</label>
-                    <input 
-                        type="text" 
-                        id="rrrInput" 
-                        placeholder="Enter RRR number" 
+                    <input
+                        type="text"
+                        id="rrrInput"
+                        placeholder="Enter RRR number"
                         class="form-input"
                         maxlength="12"
                         oninput="validateRRRInput(this)"
@@ -83,114 +95,30 @@
                         Enter the 12-digit Remita Retrieval Reference number
                     </small>
                 </div>
-                
-                <button 
-                    id="validateRRRBtn" 
-                    onclick="validateRRR()" 
-                    class="btn-primary" 
+
+                <button
+                    id="validateRRRBtn"
+                    onclick="launchRemitaWidget()"
+                    class="btn-primary"
                     style="width: 100%;"
                     disabled
                 >
-                    Validate RRR
+                    Pay with Remita
                 </button>
             </div>
         </div>
 
-        <!-- STATE 2: Invoice Preview (Hidden by default) -->
-        <div id="invoicePreviewState" style="display: none;">
-            <div style="background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 600px;">
-                <div style="border-bottom: 1px solid #e2e8f0; padding-bottom: 16px; margin-bottom: 24px;">
-                    <h2 style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">Invoice Details</h2>
-                    <p style="font-size: 14px; color: #64748b;">Please review the payment details below</p>
-                </div>
-
-                <!-- Invoice Details Grid -->
-                <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;">
-                    <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9;">
-                        <span style="color: #64748b; font-size: 14px;">Payer Name</span>
-                        <span id="invoicePayerName" style="color: #0f172a; font-weight: 600; font-size: 14px;">-</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9;">
-                        <span style="color: #64748b; font-size: 14px;">RRR Number</span>
-                        <span id="invoiceRRR" style="color: #0f172a; font-weight: 600; font-size: 14px;">-</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9;">
-                        <span style="color: #64748b; font-size: 14px;">Agency</span>
-                        <span id="invoiceAgency" style="color: #0f172a; font-weight: 600; font-size: 14px;">-</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9;">
-                        <span style="color: #64748b; font-size: 14px;">Description</span>
-                        <span id="invoiceDescription" style="color: #0f172a; font-weight: 600; font-size: 14px;">-</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9;">
-                        <span style="color: #64748b; font-size: 14px;">Amount</span>
-                        <span id="invoiceAmount" style="color: #0f172a; font-weight: 600; font-size: 14px;">₦0.00</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9;">
-                        <span style="color: #64748b; font-size: 14px;">Charges</span>
-                        <span id="invoiceCharges" style="color: #0f172a; font-weight: 600; font-size: 14px;">₦0.00</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; padding: 16px 0; background: #f8fafc; margin: 0 -12px; padding-left: 12px; padding-right: 12px; border-radius: 8px;">
-                        <span style="color: #0f172a; font-size: 16px; font-weight: 700;">Total Payable</span>
-                        <span id="invoiceTotal" style="color: #1e3d5c; font-weight: 700; font-size: 18px;">₦0.00</span>
-                    </div>
-                </div>
-
-                <!-- Transaction PIN Input -->
-                <div class="form-group" style="margin-bottom: 24px;">
-                    <label>Transaction PIN</label>
-                    <input 
-                        type="password" 
-                        id="transactionPin" 
-                        placeholder="Enter 4-digit PIN" 
-                        maxlength="4" 
-                        class="form-input"
-                        oninput="this.value = this.value.replace(/[^0-9]/g, '')"
-                    >
-                    <small style="color: #64748b; font-size: 13px; display: block; margin-top: 8px;">
-                        Enter your 4-digit transaction PIN to authorize this payment
-                    </small>
-                </div>
-
-                <!-- Action Buttons -->
-                <div style="display: flex; gap: 12px;">
-                    <button 
-                        onclick="cancelPayment()" 
-                        class="btn-secondary" 
-                        style="flex: 1;"
-                    >
-                        Cancel
-                    </button>
-                    <button 
-                        onclick="processPayment()" 
-                        class="btn-primary" 
-                        style="flex: 1;"
-                    >
-                        Pay Now
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- STATE 3: Processing State (Hidden by default) -->
-        <div id="processingState" style="display: none;">
-            <div style="background: #fff; border-radius: 12px; padding: 48px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 600px; text-align: center;">
-                <div class="spinner" style="margin-bottom: 24px;"></div>
-                <h2 style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">Processing Payment</h2>
-                <p style="font-size: 14px; color: #64748b;">Please wait while we process your payment...</p>
-            </div>
-        </div>
-
-        <!-- STATE 3: Success State (Hidden by default) -->
+        <!-- SUCCESS STATE -->
         <div id="successState" style="display: none;">
             <div style="background: #fff; border-radius: 12px; padding: 48px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 600px; text-align: center;">
                 <div style="width: 80px; height: 80px; margin: 0 auto 24px; border-radius: 50%; background: #dcfce7; display: flex; align-items: center; justify-content: center;">
                     <i data-lucide="check-circle" style="width: 48px; height: 48px; color: #16a34a;"></i>
                 </div>
                 <h2 style="font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 12px;">Payment Successful!</h2>
-                <p id="successMessage" style="font-size: 15px; color: #64748b; margin-bottom: 32px;">
+                <p id="successMessage" style="font-size: 15px; color: #64748b; margin-bottom: 8px;">
                     Your RRR payment has been processed successfully.
                 </p>
+                <p id="successTransactionId" style="font-size: 13px; color: #94a3b8; margin-bottom: 32px;"></p>
                 <div style="display: flex; gap: 12px; justify-content: center;">
                     <button onclick="window.location.href='transactions.html'" class="btn-secondary">
                         View Transactions
@@ -202,7 +130,7 @@
             </div>
         </div>
 
-        <!-- STATE 3: Failed State (Hidden by default) -->
+        <!-- FAILED STATE -->
         <div id="failedState" style="display: none;">
             <div style="background: #fff; border-radius: 12px; padding: 48px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 600px; text-align: center;">
                 <div style="width: 80px; height: 80px; margin: 0 auto 24px; border-radius: 50%; background: #fee2e2; display: flex; align-items: center; justify-content: center;">
@@ -223,7 +151,7 @@
             </div>
         </div>
 
-        <!-- STATE 3: Cancelled State (Hidden by default) -->
+        <!-- CANCELLED STATE -->
         <div id="cancelledState" style="display: none;">
             <div style="background: #fff; border-radius: 12px; padding: 48px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 600px; text-align: center;">
                 <div style="width: 80px; height: 80px; margin: 0 auto 24px; border-radius: 50%; background: #fef3c7; display: flex; align-items: center; justify-content: center;">
@@ -231,14 +159,14 @@
                 </div>
                 <h2 style="font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 12px;">Payment Cancelled</h2>
                 <p style="font-size: 15px; color: #64748b; margin-bottom: 32px;">
-                    You have cancelled the payment process.
+                    You closed the payment window. Your RRR is still valid — you can try again anytime.
                 </p>
                 <div style="display: flex; gap: 12px; justify-content: center;">
                     <button onclick="window.location.href='services.html'" class="btn-secondary">
                         Back to Services
                     </button>
                     <button onclick="resetForm()" class="btn-primary">
-                        Start Over
+                        Try Again
                     </button>
                 </div>
             </div>
@@ -248,163 +176,114 @@
     <script src="assets/js/config.js"></script>
     <script src="assets/js/api.js"></script>
     <script>
-        // Authentication check
+        // ─── Auth check ──────────────────────────────────────────────────────────
         if (!api.getToken()) {
             window.location.href = '../login.html';
         }
 
-        // Load user info
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        if (user.firstName) {
-            document.getElementById('sidebarName').textContent = user.firstName;
-            document.getElementById('sidebarAvatar').textContent = (user.firstName[0] + (user.lastName?.[0] || '')).toUpperCase();
+        // ─── Load sidebar user info ───────────────────────────────────────────────
+        const userData = JSON.parse(localStorage.getItem('user_data') || localStorage.getItem('user') || '{}');
+        if (userData.firstName) {
+            document.getElementById('sidebarName').textContent = userData.firstName;
+            document.getElementById('sidebarAvatar').textContent =
+                (userData.firstName[0] + (userData.lastName?.[0] || '')).toUpperCase();
         }
 
-        // State management
-        let currentRRR = '';
-        let invoiceData = null;
+        // ─── REMITA CONFIG ────────────────────────────────────────────────────────
+        // DEMO key — replace with your live public key when going to production
+        const REMITA_KEY = 'QzAwMDAyNzEyNTl8MTEwNjE4NjF8OWZjOWYwNmMyZDk3MDRhYWM3YThiOThlNTNjZTE3ZjYxOTY5NDdmZWE1YzU3NDc0ZjE2ZDZjNTg1YWYxNWY3NWM4ZjMzNzZhNjNhZWZlOWQwNmJhNTFkMjIxYTRiMjYzZDkzNGQ3NTUxNDIxYWNlOGY4ZWEyODY3ZjlhNGUwYTY=';
 
-        // Validate RRR input (numbers only)
+        // ─── Input validation ─────────────────────────────────────────────────────
         function validateRRRInput(input) {
             input.value = input.value.replace(/[^0-9]/g, '');
-            const btn = document.getElementById('validateRRRBtn');
-            btn.disabled = input.value.length < 12;
+            document.getElementById('validateRRRBtn').disabled = input.value.length < 12;
         }
 
-        // Validate RRR - Show loading then transition to invoice
-        async function validateRRR() {
+        // ─── Launch Remita widget ─────────────────────────────────────────────────
+        function launchRemitaWidget() {
             const rrr = document.getElementById('rrrInput').value.trim();
-            
+
             if (rrr.length !== 12) {
-                showErrorAlert('Please enter a valid 12-digit RRR');
+                alert('Please enter a valid 12-digit RRR');
                 return;
             }
 
-            currentRRR = rrr;
+            // Pull user info for the widget (optional but nice to have)
+            const firstName = userData.firstName || '';
+            const lastName  = userData.lastName  || '';
+            const email     = userData.email     || '';
+            const phone     = userData.phoneNumber || '';
 
-            try {
-                // Show processing state
-                setState('processing');
+            const paymentEngine = RmPaymentEngine.init({
+                key: REMITA_KEY,
 
-                // TODO: Replace with actual API call
-                // const response = await api.validateRRR(rrr);
-                // invoiceData = response.data;
-                
-                // For now, just simulate the state transition structure
-                // Backend will populate invoiceData when ready
-                
-                // When backend is ready, populate invoice fields:
-                // document.getElementById('invoicePayerName').textContent = invoiceData.payerName;
-                // document.getElementById('invoiceRRR').textContent = invoiceData.rrr;
-                // document.getElementById('invoiceAgency').textContent = invoiceData.agency;
-                // document.getElementById('invoiceDescription').textContent = invoiceData.description;
-                // document.getElementById('invoiceAmount').textContent = `₦${invoiceData.amount.toLocaleString()}`;
-                // document.getElementById('invoiceCharges').textContent = `₦${invoiceData.charges.toLocaleString()}`;
-                // document.getElementById('invoiceTotal').textContent = `₦${invoiceData.total.toLocaleString()}`;
+                // Pass the RRR — Remita fetches invoice details automatically
+                extendedData: {
+                    customFields: [
+                        { name: 'rrr', value: rrr }
+                    ]
+                },
 
-                // Then show invoice preview
-                // setState('invoicePreview');
+                // Pre-fill user info if available (Remita may override with invoice data)
+                firstName,
+                lastName,
+                email,
+                narration: `RRR Payment: ${rrr}`,
 
-                // For now, show error since backend not ready
-                throw new Error('RRR validation endpoint not yet configured. Please contact support.');
+                onSuccess: function (response) {
+                    console.log('Remita payment success:', response);
+                    const txId = response.transactionId || response.paymentReference || '';
+                    document.getElementById('successTransactionId').textContent =
+                        txId ? `Transaction ID: ${txId}` : '';
+                    setState('success');
+                },
 
-            } catch (error) {
-                setState('failed');
-                document.getElementById('errorMessage').textContent = error.message || 'Failed to validate RRR. Please try again.';
-            }
+                onError: function (response) {
+                    console.error('Remita payment error:', response);
+                    document.getElementById('errorMessage').textContent =
+                        response?.message || 'Payment could not be completed. Please try again.';
+                    setState('failed');
+                },
+
+                onClose: function () {
+                    console.log('Remita widget closed');
+                    // Only show cancelled if we haven't already shown success/failed
+                    const successVisible  = document.getElementById('successState').style.display  !== 'none';
+                    const failedVisible   = document.getElementById('failedState').style.display   !== 'none';
+                    if (!successVisible && !failedVisible) {
+                        setState('cancelled');
+                    }
+                }
+            });
+
+            paymentEngine.showPaymentWidget();
         }
 
-        // Process payment
-        async function processPayment() {
-            const pin = document.getElementById('transactionPin').value;
-
-            if (!pin || pin.length !== 4) {
-                showErrorAlert('Please enter your 4-digit transaction PIN');
-                return;
-            }
-
-            try {
-                // Show processing state
-                setState('processing');
-
-                // TODO: Replace with actual API call
-                // const response = await api.processRRRPayment({
-                //     rrr: currentRRR,
-                //     pin: pin,
-                //     amount: invoiceData.total
-                // });
-
-                // For now, just simulate the state structure
-                // When backend is ready:
-                // setState('success');
-                // document.getElementById('successMessage').textContent = response.message || 'Your RRR payment has been processed successfully.';
-
-                // For now, show error since backend not ready
-                throw new Error('Payment processing endpoint not yet configured. Please contact support.');
-
-            } catch (error) {
-                setState('failed');
-                document.getElementById('errorMessage').textContent = error.message || 'Payment failed. Please try again.';
-            }
-        }
-
-        // Cancel payment
-        function cancelPayment() {
-            setState('cancelled');
-        }
-
-        // Reset form to initial state
-        function resetForm() {
-            document.getElementById('rrrInput').value = '';
-            document.getElementById('transactionPin').value = '';
-            document.getElementById('validateRRRBtn').disabled = true;
-            currentRRR = '';
-            invoiceData = null;
-            setState('enterRRR');
-        }
-
-        // State management helper
+        // ─── State management ─────────────────────────────────────────────────────
         function setState(state) {
-            // Hide all states
-            document.getElementById('enterRRRState').style.display = 'none';
-            document.getElementById('invoicePreviewState').style.display = 'none';
-            document.getElementById('processingState').style.display = 'none';
-            document.getElementById('successState').style.display = 'none';
-            document.getElementById('failedState').style.display = 'none';
+            document.getElementById('enterRRRState').style.display  = 'none';
+            document.getElementById('successState').style.display   = 'none';
+            document.getElementById('failedState').style.display    = 'none';
             document.getElementById('cancelledState').style.display = 'none';
 
-            // Show requested state
-            switch(state) {
-                case 'enterRRR':
-                    document.getElementById('enterRRRState').style.display = 'block';
-                    break;
-                case 'invoicePreview':
-                    document.getElementById('invoicePreviewState').style.display = 'block';
-                    break;
-                case 'processing':
-                    document.getElementById('processingState').style.display = 'block';
-                    break;
-                case 'success':
-                    document.getElementById('successState').style.display = 'block';
-                    break;
-                case 'failed':
-                    document.getElementById('failedState').style.display = 'block';
-                    break;
-                case 'cancelled':
-                    document.getElementById('cancelledState').style.display = 'block';
-                    break;
+            switch (state) {
+                case 'enterRRR':  document.getElementById('enterRRRState').style.display  = 'block'; break;
+                case 'success':   document.getElementById('successState').style.display   = 'block'; break;
+                case 'failed':    document.getElementById('failedState').style.display    = 'block'; break;
+                case 'cancelled': document.getElementById('cancelledState').style.display = 'block'; break;
             }
 
-            // Reinitialize icons after state change
             lucide.createIcons();
         }
 
-        // Simple error alert (using existing pattern)
-        function showErrorAlert(message) {
-            alert(message);
+        // ─── Reset ────────────────────────────────────────────────────────────────
+        function resetForm() {
+            document.getElementById('rrrInput').value = '';
+            document.getElementById('validateRRRBtn').disabled = true;
+            setState('enterRRR');
         }
 
-        // Initialize Lucide icons
+        // ─── Init icons ───────────────────────────────────────────────────────────
         lucide.createIcons();
     </script>
 </body>
