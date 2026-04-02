@@ -260,8 +260,12 @@ class YareemaUserAPI {
 
     // ==================== TELECOM ====================
 
-    async getDataPlans(network) {
-        return await this.request(`/api/v1/telecom/data/plans?network=${network.toLowerCase()}`);
+    // Pass dataType to filter plans by category (e.g. 'sme', 'direct', 'awoof', 'other')
+    // When dataType is null/omitted, returns availableDataTypes for the network
+    async getDataPlans(network, dataType = null) {
+        let url = `/api/v1/telecom/data/plans?network=${network.toLowerCase()}`;
+        if (dataType) url += `&dataType=${dataType}`;
+        return await this.request(url);
     }
 
     async purchaseData(phoneNumber, network, dataPlan, transactionPin, amount) {

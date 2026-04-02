@@ -44,8 +44,6 @@ function closeModal() {
 
 // ==================== FEEDBACK HELPERS ====================
 
-// Shows a dismissable inline error banner above the modal footer
-// Does NOT close the modal — user keeps all their form data
 function showInlineError(message) {
     const existing = document.getElementById('inlineErrorMsg');
     if (existing) existing.remove();
@@ -74,11 +72,9 @@ function showInlineError(message) {
     const footer = document.getElementById('modalFooter');
     if (footer) footer.insertAdjacentElement('beforebegin', el);
 
-    // Auto-dismiss after 6 seconds
     setTimeout(() => el.remove(), 6000);
 }
 
-// Disable / re-enable the primary submit button and swap its label
 function setSubmitLoading(loading, label = 'Processing...', originalLabel = null) {
     const btn = document.querySelector('#modalFooter .btn-primary');
     if (!btn) return;
@@ -94,7 +90,6 @@ function setSubmitLoading(loading, label = 'Processing...', originalLabel = null
     }
 }
 
-// Full-screen success — shown after modal closes
 function showSuccess(message) {
     showModal('Success!', `
         <div style="text-align:center;padding:32px;">
@@ -111,7 +106,6 @@ function showSuccess(message) {
             class="btn-primary" style="width:100%;">OK</button>`);
 }
 
-// Standalone error modal (used only for non-service errors e.g. routing)
 function showError(message) {
     showModal('Error', `
         <div style="text-align:center;padding:32px;">
@@ -162,10 +156,12 @@ function openModal(type) {
 
 let selectedNetwork = 'mtn';
 let currentDataPlans = [];
+let selectedDataType = null;
 
 async function showDataModal() {
     selectedNetwork = 'mtn';
     currentDataPlans = [];
+    selectedDataType = null;
 
     showModal('Buy Data', `
         <div class="form-group">
@@ -185,6 +181,12 @@ async function showDataModal() {
                     style="background:#006400;color:#fff;">9mobile</button>
             </div>
         </div>
+        <div class="form-group" id="dataTypeGroup">
+            <label>Data Type</label>
+            <div id="dataTypeGrid" style="display:flex;flex-wrap:wrap;gap:8px;min-height:36px;">
+                <span style="color:#94a3b8;font-size:13px;line-height:36px;">Loading types...</span>
+            </div>
+        </div>
         <div class="form-group">
             <label>Phone Number</label>
             <input type="tel" id="dataPhone" placeholder="08012345678"
@@ -192,8 +194,8 @@ async function showDataModal() {
         </div>
         <div class="form-group">
             <label>Select Plan</label>
-            <select id="dataPlan" class="form-input">
-                <option value="">Loading plans...</option>
+            <select id="dataPlan" class="form-input" disabled>
+                <option value="">Choose a data type first...</option>
             </select>
         </div>
         <div class="form-group">
@@ -206,11 +208,14 @@ async function showDataModal() {
         <button onclick="submitDataPurchase()" class="btn-primary">Purchase Data</button>
     `);
 
-    await loadDataPlans('mtn');
+    await loadDataTypes('mtn');
 }
 
 function selectDataNetwork(network) {
     selectedNetwork = network;
+    selectedDataType = null;
+    currentDataPlans = [];
+
     document.querySelectorAll('.network-btn').forEach(btn => {
         btn.classList.remove('active');
         if (btn.dataset.network === 'mtn')     btn.style.cssText = 'background:#FFCC00;color:#000;';
@@ -223,40 +228,113 @@ function selectDataNetwork(network) {
         selectedBtn.classList.add('active');
         selectedBtn.style.cssText += ';border:3px solid white;box-shadow:0 0 0 2px #1e3d5c;';
     }
-    loadDataPlans(network);
+
+    // Reset plan dropdown
+    const planSelect = document.getElementById('dataPlan');
+    if (planSelect) {
+        planSelect.innerHTML = '<option value="">Choose a data type first...</option>';
+        planSelect.disabled = true;
+    }
+
+    // Reset type grid to loading state
+    const typeGrid = document.getElementById('dataTypeGrid');
+    if (typeGrid) typeGrid.innerHTML = '<span style="color:#94a3b8;font-size:13px;line-height:36px;">Loading types...</span>';
+
+    loadDataTypes(network);
 }
 
-async function loadDataPlans(network) {
-    const planSelect = document.getElementById('dataPlan');
-    if (!planSelect) return;
-    planSelect.innerHTML = '<option value="">Loading plans...</option>';
+async function loadDataTypes(network) {
+    const typeGrid = document.getElementById('dataTypeGrid');
+
     try {
         const response = await api.getDataPlans(network);
+        const types = response.availableDataTypes;
+
+        if (!typeGrid) return;
+
+        if (!types || !types.length) {
+            typeGrid.innerHTML = '<span style="color:#dc2626;font-size:13px;">No data types available</span>';
+            return;
+        }
+
+        // Render pill buttons — user must pick one before plans load
+        typeGrid.innerHTML = types.map(type => `
+            <button type="button"
+                class="data-type-btn"
+                data-type="${type}"
+                onclick="selectDataType('${type}')"
+                style="padding:7px 16px;border:2px solid #e2e8f0;border-radius:20px;
+                       background:white;color:#64748b;font-size:13px;font-weight:600;
+                       cursor:pointer;text-transform:capitalize;">
+                ${type.charAt(0).toUpperCase() + type.slice(1)}
+            </button>
+        `).join('');
+
+    } catch (error) {
+        if (typeGrid) typeGrid.innerHTML = '<span style="color:#dc2626;font-size:13px;">Failed to load types. Please retry.</span>';
+    }
+}
+
+async function selectDataType(type) {
+    selectedDataType = type;
+    currentDataPlans = [];
+
+    // Update pill button styles
+    document.querySelectorAll('.data-type-btn').forEach(btn => {
+        const active = btn.dataset.type === type;
+        btn.style.cssText = active
+            ? 'padding:7px 16px;border:2px solid #1e3d5c;border-radius:20px;background:#1e3d5c;color:white;font-size:13px;font-weight:600;cursor:pointer;text-transform:capitalize;'
+            : 'padding:7px 16px;border:2px solid #e2e8f0;border-radius:20px;background:white;color:#64748b;font-size:13px;font-weight:600;cursor:pointer;text-transform:capitalize;';
+    });
+
+    // Show loading state in dropdown while fetching
+    const planSelect = document.getElementById('dataPlan');
+    if (planSelect) {
+        planSelect.innerHTML = '<option value="">Loading plans...</option>';
+        planSelect.disabled = true;
+    }
+
+    await loadDataPlans(selectedNetwork, type);
+}
+
+async function loadDataPlans(network, dataType) {
+    const planSelect = document.getElementById('dataPlan');
+    if (!planSelect) return;
+
+    try {
+        const response = await api.getDataPlans(network, dataType);
+
         let plans = [];
-        const networkKey = network.toLowerCase();
-        if (response.data && Array.isArray(response.data[networkKey]))
-            plans = response.data[networkKey].filter(p => p.price > 0);
-        if (!plans.length && response.data?.MOBILE_NETWORK) {
-            const nelloKey = { mtn:'MTN', glo:'Glo', '9mobile':'m_9mobile', airtel:'Airtel' }[networkKey] || network;
+        if (Array.isArray(response.data)) {
+            plans = response.data.filter(p => (p.price || p.PRODUCT_AMOUNT || p.sellingPrice) > 0);
+        } else if (response.data && Array.isArray(response.data[network.toLowerCase()])) {
+            plans = response.data[network.toLowerCase()].filter(p => p.price > 0);
+        } else if (response.data?.MOBILE_NETWORK) {
+            const nelloKey = { mtn:'MTN', glo:'Glo', '9mobile':'m_9mobile', airtel:'Airtel' }[network.toLowerCase()] || network;
             const nd = response.data.MOBILE_NETWORK[nelloKey];
             if (Array.isArray(nd) && nd[0]?.PRODUCT)
                 plans = nd[0].PRODUCT.map(p => ({ id: p.PRODUCT_ID, planName: p.PRODUCT_NAME, price: p.PRODUCT_AMOUNT }));
         }
-        if (!plans.length && Array.isArray(response.data))
-            plans = response.data.filter(p => p.price > 0);
+
         currentDataPlans = plans;
+
         if (!plans.length) {
-            planSelect.innerHTML = '<option value="">No plans available for this network</option>';
+            planSelect.innerHTML = '<option value="">No plans available for this type</option>';
+            planSelect.disabled = true;
             return;
         }
+
+        planSelect.disabled = false;
         planSelect.innerHTML = '<option value="">Choose a plan</option>' +
             plans.map((plan, i) => {
                 const name   = plan.PRODUCT_NAME || plan.planName || plan.name || 'Data Plan';
                 const amount = plan.PRODUCT_AMOUNT || plan.sellingPrice || plan.price || 0;
                 return `<option value="${i}">${name} — ₦${Math.round(Number(amount)).toLocaleString()}</option>`;
             }).join('');
+
     } catch (error) {
-        if (planSelect) planSelect.innerHTML = '<option value="">Failed to load plans. Please try again.</option>';
+        planSelect.innerHTML = '<option value="">Failed to load plans. Please try again.</option>';
+        planSelect.disabled = true;
     }
 }
 
@@ -1015,7 +1093,6 @@ async function showSMSModal() {
     } catch(e) { /* silent */ }
 
     showModal('Bulk SMS', `
-
         <div class="form-group">
             <label>Sender ID
                 <span style="color:#94a3b8;font-weight:400;font-size:12px;">(max 11 chars)</span>
