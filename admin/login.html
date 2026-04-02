@@ -192,7 +192,6 @@
                                 id="login-email"
                                 class="w-full pl-10 pr-4 py-3 sm:py-3.5 border border-slate-300 rounded-lg form-input focus:outline-none text-sm sm:text-base"
                                 placeholder="Enter your email or phone number"
-                                value="admin@yareemadata.com"
                                 required
                             >
                         </div>
@@ -215,7 +214,6 @@
                                 id="login-password"
                                 class="w-full pl-10 pr-12 py-3 sm:py-3.5 border border-slate-300 rounded-lg form-input focus:outline-none text-sm sm:text-base"
                                 placeholder="Enter your password"
-                                value="Admin@1234"
                                 required
                             >
                             <button type="button" id="toggle-login-password" class="password-toggle absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -269,86 +267,186 @@
             const email = document.getElementById('login-email').value.trim();
             const password = loginPassword.value;
             
-            console.log('Attempting login with:', email);
-            
-            // Validation
             if (!email || !password) {
                 showError('Please fill in all fields');
                 return;
             }
             
             hideMessages();
-            
-            const loginBtn = document.getElementById('login-btn');
-            const loginSpinner = document.getElementById('login-spinner');
-            const loginText = document.getElementById('login-text');
-            
-            // Show loading
-            loginBtn.disabled = true;
-            loginText.textContent = 'Logging in...';
-            loginSpinner.classList.remove('hidden');
-            lucide.createIcons();
+            setLoading(true);
             
             try {
-                console.log('Calling API login...');
-                console.log('Email:', email);
-                console.log('API Base URL:', api.baseURL);
-                
+                // Temp-store credentials so verifyTwoFactorLogin can replay login with twoFactorCode
+                localStorage.setItem('admin_login_email', email);
+                localStorage.setItem('admin_login_password', password);
+
                 const response = await api.login(email, password);
                 
-                console.log('Login response:', response);
-                
-                // Check if login was successful
-                // Handle different response structures
-                const isSuccess = response.success !== false && 
-                                 (response.token || response.data?.token || response.accessToken);
-                
-                console.log('Is Success:', isSuccess);
-                
-                if (isSuccess) {
-                    // Get user data from response
-                    const user = response.user || response.data?.user || {};
-                    const userName = user.firstName || user.name || 'Admin';
-                    
-                    console.log('Login successful! User:', userName);
-                    
-                    // Show success alert
+                // ── 2FA required ──────────────────────────────────────────
+                if (response.requiresTwoFactor) {
+                    setLoading(false);
+                    await showOTPModal(response.method || 'email', email);
+                    return;
+                }
+
+                // ── Normal success ────────────────────────────────────────
+                if (response.success) {
+                    const userName = response.user?.firstName || 'Admin';
                     Swal.fire({
                         icon: 'success',
                         title: 'Login Successful!',
                         text: `Welcome back, ${userName}!`,
                         timer: 1500,
                         showConfirmButton: false,
-                        didClose: () => {
-                            console.log('Redirecting to dashboard...');
-                            window.location.href = 'dashboard.html';
-                        }
+                        didClose: () => { window.location.href = 'dashboard.html'; }
                     });
                 } else {
-                    console.error('Login failed - no token in response');
                     showError(response.message || 'Login failed. Please check your credentials.');
-                    resetButton();
+                    setLoading(false);
                 }
             } catch (error) {
-                console.error('Login error:', error);
-                console.error('Error details:', {
-                    message: error.message,
-                    stack: error.stack
-                });
                 showError(error.message || 'Login failed. Please try again.');
-                resetButton();
+                setLoading(false);
             }
         });
 
-        function resetButton() {
-            const loginBtn = document.getElementById('login-btn');
-            const loginSpinner = document.getElementById('login-spinner');
-            const loginText = document.getElementById('login-text');
-            
-            loginBtn.disabled = false;
-            loginText.textContent = 'Login';
-            loginSpinner.classList.add('hidden');
+        // ── 2FA OTP Modal ─────────────────────────────────────────────────────
+        async function showOTPModal(method, email) {
+            const methodLabel = method === 'authenticator' ? 'authenticator app' : 'email';
+
+            const { value: code, isDismissed } = await Swal.fire({
+                title: 'Two-Factor Authentication',
+                html: `
+                    <div class="text-center py-2">
+                        <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                            </svg>
+                        </div>
+                        <p class="text-sm text-slate-600 mb-5">
+                            Enter the 6-digit code sent to your <strong>${methodLabel}</strong> to complete sign in.
+                        </p>
+                        <div class="flex justify-center gap-2 mb-4" id="otp-boxes">
+                            <input type="text" maxlength="1" class="otp-digit w-11 h-12 text-center text-xl font-bold border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 transition-colors" inputmode="numeric">
+                            <input type="text" maxlength="1" class="otp-digit w-11 h-12 text-center text-xl font-bold border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 transition-colors" inputmode="numeric">
+                            <input type="text" maxlength="1" class="otp-digit w-11 h-12 text-center text-xl font-bold border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 transition-colors" inputmode="numeric">
+                            <input type="text" maxlength="1" class="otp-digit w-11 h-12 text-center text-xl font-bold border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 transition-colors" inputmode="numeric">
+                            <input type="text" maxlength="1" class="otp-digit w-11 h-12 text-center text-xl font-bold border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 transition-colors" inputmode="numeric">
+                            <input type="text" maxlength="1" class="otp-digit w-11 h-12 text-center text-xl font-bold border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 transition-colors" inputmode="numeric">
+                        </div>
+                        <p class="text-xs text-slate-400">Didn't receive the code?
+                            <button type="button" onclick="resendOTP()" class="text-blue-600 hover:underline font-medium">Resend</button>
+                        </p>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Verify & Login',
+                confirmButtonColor: '#1E3D5C',
+                cancelButtonText: 'Back to Login',
+                cancelButtonColor: '#6b7280',
+                allowOutsideClick: false,
+                focusConfirm: false,
+                didOpen: () => {
+                    // Wire up OTP box auto-advance
+                    const digits = document.querySelectorAll('.otp-digit');
+                    digits.forEach((box, i) => {
+                        box.addEventListener('input', () => {
+                            box.value = box.value.replace(/[^0-9]/g, '');
+                            if (box.value && i < digits.length - 1) digits[i + 1].focus();
+                        });
+                        box.addEventListener('keydown', (e) => {
+                            if (e.key === 'Backspace' && !box.value && i > 0) digits[i - 1].focus();
+                        });
+                        box.addEventListener('paste', (e) => {
+                            e.preventDefault();
+                            const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+                            [...pasted].slice(0, 6).forEach((ch, j) => {
+                                if (digits[j]) digits[j].value = ch;
+                            });
+                            const next = Math.min(pasted.length, 5);
+                            digits[next].focus();
+                        });
+                    });
+                    digits[0].focus();
+                },
+                preConfirm: () => {
+                    const digits = document.querySelectorAll('.otp-digit');
+                    const code = [...digits].map(d => d.value).join('');
+                    if (code.length < 6) {
+                        Swal.showValidationMessage('Please enter the complete 6-digit code');
+                        return false;
+                    }
+                    return code;
+                }
+            });
+
+            if (isDismissed) return;
+
+            // Verify the OTP
+            Swal.fire({
+                title: 'Verifying...',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const res = await api.verifyTwoFactorLogin(code, email);
+                if (res.success) {
+                    const userName = res.user?.firstName || 'Admin';
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'Verified!',
+                        text: `Welcome back, ${userName}!`,
+                        timer: 1200,
+                        showConfirmButton: false,
+                    });
+                    window.location.href = 'dashboard.html';
+                }
+            } catch (error) {
+                await Swal.fire({
+                    icon: 'error',
+                    title: 'Invalid Code',
+                    text: error.message || 'The code you entered is incorrect or has expired.',
+                    confirmButtonColor: '#1E3D5C',
+                });
+                // Re-show OTP modal for retry
+                await showOTPModal(method);
+            }
         }
+
+        async function resendOTP() {
+            try {
+                const em = document.getElementById('login-email')?.value?.trim() || '';
+                const pw = loginPassword?.value || '';
+                if (em && pw) {
+                    await api.login(em, pw);
+                    // Show inline confirmation inside the Swal modal
+                    const msg = document.createElement('p');
+                    msg.className = 'text-xs text-green-600 mt-2';
+                    msg.textContent = '✓ New code sent!';
+                    const otpBoxes = document.getElementById('otp-boxes');
+                    if (otpBoxes) otpBoxes.parentNode.appendChild(msg);
+                    setTimeout(() => msg.remove(), 3000);
+                }
+            } catch(e) {
+                console.error('Resend failed:', e);
+            }
+        }
+
+        function setLoading(on) {
+            const loginBtn     = document.getElementById('login-btn');
+            const loginSpinner = document.getElementById('login-spinner');
+            const loginText    = document.getElementById('login-text');
+            loginBtn.disabled  = on;
+            loginText.textContent = on ? 'Logging in...' : 'Login';
+            loginSpinner.classList.toggle('hidden', !on);
+            lucide.createIcons();
+        }
+
+        // keep old name as alias for safety
+        function resetButton() { setLoading(false); }
 
         // Forgot password
         document.getElementById('forgot-password').addEventListener('click', () => {

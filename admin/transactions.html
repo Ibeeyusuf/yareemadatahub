@@ -33,10 +33,16 @@
                             <h2 class="text-2xl font-bold text-slate-900">Transaction History</h2>
                             <p class="text-slate-500 text-sm mt-1">View and manage all platform transactions</p>
                         </div>
-                        <button id="refresh-transactions" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
-                            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                            Refresh
-                        </button>
+                        <div class="flex items-center gap-3">
+                            <button id="refresh-transactions" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+                                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                                Refresh
+                            </button>
+                            <button id="export-transactions-btn" onclick="exportTransactions()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-2">
+                                <i data-lucide="download" class="w-4 h-4"></i>
+                                Export CSV
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Statistics Cards -->
@@ -130,5 +136,128 @@
     <script src="assets/js/utils.js"></script>
     <script src="assets/js/transactions.js"></script>
     <script src="assets/js/main.js"></script>
+
+    <script>
+        async function exportTransactions() {
+            const { value: formValues } = await Swal.fire({
+                title: 'Export Transactions',
+                html: `
+                    <div class="text-left space-y-4 mt-2">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Format</label>
+                            <select id="exp-format" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                <option value="csv">CSV</option>
+                                <option value="json">JSON</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Start Date</label>
+                                <input id="exp-start" type="date" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">End Date</label>
+                                <input id="exp-end" type="date" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Status</label>
+                            <select id="exp-status" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                <option value="">All Statuses</option>
+                                <option value="successful">Successful</option>
+                                <option value="pending">Pending</option>
+                                <option value="failed">Failed</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Transaction Type</label>
+                            <select id="exp-type" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                <option value="">All Types</option>
+                                <option value="airtime_recharge">Airtime Recharge</option>
+                                <option value="data_recharge">Data Recharge</option>
+                                <option value="recharge_pin">Recharge PIN</option>
+                                <option value="fund_wallet">Fund Wallet</option>
+                            </select>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Download Export',
+                confirmButtonColor: '#059669',
+                cancelButtonColor: '#6b7280',
+                focusConfirm: false,
+                customClass: { popup: 'rounded-xl' },
+                preConfirm: () => {
+                    return {
+                        format: document.getElementById('exp-format').value,
+                        startDate: document.getElementById('exp-start').value,
+                        endDate: document.getElementById('exp-end').value,
+                        status: document.getElementById('exp-status').value,
+                        type: document.getElementById('exp-type').value,
+                    };
+                }
+            });
+
+            if (!formValues) return;
+
+            const btn = document.getElementById('export-transactions-btn');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25"/>
+                <path fill="currentColor" d="M4 12a8 8 0 018-8v8z" class="opacity-75"/>
+            </svg> Exporting...`;
+
+            try {
+                const baseUrl = (typeof API_CONFIG !== 'undefined' ? API_CONFIG.BASE_URL : '') || '';
+                const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
+
+                // Build query params exactly like: /api/v1/admin/transactions/export?format=csv&startDate=2026-03-1&endDate=2026-04-1&status=successful
+                const params = new URLSearchParams();
+                params.append('format', formValues.format);
+                if (formValues.startDate) params.append('startDate', formValues.startDate);
+                if (formValues.endDate)   params.append('endDate', formValues.endDate);
+                if (formValues.status)    params.append('status', formValues.status);
+                if (formValues.type)      params.append('type', formValues.type);
+
+                const url = `${baseUrl}/api/v1/admin/transactions/export?${params.toString()}`;
+                console.log('Export URL:', url);
+
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'text/csv, application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(errText || `Export failed (${response.status})`);
+                }
+
+                const blob = await response.blob();
+                const objectUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = objectUrl;
+                a.download = `transactions_export_${new Date().toISOString().split('T')[0]}.${formValues.format}`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(objectUrl);
+
+                AdminUtils.showToast('Transactions exported successfully!', 'success');
+            } catch (error) {
+                console.error('Export error:', error);
+                AdminUtils.showToast(error.message || 'Export failed. Please try again.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+                lucide.createIcons();
+            }
+        }
+    </script>
+</body>
+</html>
 </body>
 </html>

@@ -148,6 +148,30 @@ class YareemaAPI {
         }
     }
 
+    // ==================== PROFILE & ACCOUNT ====================
+
+    async getProfile() {
+        return await this.request('/api/v1/admin/profile');
+    }
+
+    async updateProfile(data) {
+        return await this.request('/api/v1/admin/profile', {
+            method: 'PUT',
+            body: { firstName: data.firstName, lastName: data.lastName }
+        });
+    }
+
+    async changePassword(currentPassword, newPassword) {
+        return await this.request('/api/v1/admin/change-password', {
+            method: 'POST',
+            body: {
+                currentPassword,
+                newPassword,
+                confirmNewPassword: newPassword
+            }
+        });
+    }
+
     // ==================== AUTHENTICATION ====================
     
     async login(email, password) {
@@ -158,23 +182,27 @@ class YareemaAPI {
         });
         
         console.log('Login API Response:', response);
-        
-        // Handle different API response structures
-        // Structure 1: { status: "success", token, refreshToken, data: { user } }
-        // Structure 2: { success: true, token, user }
-        // Structure 3: { token, user }
-        
+
+        // ── 2FA pending ──────────────────────────────────────────────────────
+        // Response: { status: "pending", requiresTwoFactor: true, method: "email", message: "..." }
+        if (response.requiresTwoFactor === true || response.status === 'pending') {
+            return {
+                requiresTwoFactor: true,
+                method: response.method || 'email',
+                message: response.message || 'Two-factor code sent'
+            };
+        }
+
+        // ── Normal login success ─────────────────────────────────────────────
         const token = response.token || response.data?.token || response.accessToken;
         const user = response.data?.user || response.user || {};
         const refreshToken = response.refreshToken || response.refresh_token;
         
         if (token) {
-            // Store token in BOTH localStorage and sessionStorage for reliability
             localStorage.setItem('admin_token', token);
             sessionStorage.setItem('admin_token', token);
             this.token = token;
             
-            // Store refresh token and user data if available
             if (refreshToken) {
                 localStorage.setItem('admin_refresh_token', refreshToken);
             }
@@ -183,7 +211,6 @@ class YareemaAPI {
             }
             
             console.log('Token stored successfully');
-            
             return {
                 success: true,
                 token: token,
@@ -193,10 +220,42 @@ class YareemaAPI {
             };
         }
         
-        // If no token in response, login failed
         const errorMessage = response.message || response.error || 'Login failed - no token received';
         console.error('Login failed:', errorMessage);
         throw new Error(errorMessage);
+    }
+
+    async verifyTwoFactorLogin(code, email) {
+        // Re-hits the same login endpoint with twoFactorCode added
+        // Body: { email, password, twoFactorCode }
+        const storedEmail    = email || localStorage.getItem('admin_login_email') || '';
+        const storedPassword = localStorage.getItem('admin_login_password') || '';
+
+        const response = await this.request('/api/v1/auth/login', {
+            method: 'POST',
+            body: { email: storedEmail, password: storedPassword, twoFactorCode: code },
+            skipAuth: true
+        });
+
+        console.log('2FA login response:', response);
+
+        const token       = response.token || response.data?.token || response.accessToken;
+        const user        = response.data?.user || response.user || {};
+        const refreshToken = response.refreshToken || response.refresh_token;
+
+        if (token) {
+            localStorage.setItem('admin_token', token);
+            sessionStorage.setItem('admin_token', token);
+            this.token = token;
+            if (refreshToken) localStorage.setItem('admin_refresh_token', refreshToken);
+            if (user && Object.keys(user).length > 0) localStorage.setItem('admin_user', JSON.stringify(user));
+            // Clean up temp credentials
+            localStorage.removeItem('admin_login_email');
+            localStorage.removeItem('admin_login_password');
+            return { success: true, token, user };
+        }
+
+        throw new Error(response.message || 'Two-factor verification failed');
     }
 
     async logout() {
@@ -556,6 +615,40 @@ class YareemaAPI {
         return await this.request('/api/v1/admin/settings', {
             method: 'PUT',
             body: { settings }
+        });
+    }
+
+    // ==================== TWO-FACTOR AUTHENTICATION ====================
+
+    async get2FASettings() {
+        return await this.request('/api/v1/admin/settings/2fa');
+    }
+
+    async setup2FA(method) {
+        return await this.request('/api/v1/admin/settings/2fa/setup', {
+            method: 'POST',
+            body: { method }
+        });
+    }
+
+    async verify2FASetup(code) {
+        return await this.request('/api/v1/admin/settings/2fa/verify', {
+            method: 'POST',
+            body: { code }
+        });
+    }
+
+    async send2FADisableCode() {
+        return await this.request('/api/v1/admin/settings/2fa/send-code', {
+            method: 'POST',
+            body: {}
+        });
+    }
+
+    async disable2FA(code) {
+        return await this.request('/api/v1/admin/settings/2fa/disable', {
+            method: 'POST',
+            body: { code }
         });
     }
 

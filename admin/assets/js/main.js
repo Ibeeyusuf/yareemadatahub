@@ -51,11 +51,31 @@ async function loadPartials() {
     try {
         var adminUser = JSON.parse(localStorage.getItem('admin_user') || 'null');
         if (adminUser) {
-            var name = adminUser.firstName || adminUser.name || adminUser.email || 'Admin';
-            var nameEl = document.getElementById('sidebarAdminName');
+            var fn   = adminUser.firstName || '';
+            var ln   = adminUser.lastName  || '';
+            var name = (fn + ' ' + ln).trim() || adminUser.email || 'Admin';
+            var nameEl   = document.getElementById('sidebarAdminName');
             var avatarEl = document.getElementById('sidebarAdminAvatar');
-            if (nameEl) nameEl.textContent = name;
+            if (nameEl)   nameEl.textContent   = name;
             if (avatarEl) avatarEl.textContent = name.charAt(0).toUpperCase();
+        }
+    } catch(e) {}
+
+    // Also try a fresh API call to keep sidebar name up to date
+    try {
+        if (typeof api !== 'undefined' && typeof api.getProfile === 'function') {
+            api.getProfile().then(function(res) {
+                var user = (res && res.data && res.data.admin) ? res.data.admin : null;
+                if (!user) return;
+                localStorage.setItem('admin_user', JSON.stringify(user));
+                var fn   = user.firstName || '';
+                var ln   = user.lastName  || '';
+                var name = (fn + ' ' + ln).trim() || user.email || 'Admin';
+                var nameEl   = document.getElementById('sidebarAdminName');
+                var avatarEl = document.getElementById('sidebarAdminAvatar');
+                if (nameEl)   nameEl.textContent   = name;
+                if (avatarEl) avatarEl.textContent = name.charAt(0).toUpperCase();
+            }).catch(function() {});
         }
     } catch(e) {}
 }
