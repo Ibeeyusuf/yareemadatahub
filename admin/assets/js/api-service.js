@@ -72,65 +72,74 @@ class YareemaAPI {
             console.log(`API Response (${response.status}):`, data);
 
             // Handle HTTP errors
-            if (!response.ok) {
-                // 401 Unauthorized - Only auto logout if it's NOT a login attempt
-                if (response.status === 401) {
-                    console.error('401 Unauthorized:', data);
-                    
-                    // Check if this is a login request (skipAuth = true)
-                    if (options.skipAuth) {
-                        // Don't auto logout, just throw the error message from backend
-                        throw new Error(data.message || 'Invalid email or password');
-                    }
-                    
-                    // For non-login endpoints, handle session expiration
-                    console.error('Session expired - Logging out');
-                    this.clearToken();
-                    
-                    // Prevent redirect loop - only redirect if not already on login page
-                    const currentPage = window.location.pathname.split('/').pop();
-                    if (currentPage !== 'login.html' && currentPage !== 'index.html') {
-                        if (typeof Swal !== 'undefined') {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Session Expired',
-                                text: 'Your session has expired. Please login again.',
-                                confirmButtonText: 'Go to Login',
-                                allowOutsideClick: false
-                            }).then(() => {
-                                window.location.href = 'login.html';
-                            });
-                        } else {
-                            alert('Session expired. Please login again.');
-                            window.location.href = 'login.html';
-                        }
-                    }
-                    throw new Error('Unauthorized - Session expired');
-                }
-            
-                // 403 Forbidden
-                if (response.status === 403) {
-                    throw new Error(data.message || 'Access forbidden - insufficient permissions');
-                }
-            
-                // 404 Not Found
-                if (response.status === 404) {
-                    throw new Error(data.message || 'Resource not found');
-                }
-            
-                // 400 Validation Error
-                if (response.status === 400) {
-                    throw new Error(data.message || 'Invalid request data');
-                }
-            
-                // 500 Server Error
-                if (response.status >= 500) {
-                    throw new Error(data.message || 'Server error - please try again later');
-                }
-            
-                // Generic error
-                throw new Error(data.message || `Request failed with status ${response.status}`);
+            // In the request() method, replace the 401 handling section:
+
+// Handle HTTP errors
+if (!response.ok) {
+    // 401 Unauthorized
+    if (response.status === 401) {
+        console.error('401 Unauthorized:', data);
+        
+        // Check if this is a login/authentication request (skipAuth = true)
+        if (options.skipAuth) {
+            // This is a login attempt - return the actual error message
+            const errorMessage = data.message || data.error || 'Invalid email or password';
+            console.error('Login failed:', errorMessage);
+            throw new Error(errorMessage);
+        }
+        
+        // For non-login endpoints, handle session expiration
+        console.error('Session expired - Logging out');
+        this.clearToken();
+        
+        // Clear stored user data
+        localStorage.removeItem('admin_user');
+        localStorage.removeItem('admin_refresh_token');
+        
+        // Prevent redirect loop - only redirect if not already on login page
+        const currentPage = window.location.pathname.split('/').pop();
+        if (currentPage !== 'login.html' && currentPage !== 'index.html') {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Session Expired',
+                    text: 'Your session has expired. Please login again.',
+                    confirmButtonText: 'Go to Login',
+                    allowOutsideClick: false
+                }).then(() => {
+                    window.location.href = 'login.html';
+                });
+            } else {
+                alert('Session expired. Please login again.');
+                window.location.href = 'login.html';
             }
+        }
+        throw new Error('Session expired - Please login again');
+    }
+
+    // 403 Forbidden
+    if (response.status === 403) {
+        throw new Error(data.message || 'Access forbidden - insufficient permissions');
+    }
+
+    // 404 Not Found
+    if (response.status === 404) {
+        throw new Error(data.message || 'Resource not found');
+    }
+
+    // 400 Validation Error
+    if (response.status === 400) {
+        throw new Error(data.message || 'Invalid request data');
+    }
+
+    // 500 Server Error
+    if (response.status >= 500) {
+        throw new Error(data.message || 'Server error - please try again later');
+    }
+
+    // Generic error
+    throw new Error(data.message || `Request failed with status ${response.status}`);
+}
             return data;
         } catch (error) {
             // CORS error detection
@@ -187,7 +196,7 @@ class YareemaAPI {
             const response = await this.request('/api/v1/auth/login', {
                 method: 'POST',
                 body: { email, password },
-                skipAuth: true
+                skipAuth: true  // This is key - it tells the request() this is a login attempt
             });
             
             console.log('Login API Response:', response);
@@ -233,9 +242,9 @@ class YareemaAPI {
             throw new Error(errorMessage);
             
         } catch (error) {
-            // The error from request() will already have the backend message
+            // Error already has the correct message from request()
             console.error('Login error:', error.message);
-            throw error; // Re-throw to be caught by the form handler
+            throw error; // Just re-throw, don't modify
         }
     }
 

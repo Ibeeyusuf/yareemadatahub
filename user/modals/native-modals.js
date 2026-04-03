@@ -445,6 +445,7 @@ async function submitAirtimePurchase() {
 }
 
 // ==================== ELECTRICITY MODAL ====================
+// ==================== ELECTRICITY MODAL ====================
 
 let _elecVerified = null;
 
@@ -509,103 +510,285 @@ async function showElectricityModal() {
 async function loadElectricityDiscos() {
     const select = document.getElementById('electricityDisco');
     if (!select) return;
+    
     try {
         const response = await api.getElectricityDiscos();
-        // Response shape: { data: { discos: [{ code, name, serviceID, subcategoryId }] } }
-        const discos = response.data?.discos || response.data || [];
-        if (!discos.length) {
+        console.log('Full API response:', response);
+        
+        // Extract discos from the response structure
+        let discos = [];
+        if (response.data?.discos) {
+            discos = response.data.discos;
+        } else if (response.discos) {
+            discos = response.discos;
+        } else if (response.data?.data?.discos) {
+            discos = response.data.data.discos;
+        }
+        
+        console.log('Extracted discos:', discos);
+        
+        if (!discos || !discos.length) {
             select.innerHTML = '<option value="">No discos available</option>';
             return;
         }
-        // Use serviceID as the value — that's what the verify/purchase endpoints expect as `disco`
-        select.innerHTML = discos.map(d =>
-            `<option value="${d.serviceID}">${d.name}</option>`
-        ).join('');
+        
+        // Build options - use 'key' as the value (e.g., "ekedc") and 'name' as display text
+        select.innerHTML = '<option value="">Select Disco</option>';
+        
+        discos.forEach(disco => {
+            // The value should be the 'key' field (e.g., "ekedc", "ikedc", etc.)
+            const value = disco.key || disco.serviceID || disco.code || disco.id;
+            const name = disco.name || disco.displayName;
+            
+            if (value && name) {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = name;
+                select.appendChild(option);
+                console.log(`Added disco: value="${value}", name="${name}"`);
+            }
+        });
+        
+        console.log('Final select HTML:', select.innerHTML);
+        
     } catch (error) {
+        console.error('Failed to load discos:', error);
         select.innerHTML = '<option value="">Failed to load discos. Please retry.</option>';
+        showInlineError('Could not load electricity providers. Please try again.');
     }
 }
 
 function selectMeterType(type) {
     window._elecMeterType = type;
-    const active   = 'padding:12px;border:2px solid #1e3d5c;border-radius:8px;background:#1e3d5c;color:white;font-weight:600;cursor:pointer;';
+    const active = 'padding:12px;border:2px solid #1e3d5c;border-radius:8px;background:#1e3d5c;color:white;font-weight:600;cursor:pointer;';
     const inactive = 'padding:12px;border:2px solid #e2e8f0;border-radius:8px;background:white;color:#64748b;font-weight:600;cursor:pointer;';
-    document.getElementById('prepaidBtn').style.cssText  = type === 'prepaid'  ? active : inactive;
-    document.getElementById('postpaidBtn').style.cssText = type === 'postpaid' ? active : inactive;
+    
+    const prepaidBtn = document.getElementById('prepaidBtn');
+    const postpaidBtn = document.getElementById('postpaidBtn');
+    
+    if (prepaidBtn) prepaidBtn.style.cssText = type === 'prepaid' ? active : inactive;
+    if (postpaidBtn) postpaidBtn.style.cssText = type === 'postpaid' ? active : inactive;
 }
 
 async function handleElectricityStep() {
-    if (!_elecVerified) await verifyMeterNumber();
-    else                await submitElectricityPayment();
+    if (!_elecVerified) {
+        await verifyMeterNumber();
+    } else {
+        await submitElectricityPayment();
+    }
 }
 
 async function verifyMeterNumber() {
     const discoSelect = document.getElementById('electricityDisco');
-    const disco       = discoSelect?.value;
-    const meter       = document.getElementById('meterNumber').value.trim();
-    const meterType   = window._elecMeterType || 'prepaid';
-
-    if (!disco)  { showInlineError('Please select a disco'); return; }
-    if (!meter)  { showInlineError('Please enter meter number'); return; }
-
+    const disco = discoSelect?.value;
+    const meter = document.getElementById('meterNumber').value.trim();
+    const meterType = window._elecMeterType || 'prepaid';
+    
+    console.log('Verifying meter - Selected disco value:', disco);
+    console.log('Selected disco text:', discoSelect?.options[discoSelect.selectedIndex]?.text);
+    console.log('Meter number:', meter);
+    console.log('Meter type:', meterType);
+    
+    if (!disco || disco === '') { 
+        showInlineError('Please select a disco'); 
+        return; 
+    }
+    if (!meter) { 
+        showInlineError('Please enter meter number'); 
+        return; 
+    }
+    
     const btn = document.getElementById('elecPrimaryBtn');
-    btn.disabled = true; btn.textContent = 'Verifying...';
-
+    btn.disabled = true;
+    btn.textContent = 'Verifying...';
+    
     try {
         const response = await api.verifyElectricityCustomer(meter, disco, meterType);
-        const customer = response.data?.customer || response.data || response;
-        const name     = customer.customerName || customer.name || customer.accountName || 'Customer Verified';
-        const address  = customer.customerAddress || customer.address || '';
-        const acctNum  = customer.accountNumber || customer.meterNumber || meter;
-
-        // Store the full serviceID string as disco — that's what purchase expects
-        _elecVerified = { meter, disco, meterType, customerName: name };
-
-        document.getElementById('elecCustomerInfo').innerHTML = `
-            <div style="display:flex;align-items:center;gap:10px;">
-                <div style="width:36px;height:36px;background:#16a34a;border-radius:50%;
-                            display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                         stroke="white" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        console.log('Verification response:', response);
+        
+        const d = response.data || response;
+        
+        // Check for errors in response
+        if (d.status === 'error' || d.error) {
+            btn.disabled = false;
+            btn.textContent = 'Verify Meter';
+            showInlineError(d.message || d.error || 'Verification failed. Please try again.');
+            return;
+        }
+        
+        // Extract customer information from the response structure
+        let customerName = null;
+        let customerAddress = null;
+        let minimumAmount = null;
+        
+        // Try to get customer info from raw.data.content (pluginng response structure)
+        if (d.raw?.data?.content) {
+            const content = d.raw.data.content;
+            customerName = content.Customer_Name || content.customerName || content.name;
+            customerAddress = content.Address || content.address;
+            minimumAmount = content.Minimum_Amount || content.minAmount;
+        }
+        
+        // If not found, try other common response structures
+        if (!customerName) {
+            customerName = d.customerName || d.customer?.name || d.customer?.customerName;
+            customerAddress = d.customerAddress || d.customer?.address;
+        }
+        
+        // Check if customer name is null/undefined/N/A
+        if (!customerName || customerName === 'N/A' || customerName === null) {
+            btn.disabled = false;
+            btn.textContent = 'Verify Meter';
+            showInlineError('Meter number not found. Please check the number and selected disco.');
+            return;
+        }
+        
+        // Store verified data
+        _elecVerified = { 
+            meter: meter, 
+            disco: disco,
+            meterType: meterType, 
+            customerName: customerName,
+            customerAddress: customerAddress,
+            minimumAmount: minimumAmount
+        };
+        
+        console.log('Stored verified data:', _elecVerified);
+        
+        // Display customer info
+        const infoDiv = document.getElementById('elecCustomerInfo');
+        if (infoDiv) {
+            infoDiv.innerHTML = `
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:36px;height:36px;background:#16a34a;border-radius:50%;
+                                display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                             stroke="white" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <div>
+                        <p style="font-weight:700;color:#15803d;font-size:14px;">${escapeHtml(customerName)}</p>
+                        ${customerAddress ? `<p style="color:#64748b;font-size:12px;">${escapeHtml(customerAddress)}</p>` : ''}
+                        <p style="color:#64748b;font-size:12px;">
+                            Meter: ${escapeHtml(meter)} · ${meterType.charAt(0).toUpperCase() + meterType.slice(1)}
+                        </p>
+                        ${minimumAmount ? `<p style="color:#f59e0b;font-size:11px;margin-top:4px;">Min. Amount: ₦${minimumAmount.toLocaleString()}</p>` : ''}
+                    </div>
                 </div>
-                <div>
-                    <p style="font-weight:700;color:#15803d;font-size:14px;">${name}</p>
-                    ${address ? `<p style="color:#64748b;font-size:12px;">${address}</p>` : ''}
-                    <p style="color:#64748b;font-size:12px;">
-                        Meter: ${acctNum} · ${meterType.charAt(0).toUpperCase() + meterType.slice(1)}
-                    </p>
-                </div>
-            </div>
-        `;
-
-        document.getElementById('elecStep1').style.display = 'none';
-        document.getElementById('elecStep2').style.display = 'block';
-        btn.disabled = false; btn.textContent = 'Pay Now';
-        document.getElementById('electricityAmount').focus();
+            `;
+        }
+        
+        // If there's a minimum amount, set it as placeholder or default
+        if (minimumAmount && minimumAmount > 0) {
+            const amountInput = document.getElementById('electricityAmount');
+            if (amountInput) {
+                amountInput.placeholder = `Min ₦${minimumAmount.toLocaleString()}`;
+                amountInput.min = minimumAmount;
+            }
+        }
+        
+        // Show step 2, hide step 1
+        const step1 = document.getElementById('elecStep1');
+        const step2 = document.getElementById('elecStep2');
+        if (step1) step1.style.display = 'none';
+        if (step2) step2.style.display = 'block';
+        
+        btn.disabled = false;
+        btn.textContent = 'Pay Now';
+        
+        const amountInput = document.getElementById('electricityAmount');
+        if (amountInput) amountInput.focus();
+        
     } catch (error) {
-        btn.disabled = false; btn.textContent = 'Verify Meter';
+        console.error('Verification error:', error);
+        btn.disabled = false;
+        btn.textContent = 'Verify Meter';
         showInlineError(error.message || 'Could not verify meter. Please check the number and try again.');
     }
 }
 
 async function submitElectricityPayment() {
-    const amount = parseInt(document.getElementById('electricityAmount').value);
-    const phone  = document.getElementById('electricityPhone').value.trim();
-    const pin    = document.getElementById('electricityPin').value.trim();
-
-    if (!amount || amount < 500)       { showInlineError('Amount must be at least ₦500'); return; }
-    if (!phone || phone.length !== 11) { showInlineError('Please enter a valid 11-digit phone number'); return; }
-    if (!pin || !/^\d{4}$/.test(pin))  { showInlineError('Please enter your 4-digit transaction PIN'); return; }
-
+    // Validate that we have verified data
+    if (!_elecVerified) {
+        showInlineError('Please verify meter number first');
+        return;
+    }
+    
+    const amount = parseInt(document.getElementById('electricityAmount')?.value);
+    const phone = document.getElementById('electricityPhone')?.value.trim();
+    const pin = document.getElementById('electricityPin')?.value.trim();
+    
+    console.log('Submitting payment - Verified data:', _elecVerified);
+    console.log('Amount:', amount);
+    console.log('Phone:', phone);
+    
+    // Check minimum amount if provided
+    if (_elecVerified.minimumAmount && amount < _elecVerified.minimumAmount) {
+        showInlineError(`Minimum amount is ₦${_elecVerified.minimumAmount.toLocaleString()}`); 
+        return;
+    }
+    
+    if (!amount || amount < 500) { 
+        showInlineError('Amount must be at least ₦500'); 
+        return; 
+    }
+    if (!phone || phone.length !== 11) { 
+        showInlineError('Please enter a valid 11-digit phone number'); 
+        return; 
+    }
+    if (!pin || !/^\d{4}$/.test(pin)) { 
+        showInlineError('Please enter your 4-digit transaction PIN'); 
+        return; 
+    }
+    
     const btn = document.getElementById('elecPrimaryBtn');
-    btn.disabled = true; btn.textContent = 'Processing...';
-
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+    
     try {
+        // Make sure disco is not undefined
+        if (!_elecVerified.disco || _elecVerified.disco === 'undefined') {
+            throw new Error('Invalid disco selection. Please go back and select a disco again.');
+        }
+        
+        // Prepare the payload according to the sample
+        const payload = {
+            disco: _elecVerified.disco,
+            meterNumber: _elecVerified.meter,
+            meterType: _elecVerified.meterType,
+            amount: amount,
+            phoneNumber: phone,
+            transactionPin: pin
+        };
+        
+        console.log('Sending payload:', payload);
+        
         const response = await api.purchaseElectricity(
-            _elecVerified.meter, _elecVerified.disco, amount, phone, pin, _elecVerified.meterType
+            _elecVerified.meter,
+            _elecVerified.disco,
+            amount,
+            phone,
+            pin,
+            _elecVerified.meterType
         );
-        const token = response.data?.token || response.data?.purchasedToken || '';
+        
+        console.log('Purchase response:', response);
+        
+        // Extract token from response (could be in different places)
+        let token = '';
+        if (response.data?.token) {
+            token = response.data.token;
+        } else if (response.data?.purchasedToken) {
+            token = response.data.purchasedToken;
+        } else if (response.token) {
+            token = response.token;
+        } else if (response.data?.raw?.data?.content?.Token) {
+            token = response.data.raw.data.content.Token;
+        } else if (response.data?.raw?.data?.token) {
+            token = response.data.raw.data.token;
+        }
+        
         closeModal();
+        
         setTimeout(() => {
             showSuccess(`
                 <div style="text-align:center;">
@@ -613,19 +796,49 @@ async function submitElectricityPayment() {
                     <p style="font-size:14px;color:#64748b;">
                         ₦${amount.toLocaleString()} credited to meter ${_elecVerified.meter}
                     </p>
+                    <p style="font-size:12px;color:#64748b;margin-top:4px;">
+                        Customer: ${escapeHtml(_elecVerified.customerName)}
+                    </p>
                     ${token ? `
                     <div style="margin-top:12px;padding:10px;background:#f0fdf4;border-radius:8px;">
                         <p style="font-size:11px;color:#64748b;margin-bottom:4px;">TOKEN</p>
-                        <p style="font-size:18px;font-weight:700;color:#15803d;letter-spacing:2px;">${token}</p>
+                        <p style="font-size:18px;font-weight:700;color:#15803d;letter-spacing:2px;">${escapeHtml(token)}</p>
+                        <button onclick="copyToClipboard('${escapeHtml(token)}')" 
+                            style="margin-top:8px;padding:4px 12px;background:#16a34a;color:white;
+                                   border:none;border-radius:4px;cursor:pointer;font-size:11px;">
+                            Copy Token
+                        </button>
                     </div>` : ''}
                 </div>
             `);
-            _elecVerified = null;
         }, 300);
+        
     } catch (error) {
-        btn.disabled = false; btn.textContent = 'Pay Now';
+        console.error('Payment error:', error);
+        btn.disabled = false;
+        btn.textContent = 'Pay Now';
         showInlineError(error.message || 'Payment failed. Please try again.');
     }
+}
+
+// Helper function to copy token to clipboard
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showSuccess('Token copied to clipboard!');
+    }).catch(() => {
+        showInlineError('Failed to copy token');
+    });
+}
+
+// Helper function to escape HTML
+function escapeHtml(str) {
+    if (!str) return '';
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 // ==================== TV MODAL ====================
