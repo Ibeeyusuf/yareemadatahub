@@ -448,24 +448,14 @@ async function submitAirtimePurchase() {
 
 let _elecVerified = null;
 
-function showElectricityModal() {
+async function showElectricityModal() {
     _elecVerified = null;
     showModal('Pay Electricity', `
         <div id="elecStep1">
             <div class="form-group">
                 <label>Select Disco</label>
                 <select id="electricityDisco" class="form-input">
-                    <option value="aedc">AEDC - Abuja</option>
-                    <option value="ekedc">EKEDC - Eko</option>
-                    <option value="ikedc">IKEDC - Ikeja</option>
-                    <option value="phed">PHED - Port Harcourt</option>
-                    <option value="ibedc">IBEDC - Ibadan</option>
-                    <option value="kaedco">KAEDCO - Kaduna</option>
-                    <option value="eedc">EEDC - Enugu</option>
-                    <option value="bedc">BEDC - Benin</option>
-                    <option value="yedc">YEDC - Yola</option>
-                    <option value="jedc">JEDC - Jos</option>
-                    <option value="kedco">KEDCO - Kano</option>
+                    <option value="">Loading discos...</option>
                 </select>
             </div>
             <div class="form-group">
@@ -513,6 +503,27 @@ function showElectricityModal() {
         <button id="elecPrimaryBtn" onclick="handleElectricityStep()" class="btn-primary">Verify Meter</button>
     `);
     window._elecMeterType = 'prepaid';
+    await loadElectricityDiscos();
+}
+
+async function loadElectricityDiscos() {
+    const select = document.getElementById('electricityDisco');
+    if (!select) return;
+    try {
+        const response = await api.getElectricityDiscos();
+        // Response shape: { data: { discos: [{ code, name, serviceID, subcategoryId }] } }
+        const discos = response.data?.discos || response.data || [];
+        if (!discos.length) {
+            select.innerHTML = '<option value="">No discos available</option>';
+            return;
+        }
+        // Use serviceID as the value — that's what the verify/purchase endpoints expect as `disco`
+        select.innerHTML = discos.map(d =>
+            `<option value="${d.serviceID}">${d.name}</option>`
+        ).join('');
+    } catch (error) {
+        select.innerHTML = '<option value="">Failed to load discos. Please retry.</option>';
+    }
 }
 
 function selectMeterType(type) {
@@ -529,11 +540,13 @@ async function handleElectricityStep() {
 }
 
 async function verifyMeterNumber() {
-    const disco     = document.getElementById('electricityDisco').value;
-    const meter     = document.getElementById('meterNumber').value.trim();
-    const meterType = window._elecMeterType || 'prepaid';
+    const discoSelect = document.getElementById('electricityDisco');
+    const disco       = discoSelect?.value;
+    const meter       = document.getElementById('meterNumber').value.trim();
+    const meterType   = window._elecMeterType || 'prepaid';
 
-    if (!meter) { showInlineError('Please enter meter number'); return; }
+    if (!disco)  { showInlineError('Please select a disco'); return; }
+    if (!meter)  { showInlineError('Please enter meter number'); return; }
 
     const btn = document.getElementById('elecPrimaryBtn');
     btn.disabled = true; btn.textContent = 'Verifying...';
@@ -545,6 +558,7 @@ async function verifyMeterNumber() {
         const address  = customer.customerAddress || customer.address || '';
         const acctNum  = customer.accountNumber || customer.meterNumber || meter;
 
+        // Store the full serviceID string as disco — that's what purchase expects
         _elecVerified = { meter, disco, meterType, customerName: name };
 
         document.getElementById('elecCustomerInfo').innerHTML = `

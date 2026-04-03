@@ -73,9 +73,18 @@ class YareemaAPI {
 
             // Handle HTTP errors
             if (!response.ok) {
-                // 401 Unauthorized - Auto logout (but prevent redirect loop)
+                // 401 Unauthorized - Only auto logout if it's NOT a login attempt
                 if (response.status === 401) {
-                    console.error('401 Unauthorized - Logging out');
+                    console.error('401 Unauthorized:', data);
+                    
+                    // Check if this is a login request (skipAuth = true)
+                    if (options.skipAuth) {
+                        // Don't auto logout, just throw the error message from backend
+                        throw new Error(data.message || 'Invalid email or password');
+                    }
+                    
+                    // For non-login endpoints, handle session expiration
+                    console.error('Session expired - Logging out');
                     this.clearToken();
                     
                     // Prevent redirect loop - only redirect if not already on login page
@@ -98,31 +107,30 @@ class YareemaAPI {
                     }
                     throw new Error('Unauthorized - Session expired');
                 }
-
+            
                 // 403 Forbidden
                 if (response.status === 403) {
                     throw new Error(data.message || 'Access forbidden - insufficient permissions');
                 }
-
+            
                 // 404 Not Found
                 if (response.status === 404) {
                     throw new Error(data.message || 'Resource not found');
                 }
-
+            
                 // 400 Validation Error
                 if (response.status === 400) {
                     throw new Error(data.message || 'Invalid request data');
                 }
-
+            
                 // 500 Server Error
                 if (response.status >= 500) {
                     throw new Error(data.message || 'Server error - please try again later');
                 }
-
+            
                 // Generic error
                 throw new Error(data.message || `Request failed with status ${response.status}`);
             }
-
             return data;
         } catch (error) {
             // CORS error detection
@@ -175,54 +183,60 @@ class YareemaAPI {
     // ==================== AUTHENTICATION ====================
     
     async login(email, password) {
-        const response = await this.request('/api/v1/auth/login', {
-            method: 'POST',
-            body: { email, password },
-            skipAuth: true
-        });
-        
-        console.log('Login API Response:', response);
-
-        // ── 2FA pending ──────────────────────────────────────────────────────
-        // Response: { status: "pending", requiresTwoFactor: true, method: "email", message: "..." }
-        if (response.requiresTwoFactor === true || response.status === 'pending') {
-            return {
-                requiresTwoFactor: true,
-                method: response.method || 'email',
-                message: response.message || 'Two-factor code sent'
-            };
-        }
-
-        // ── Normal login success ─────────────────────────────────────────────
-        const token = response.token || response.data?.token || response.accessToken;
-        const user = response.data?.user || response.user || {};
-        const refreshToken = response.refreshToken || response.refresh_token;
-        
-        if (token) {
-            localStorage.setItem('admin_token', token);
-            sessionStorage.setItem('admin_token', token);
-            this.token = token;
+        try {
+            const response = await this.request('/api/v1/auth/login', {
+                method: 'POST',
+                body: { email, password },
+                skipAuth: true
+            });
             
-            if (refreshToken) {
-                localStorage.setItem('admin_refresh_token', refreshToken);
+            console.log('Login API Response:', response);
+    
+            // ── 2FA pending ──────────────────────────────────────────────────────
+            if (response.requiresTwoFactor === true || response.status === 'pending') {
+                return {
+                    requiresTwoFactor: true,
+                    method: response.method || 'email',
+                    message: response.message || 'Two-factor code sent'
+                };
             }
-            if (user && Object.keys(user).length > 0) {
-                localStorage.setItem('admin_user', JSON.stringify(user));
+    
+            // ── Normal login success ─────────────────────────────────────────────
+            const token = response.token || response.data?.token || response.accessToken;
+            const user = response.data?.user || response.user || {};
+            const refreshToken = response.refreshToken || response.refresh_token;
+            
+            if (token) {
+                localStorage.setItem('admin_token', token);
+                sessionStorage.setItem('admin_token', token);
+                this.token = token;
+                
+                if (refreshToken) {
+                    localStorage.setItem('admin_refresh_token', refreshToken);
+                }
+                if (user && Object.keys(user).length > 0) {
+                    localStorage.setItem('admin_user', JSON.stringify(user));
+                }
+                
+                console.log('Token stored successfully');
+                return {
+                    success: true,
+                    token: token,
+                    refreshToken: refreshToken,
+                    user: user,
+                    message: response.message || 'Login successful'
+                };
             }
             
-            console.log('Token stored successfully');
-            return {
-                success: true,
-                token: token,
-                refreshToken: refreshToken,
-                user: user,
-                message: response.message || 'Login successful'
-            };
+            const errorMessage = response.message || response.error || 'Login failed - no token received';
+            console.error('Login failed:', errorMessage);
+            throw new Error(errorMessage);
+            
+        } catch (error) {
+            // The error from request() will already have the backend message
+            console.error('Login error:', error.message);
+            throw error; // Re-throw to be caught by the form handler
         }
-        
-        const errorMessage = response.message || response.error || 'Login failed - no token received';
-        console.error('Login failed:', errorMessage);
-        throw new Error(errorMessage);
     }
 
     async verifyTwoFactorLogin(code, email) {

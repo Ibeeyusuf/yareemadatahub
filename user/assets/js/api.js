@@ -305,17 +305,23 @@ class YareemaUserAPI {
 
     // ==================== BILLS ====================
 
+    async getElectricityDiscos() {
+        return await this.request('/api/v1/bills/electricity/discos');
+    }
+
     async verifyElectricityCustomer(meterNumber, disco, meterType = 'prepaid') {
         return await this.request('/api/v1/bills/electricity/verify', {
             method: 'POST',
-            body: { meterNumber, disco: disco.toLowerCase(), meterType }
+            // disco is the full serviceID string e.g. "EKEDC - Eko Electric" — do NOT lowercase
+            body: { meterNumber, disco, meterType }
         });
     }
 
     async purchaseElectricity(meterNumber, disco, amount, phoneNumber, transactionPin, meterType = 'prepaid') {
         return await this.request('/api/v1/bills/electricity/purchase', {
             method: 'POST',
-            body: { meterNumber, disco: disco.toLowerCase(), meterType, amount, phoneNumber, transactionPin }
+            // disco is the full serviceID string e.g. "EKEDC - Eko Electric" — do NOT lowercase
+            body: { meterNumber, disco, meterType, amount, phoneNumber, transactionPin }
         });
     }
 
