@@ -163,11 +163,11 @@ class WalletsManager {
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                         ${user ? `
-                            <button onclick="walletsManager.creditWallet('${user._id}')" class="text-green-600 hover:text-green-900">Credit</button>
-                            
-                            ${wallet.locked ? 
+                            <button onclick="walletsManager.debitWallet('${user._id}')" class="text-red-600 hover:text-red-900">Debit</button>
+                            <button onclick="walletsManager.creditWallet('${user._id}')" class="text-green-600 hover:text-green-900">Credit</button>                        
+                          ${wallet.locked ? 
                                 `<button onclick="walletsManager.unlockWallet('${user._id}')" class="text-blue-600 hover:text-blue-900">Unlock</button>` :
-                                `<button onclick="walletsManager.lockWallet('${user._id}')" class="text-red-600 hover:text-red-900">Lock</button>`
+                                `<button onclick="walletsManager.lockWallet('${user._id}')" class="text-black-600 hover:text-red-900">Lock</button>`
                             }
                         ` : '<span class="text-gray-400">No Actions</span>'}
                     </td>
