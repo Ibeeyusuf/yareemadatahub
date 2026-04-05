@@ -1,4 +1,3 @@
-
 class AdminDashboard {
     constructor() {
         this.api = new YareemaAPI();
@@ -19,6 +18,9 @@ class AdminDashboard {
             this.renderRecentTransactions();
             this.renderProviderStatus();
             this.renderCharts();
+            
+            // Load provider profit data
+            this.loadProviderProfit();
             
             // Hide loading state
             this.hideLoading();
@@ -51,9 +53,83 @@ class AdminDashboard {
             this.renderOverviewCards();
             this.renderRecentTransactions();
             this.renderProviderStatus();
+            this.loadProviderProfit();
         } catch (error) {
             console.error('Refresh error:', error);
         }
+    }
+
+    async loadProviderProfit() {
+        const container = document.getElementById('provider-profit-container');
+        if (!container) return;
+        try {
+            const response = await this.api.consoleGetProviderProfiles();
+            if (response.status === 'success') {
+                this.renderProviderProfit(response.data.profiles);
+            }
+        } catch (error) {
+            console.error('Provider profit load error:', error);
+            if (container) container.innerHTML = `<div class="col-span-4 text-center py-6 text-red-400 text-sm">Failed to load provider profit data</div>`;
+        }
+    }
+
+    renderProviderProfit(profiles) {
+        const container = document.getElementById('provider-profit-container');
+        if (!container) return;
+
+        const colorMap = {
+            clubkonnect: { bg: 'bg-blue-50', text: 'text-blue-600', badge: 'bg-blue-100 text-blue-700' },
+            airtimenigeria: { bg: 'bg-emerald-50', text: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-700' },
+            smeplug: { bg: 'bg-purple-50', text: 'text-purple-600', badge: 'bg-purple-100 text-purple-700' },
+            pluginng: { bg: 'bg-amber-50', text: 'text-amber-600', badge: 'bg-amber-100 text-amber-700' }
+        };
+
+        container.innerHTML = profiles.map(provider => {
+            const p = provider.accumulatedProfile;
+            const profit = p.successfulAmount || 0;
+            const rate = p.successRate || 0;
+            const colors = colorMap[provider.providerId] || { bg: 'bg-slate-50', text: 'text-slate-600', badge: 'bg-slate-100 text-slate-700' };
+            const balanceDisplay = provider.balance.available
+                ? `₦${AdminUtils.formatNumber(provider.balance.amount)}`
+                : 'N/A';
+
+            return `
+                <div class="border border-slate-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-sm font-semibold text-slate-800 truncate">${provider.displayName}</span>
+                        <span class="text-xs font-medium px-2 py-0.5 rounded-full ${colors.badge}">${provider.status}</span>
+                    </div>
+                    <div class="space-y-2">
+                        <div>
+                            <p class="text-xs text-slate-500">Profit (Successful)</p>
+                            <p class="text-xl font-bold text-emerald-600">₦${AdminUtils.formatNumber(profit)}</p>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div class="bg-slate-50 rounded-lg p-2">
+                                <p class="text-slate-500">Success Rate</p>
+                                <p class="font-semibold text-slate-800 mt-0.5">${rate.toFixed(2)}%</p>
+                            </div>
+                            <div class="bg-slate-50 rounded-lg p-2">
+                                <p class="text-slate-500">Wallet Balance</p>
+                                <p class="font-semibold text-slate-800 mt-0.5">${balanceDisplay}</p>
+                            </div>
+                            <div class="bg-slate-50 rounded-lg p-2">
+                                <p class="text-slate-500">Total Txns</p>
+                                <p class="font-semibold text-slate-800 mt-0.5">${p.transactionsCount}</p>
+                            </div>
+                            <div class="bg-slate-50 rounded-lg p-2">
+                                <p class="text-slate-500">Failed</p>
+                                <p class="font-semibold text-red-500 mt-0.5">${p.failedCount}</p>
+                            </div>
+                        </div>
+                    </div>
+                    ${provider.isDefault ? '<div class="mt-2 text-xs text-blue-500 font-medium flex items-center gap-1"><i data-lucide="star" class="w-3 h-3"></i> Default Provider</div>' : ''}
+                </div>
+            `;
+        }).join('');
+
+        // Re-init lucide icons for newly inserted elements
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     }
 
     renderOverviewCards() {

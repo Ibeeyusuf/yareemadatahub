@@ -833,6 +833,25 @@ if (!response.ok) {
             body: { service, provider }
         });
     }
+
+    // GET /api/v1/console/providers/profiles — all provider profiles with profit data
+    async consoleGetProviderProfiles() {
+        return await this.request('/api/v1/console/providers/profiles');
+    }
+
+    // GET /api/v1/console/providers/markups/options — providers + services for bulk price update
+    async consoleGetMarkupOptions() {
+        return await this.request('/api/v1/console/providers/markups/options');
+    }
+
+    // PUT /api/v1/console/providers/:providerId/markups — update service markup
+    // body: { serviceType: string, percentage: number }
+    async consoleUpdateMarkup(providerId, serviceType, percentage) {
+        return await this.request(`/api/v1/console/providers/${providerId}/markups`, {
+            method: 'PUT',
+            body: { serviceType, percentage }
+        });
+    }
 }
 
 // Create global API instance
