@@ -309,6 +309,21 @@
                         <div id="phone-error" class="error-message"></div>
                     </div>
 
+                    <div>
+                        <label for="referral-code" class="block text-sm font-medium text-slate-700 mb-2">
+                            Referral Code <span class="text-slate-400 font-normal">(Optional)</span>
+                        </label>
+                        <div class="relative">
+                            <i data-lucide="tag" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400"></i>
+                            <input
+                                type="text"
+                                id="referral-code"
+                                class="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg form-input focus:outline-none text-sm sm:text-base"
+                                placeholder="Enter referral code (if any)"
+                            >
+                        </div>
+                    </div>
+
                     <!-- Password -->
                     <div>
                         <label for="password" class="block text-sm font-medium text-slate-700 mb-2">
@@ -565,13 +580,16 @@
             const firstName = nameParts[0];
             const lastName = nameParts.slice(1).join(' ') || firstName;
             
-            const userData = {
-                firstName,
-                lastName,
-                email,
-                phoneNumber: phone,
-                password: passwordValue
-            };
+            const referralCode = document.getElementById('referral-code').value.trim();
+
+const userData = {
+    firstName,
+    lastName,
+    email,
+    phoneNumber: phone,
+    password: passwordValue,
+    ...(referralCode && { referralCode }) // only included if not empty
+};
             
             const signupBtn = document.getElementById('signup-btn');
             const originalText = signupBtn.textContent;

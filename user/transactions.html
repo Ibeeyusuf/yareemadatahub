@@ -8,6 +8,53 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        .receipt-modal-body {
+            max-height: 60vh;
+            overflow-y: auto;
+            padding: 16px;
+        }
+        .receipt-pdf-viewer {
+            width: 100%;
+            min-height: 400px;
+            border: none;
+            border-radius: 12px;
+        }
+        .receipt-loading {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+        .receipt-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+        }
+        .btn-download {
+            background: #1e3d5c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-close {
+            background: #f1f5f9;
+            color: #334155;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
     
@@ -52,6 +99,26 @@
         <div class="activity-list" id="txnsList" style="min-height: 400px;"><div style="text-align: center; padding: 48px; color: #94a3b8;">Loading...</div></div>
         <div id="txnsPagination" style="display:none; margin-top: 16px;"></div>
     </div>
+
+    <!-- Receipt Modal -->
+    <div id="receiptModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 24px; max-width: 700px; width: 90%; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column;">
+            <div style="padding: 20px 24px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="font-weight: 700; font-size: 1.25rem;">Receipt</h3>
+                <button onclick="closeReceiptModal()" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+            </div>
+            <div id="receiptContent" style="flex: 1; overflow-y: auto; padding: 20px;">
+                <div class="receipt-loading">Loading receipt...</div>
+            </div>
+            <div style="padding: 16px 24px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
+                <button onclick="closeReceiptModal()" class="btn-close">Close</button>
+                <button id="downloadReceiptBtn" class="btn-download" style="display: none;">
+                    <i data-lucide="download" style="width: 18px; height: 18px;"></i> Download PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="assets/js/config.js"></script>
     <script src="assets/js/api.js"></script>
     <script src="modals/native-modals.js"></script>
@@ -112,6 +179,9 @@
             }
         };
 
+        let currentReceiptBlob = null;
+        let currentReceiptTransactionId = null;
+
         function getStatusBadge(status) {
             if (!status) return '';
             const s = status.toUpperCase();
@@ -120,6 +190,141 @@
             if (s === 'PENDING')
                 return '<span class="tx-status-pending">Pending</span>';
             return '<span class="tx-status-failed">Failed</span>';
+        }
+
+        // Show receipt modal and fetch receipt
+        async function showReceipt(transactionId, event) {
+            if (event) event.stopPropagation();
+            if (!transactionId) {
+                alert('Transaction ID missing');
+                return;
+            }
+
+            currentReceiptTransactionId = transactionId;
+            const modal = document.getElementById('receiptModal');
+            const contentDiv = document.getElementById('receiptContent');
+            const downloadBtn = document.getElementById('downloadReceiptBtn');
+            
+            // Show modal and loading state
+            modal.style.display = 'flex';
+            contentDiv.innerHTML = '<div class="receipt-loading"><i data-lucide="loader" class="animate-spin" style="width: 32px; margin-bottom: 12px;"></i><br/>Loading receipt...</div>';
+            downloadBtn.style.display = 'none';
+            lucide.createIcons();
+            
+            try {
+                const token = api.getToken();
+                if (!token) throw new Error('Not authenticated');
+                
+                const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/wallet/transactions/${transactionId}/receipt`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/pdf, application/json, text/html'
+                    }
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json().catch(() => ({}));
+                    throw new Error(error.message || `Failed (${response.status})`);
+                }
+                
+                const contentType = response.headers.get('content-type');
+                
+                if (contentType && contentType.includes('application/pdf')) {
+                    // Store blob for download
+                    currentReceiptBlob = await response.blob();
+                    const pdfUrl = URL.createObjectURL(currentReceiptBlob);
+                    
+                    // Display PDF using iframe
+                    contentDiv.innerHTML = `
+                        <iframe src="${pdfUrl}" class="receipt-pdf-viewer" style="width: 100%; height: 500px; border: none; border-radius: 8px;"></iframe>
+                    `;
+                    downloadBtn.style.display = 'inline-flex';
+                    
+                    // Clean up object URL when modal closes
+                    const closeHandler = () => {
+                        URL.revokeObjectURL(pdfUrl);
+                        modal.removeEventListener('modalClosed', closeHandler);
+                    };
+                    modal.addEventListener('modalClosed', closeHandler, { once: true });
+                    
+                } else if (contentType && contentType.includes('application/json')) {
+                    const data = await response.json();
+                    if (data.receiptUrl) {
+                        // If API returns a URL, open in iframe
+                        contentDiv.innerHTML = `
+                            <iframe src="${data.receiptUrl}" class="receipt-pdf-viewer" style="width: 100%; height: 500px; border: none; border-radius: 8px;"></iframe>
+                        `;
+                        downloadBtn.style.display = 'inline-flex';
+                        // Fetch blob for download from the URL
+                        const blobResponse = await fetch(data.receiptUrl);
+                        currentReceiptBlob = await blobResponse.blob();
+                    } else if (data.receiptData) {
+                        // If base64 PDF data
+                        const byteCharacters = atob(data.receiptData);
+                        const byteNumbers = new Array(byteCharacters.length);
+                        for (let i = 0; i < byteCharacters.length; i++) {
+                            byteNumbers[i] = byteCharacters.charCodeAt(i);
+                        }
+                        const byteArray = new Uint8Array(byteNumbers);
+                        currentReceiptBlob = new Blob([byteArray], { type: 'application/pdf' });
+                        const pdfUrl = URL.createObjectURL(currentReceiptBlob);
+                        contentDiv.innerHTML = `
+                            <iframe src="${pdfUrl}" class="receipt-pdf-viewer" style="width: 100%; height: 500px; border: none; border-radius: 8px;"></iframe>
+                        `;
+                        downloadBtn.style.display = 'inline-flex';
+                    } else {
+                        // Show receipt as HTML content
+                        contentDiv.innerHTML = `
+                            <div style="padding: 20px; text-align: center;">
+                                <h4>Receipt Information</h4>
+                                <pre style="background: #f8fafc; padding: 16px; border-radius: 8px; overflow-x: auto;">${JSON.stringify(data, null, 2)}</pre>
+                            </div>
+                        `;
+                    }
+                } else {
+                    // Try to display as text/html
+                    const text = await response.text();
+                    contentDiv.innerHTML = text;
+                }
+                
+                lucide.createIcons();
+                
+            } catch (error) {
+                console.error('Receipt error:', error);
+                contentDiv.innerHTML = `
+                    <div class="receipt-loading" style="color: #ef4444;">
+                        <i data-lucide="alert-circle" style="width: 32px; margin-bottom: 12px;"></i><br/>
+                        Failed to load receipt: ${error.message}
+                    </div>
+                `;
+                lucide.createIcons();
+            }
+        }
+
+        // Download the current receipt
+        function downloadCurrentReceipt() {
+            if (currentReceiptBlob) {
+                const url = URL.createObjectURL(currentReceiptBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `receipt_${currentReceiptTransactionId}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } else {
+                alert('No receipt loaded. Please try again.');
+            }
+        }
+
+        function closeReceiptModal() {
+            const modal = document.getElementById('receiptModal');
+            modal.style.display = 'none';
+            currentReceiptBlob = null;
+            currentReceiptTransactionId = null;
+            // Dispatch event for cleanup
+            modal.dispatchEvent(new Event('modalClosed'));
         }
 
         function renderTxRow(t) {
@@ -133,6 +338,7 @@
             const amountColor  = isFailed ? '#94a3b8' : isPending ? '#d97706' : isCredit ? '#16a34a' : '#dc2626';
             const amountPrefix = isFailed ? '' : isCredit ? '+' : '-';
             const absAmount = Math.abs(t.amount || 0);
+            const transactionId = t.id || t._id;
 
             return `
             <div class="activity-item" onclick="showTxDetail(${JSON.stringify(t).replace(/"/g,'&quot;')})" style="cursor:pointer;">
@@ -145,13 +351,15 @@
                 </div>
                 <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:3px;">
                     <div class="activity-amount" style="color:${amountColor};${isFailed ? 'text-decoration:line-through;' : ''}">${amountPrefix}₦${absAmount.toLocaleString('en-US',{minimumFractionDigits:2})}</div>
-                    ${getStatusBadge(t.status || t.paymentStatus)}
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        ${getStatusBadge(t.status || t.paymentStatus)}
+                        ${(transactionId && !isFailed && txStatus !== 'FAILED') ? `<button onclick="showReceipt('${transactionId}', event)" style="background:#eef2ff; border:none; border-radius:20px; padding:4px 10px; font-size:11px; font-weight:500; cursor:pointer; color:#1e3d5c; display:flex; align-items:center; gap:4px;"><i data-lucide="file-text" style="width:12px;height:12px;"></i> Receipt</button>` : ''}
+                    </div>
                 </div>
             </div>`;
         }
 
         function showTxDetail(t) {
-            // Build detail rows
             const rows = [
                 ['Type', t.type || 'N/A'],
                 ['Amount', '₦' + Math.abs(t.amount||0).toLocaleString('en-US',{minimumFractionDigits:2})],
@@ -161,7 +369,6 @@
                 ['Description', t.description || t.paymentDescription || 'N/A'],
             ];
 
-            // If it's electricity/airtime — show the token
             let tokenHTML = '';
             if (t.token) {
                 tokenHTML = `
@@ -224,7 +431,6 @@
             const start = (currentPage - 1) * PAGE_SIZE + 1;
             const end   = Math.min(currentPage * PAGE_SIZE, totalTxns);
 
-            // Build page number buttons — show up to 5 around current
             let pages = [];
             const delta = 2;
             for (let i = 1; i <= totalPages; i++) {
@@ -232,7 +438,6 @@
                     pages.push(i);
                 }
             }
-            // Insert ellipses
             let buttons = [];
             let prev = null;
             for (const p of pages) {
@@ -265,6 +470,9 @@
                     </div>
                 </div>`;
         }
+
+        // Attach download button event
+        document.getElementById('downloadReceiptBtn').onclick = downloadCurrentReceipt;
 
         if (!api.getToken()) window.location.href = '../login.html'; else loadTxns();
         const user = JSON.parse(localStorage.getItem('user') || '{}');
