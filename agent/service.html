@@ -3,115 +3,935 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="page-title">Service - Yareema Agent Portal</title>
+    <title>Services - Yareema Agent Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/style.css">
-    <script>
-        tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{yareema:{primary:'#1E3D5C',secondary:'#16304a',dark:'#0f1f2e',light:'#e8edf2',success:'#10b981',warning:'#f59e0b',danger:'#ef4444'}}}}}</script>
+    <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{yareema:{primary:'#1E3D5C',secondary:'#16304a',dark:'#0f1f2e'}}}}}</script>
+    <style>
+        /* Modal */
+        #svcOverlay{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);align-items:center;justify-content:center;padding:16px;}
+        #svcOverlay.active{display:flex;}
+        #svcBox{background:#fff;border-radius:16px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.2);animation:slideUp .25s ease;}
+        @keyframes slideUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+        .svc-modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;border-bottom:1px solid #f1f5f9;position:sticky;top:0;background:#fff;z-index:1;border-radius:16px 16px 0 0;}
+        .svc-modal-header h2{font-size:15px;font-weight:700;color:#0f172a;margin:0;}
+        .close-btn{width:28px;height:28px;border-radius:50%;background:#f1f5f9;border:none;cursor:pointer;font-size:16px;color:#64748b;display:flex;align-items:center;justify-content:center;}
+        .svc-modal-body{padding:16px 20px;}
+        .svc-modal-footer{display:flex;gap:10px;padding:12px 20px 16px;border-top:1px solid #f1f5f9;position:sticky;bottom:0;background:#fff;border-radius:0 0 16px 16px;}
+        /* Form */
+        .f-group{margin-bottom:14px;}
+        .f-label{display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px;}
+        .f-input{width:100%;padding:10px 13px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;outline:none;color:#0f172a;box-sizing:border-box;transition:border-color .15s;}
+        .f-input:focus{border-color:#1E3D5C;}
+        textarea.f-input{resize:vertical;min-height:76px;}
+        /* Buttons */
+        .btn-p{flex:1;padding:11px 18px;background:#1E3D5C;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;}
+        .btn-p:hover{background:#16304a;}
+        .btn-p:disabled{background:#94a3b8;cursor:not-allowed;}
+        .btn-s{flex:1;padding:11px 18px;background:#f8fafc;color:#64748b;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;}
+        .btn-s:hover{background:#f1f5f9;}
+        /* Network buttons */
+        .net-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:4px;}
+        .net-btn{padding:9px 4px;border-radius:8px;border:2px solid transparent;font-weight:700;font-size:12px;cursor:pointer;transition:all .15s;}
+        /* Type pills */
+        .type-pill{padding:6px 14px;border:1.5px solid #e2e8f0;border-radius:20px;background:#fff;color:#64748b;font-size:12px;font-weight:600;cursor:pointer;}
+        .type-pill.active{border-color:#1E3D5C;background:#1E3D5C;color:#fff;}
+        /* Meter type buttons */
+        .meter-btn{padding:10px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;width:100%;}
+        .meter-btn.active{border-color:#1E3D5C;background:#1E3D5C;color:#fff;}
+        /* Provider buttons (TV) */
+        .prov-btn{padding:9px 6px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;}
+        .prov-btn.active{border-color:#1E3D5C;background:#1E3D5C;color:#fff;}
+        /* Inline error */
+        .inline-err{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:9px 12px;margin-bottom:12px;color:#dc2626;font-size:13px;display:flex;align-items:flex-start;gap:8px;}
+        /* Service cards */
+        .svc-tile{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;transition:all .2s;}
+        .svc-tile:hover{border-color:#1E3D5C;box-shadow:0 4px 16px rgba(30,61,92,.12);transform:translateY(-2px);}
+        .svc-tile .ico{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;}
+        .svc-tile .lbl{font-size:11px;font-weight:600;color:#334155;text-align:center;}
+        /* Verification card */
+        .verify-card{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:13px;margin-bottom:14px;}
+        /* Info box */
+        .info-box{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:11px 13px;margin-bottom:14px;color:#1d4ed8;font-size:13px;}
+        /* Summary box */
+        .sum-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:14px;}
+        .sum-row{display:flex;justify-content:space-between;margin-bottom:5px;font-size:13px;}
+        .sum-row:last-child{margin-bottom:0;}
+        /* PIN display */
+        .pin-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:8px;}
+        .pin-val{font-size:20px;font-weight:700;color:#1E3D5C;letter-spacing:3px;}
+    </style>
 </head>
 <body class="text-slate-800 antialiased">
-    <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
-    <div class="flex flex-col lg:flex-row w-full min-h-screen">
-        <div id="sidebarContainer"></div>
-        <main class="lg:ml-64 flex-1 flex flex-col min-w-0 bg-slate-50">
-            <div id="headerContainer"></div>
-            <div class="p-4 lg:p-8 flex-1 overflow-y-auto">
-                
-                <!-- Loading State -->
-                <div id="loading-state" class="bg-white p-8 rounded-xl shadow-sm border border-slate-200 text-center">
-                    <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-yareema-primary mb-4"></div>
-                    <p class="text-slate-600">Loading service...</p>
-                </div>
 
-                <!-- Error State -->
-                <div id="error-state" class="hidden bg-white p-8 rounded-xl shadow-sm border border-red-200">
-                    <div class="text-center">
-                        <i data-lucide="alert-circle" class="w-12 h-12 text-red-600 mx-auto mb-4"></i>
-                        <h3 class="text-lg font-bold text-slate-900 mb-2">Service Not Available</h3>
-                        <p class="text-slate-600 mb-4" id="error-message">Failed to load service</p>
-                        <a href="dashboard.html" class="inline-flex items-center gap-2 px-6 py-3 bg-yareema-primary text-white rounded-lg hover:bg-yareema-secondary">
-                            <i data-lucide="arrow-left" class="w-4 h-4"></i>
-                            Back to Dashboard
-                        </a>
-                    </div>
-                </div>
+<div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+<div class="w-full">
+    <div id="sidebarContainer"></div>
+    <main class="lg:ml-64 flex flex-col min-h-screen bg-slate-50">
+        <div id="headerContainer"></div>
+        <div class="p-4 lg:p-8 flex-1">
 
-                <!-- Service Content -->
-                <div id="service-content" class="hidden">
-                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                        <h3 id="service-title" class="font-bold text-slate-900 mb-6">Service</h3>
-                        <form id="service-form" class="space-y-6">
-                            <!-- Dynamic form fields will be injected here -->
-                            <div id="form-fields"></div>
-                            
-                            <!-- Commission Preview -->
-                            <div id="commission-preview" class="hidden p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
-                                <div class="grid grid-cols-3 gap-4 text-center">
-                                    <div>
-                                        <p class="text-xs text-slate-600 mb-1">Amount</p>
-                                        <p class="text-2xl font-bold text-slate-900" id="preview-amount">₦0</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-xs text-slate-600 mb-1">Your Commission</p>
-                                        <p class="text-2xl font-bold text-green-600" id="preview-commission">₦0</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-xs text-slate-600 mb-1">Commission Rate</p>
-                                        <p class="text-2xl font-bold text-blue-600" id="preview-rate">0%</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Transaction PIN — always required -->
-                            <div>
-                                <label class="block text-sm font-semibold text-slate-700 mb-2">Transaction PIN</label>
-                                <input type="password" id="transactionPin" placeholder="Enter 4-digit PIN" maxlength="4" inputmode="numeric" required class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full text-center text-xl tracking-widest">
-                            </div>
-
-                            <button type="submit" class="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold rounded-xl hover:shadow-lg transition-all text-lg">
-                                Complete Purchase
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
+            <div class="mb-5">
+                <h2 class="text-xl font-bold text-slate-900">Services</h2>
+                <p class="text-slate-500 text-sm mt-0.5">Tap a service to begin</p>
             </div>
-        </main>
-    </div>
-    <div id="modalsContainer"></div>
-    <script src="assets/js/config.js"></script>
-    <script src="assets/js/auth.js"></script>
-    <script src="assets/js/main.js"></script>
-    <script src="assets/js/services.js"></script>
-    <script src="assets/js/payment.js"></script>
-    <script src="assets/js/service-handler.js"></script>
-    <script>
-        // Protect page
-        Auth.protectPage();
 
-        // Load all partials first, then init the service page
-        // This ensures initSidebar, updatePageTitle etc. have a DOM to work with
-        Promise.all([
-            fetch('partials/sidebar.html').then(r => r.text()).then(d => {
-                document.getElementById('sidebarContainer').innerHTML = d;
-                lucide.createIcons();
-                if (typeof initSidebar === 'function') initSidebar();
-            }),
-            fetch('partials/header.html').then(r => r.text()).then(d => {
-                document.getElementById('headerContainer').innerHTML = d;
-                lucide.createIcons();
-                // initHeader doesn't exist — header is self-contained, nothing to call
-            }),
-            fetch('partials/modals.html').then(r => r.text()).then(d => {
-                document.getElementById('modalsContainer').innerHTML = d;
-                lucide.createIcons();
-            })
-        ]).then(() => {
-            // All partials are in the DOM — safe to init the service handler
-            ServiceHandler.init();
+            <!-- Telecom -->
+            <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Telecom</p>
+            <div class="grid grid-cols-4 gap-3 mb-6">
+                <div class="svc-tile" onclick="M.open('data')">
+                    <div class="ico" style="background:#eff6ff"><i data-lucide="wifi" style="width:20px;height:20px;color:#2563eb"></i></div>
+                    <span class="lbl">Buy Data</span>
+                </div>
+                <div class="svc-tile" onclick="M.open('airtime')">
+                    <div class="ico" style="background:#f0fdf4"><i data-lucide="phone" style="width:20px;height:20px;color:#16a34a"></i></div>
+                    <span class="lbl">Buy Airtime</span>
+                </div>
+                <div class="svc-tile" onclick="M.open('sms')">
+                    <div class="ico" style="background:#ecfeff"><i data-lucide="message-circle" style="width:20px;height:20px;color:#0891b2"></i></div>
+                    <span class="lbl">Bulk SMS</span>
+                </div>
+                <div class="svc-tile" onclick="M.open('rechargepin')">
+                    <div class="ico" style="background:#fdf4ff"><i data-lucide="ticket" style="width:20px;height:20px;color:#a21caf"></i></div>
+                    <span class="lbl">Airtime PIN</span>
+                </div>
+            </div>
+
+            <!-- Bills -->
+            <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Bill Payments</p>
+            <div class="grid grid-cols-4 gap-3 mb-6">
+                <div class="svc-tile" onclick="M.open('electricity')">
+                    <div class="ico" style="background:#fffbeb"><i data-lucide="zap" style="width:20px;height:20px;color:#d97706"></i></div>
+                    <span class="lbl">Electricity</span>
+                </div>
+                <div class="svc-tile" onclick="M.open('tv')">
+                    <div class="ico" style="background:#faf5ff"><i data-lucide="tv" style="width:20px;height:20px;color:#9333ea"></i></div>
+                    <span class="lbl">Cable TV</span>
+                </div>
+            </div>
+
+            <!-- Other -->
+            <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Other</p>
+            <div class="grid grid-cols-4 gap-3">
+                <div class="svc-tile" onclick="M.open('education')">
+                    <div class="ico" style="background:#eef2ff"><i data-lucide="graduation-cap" style="width:20px;height:20px;color:#4f46e5"></i></div>
+                    <span class="lbl">Education</span>
+                </div>
+                <div class="svc-tile" onclick="M.open('swap')">
+                    <div class="ico" style="background:#fff7ed"><i data-lucide="repeat" style="width:20px;height:20px;color:#ea580c"></i></div>
+                    <span class="lbl">Airtime2Cash</span>
+                </div>
+                <div class="svc-tile" onclick="window.location.href='rrr-payment.html'">
+                    <div class="ico" style="background:#fef2f2"><i data-lucide="credit-card" style="width:20px;height:20px;color:#dc2626"></i></div>
+                    <span class="lbl">Remita RRR</span>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<!-- MODAL -->
+<div id="svcOverlay" onclick="if(event.target===this)M.close()">
+    <div id="svcBox">
+        <div class="svc-modal-header">
+            <h2 id="svcTitle">Service</h2>
+            <button class="close-btn" onclick="M.close()">&#215;</button>
+        </div>
+        <div class="svc-modal-body" id="svcBody"></div>
+        <div class="svc-modal-footer" id="svcFoot"></div>
+    </div>
+</div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+// ─── MODAL CORE ────────────────────────────────────────────────────────────────
+const M = {
+    open(type) {
+        const map = { data:showData, airtime:showAirtime, electricity:showElec, tv:showTV, education:showEdu, sms:showSMS, swap:showSwap, rechargepin:showPin };
+        (map[type] || (() => M.err('Service not available')))();
+    },
+    show(title, body, foot) {
+        document.getElementById('svcTitle').textContent = title;
+        document.getElementById('svcBody').innerHTML   = body;
+        document.getElementById('svcFoot').innerHTML   = foot;
+        document.getElementById('svcOverlay').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    },
+    close() {
+        document.getElementById('svcOverlay').classList.remove('active');
+        document.body.style.overflow = '';
+    },
+    err(msg) {
+        M.show('Error',
+            `<div style="text-align:center;padding:20px"><div style="width:52px;height:52px;background:#fee2e2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div><p style="font-size:14px;color:#0f172a">${msg}</p></div>`,
+            `<button class="btn-p" onclick="M.close()">Close</button>`);
+    },
+    ok(html) {
+        M.show('Success',
+            `<div style="text-align:center;padding:16px"><div style="width:52px;height:52px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>${html}</div>`,
+            `<button class="btn-p" onclick="M.close()">Done</button>`);
+    },
+    inlineErr(msg) {
+        document.getElementById('inlineErr')?.remove();
+        const el = document.createElement('div');
+        el.id = 'inlineErr'; el.className = 'inline-err';
+        el.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span style="flex:1">${msg}</span><button onclick="this.parentElement.remove()" style="background:none;border:none;color:#dc2626;cursor:pointer;padding:0;font-size:16px">&#215;</button>`;
+        document.getElementById('svcFoot')?.insertAdjacentElement('beforebegin', el);
+        setTimeout(() => el.remove(), 6000);
+    },
+    loading(on, orig) {
+        const b = document.querySelector('#svcFoot .btn-p');
+        if (!b) return;
+        if (on) { b._o = b.textContent; b.disabled = true; b.textContent = 'Processing...'; b.style.opacity = '.7'; }
+        else     { b.disabled = false;  b.textContent = orig || b._o; b.style.opacity = '1'; }
+    }
+};
+
+function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function _v(id)  { return document.getElementById(id)?.value?.trim() || ''; }
+
+// ─── NETWORK BUTTONS ───────────────────────────────────────────────────────────
+const NET_C = {
+    mtn:     'background:#FFCC00;color:#000;border-color:#FFCC00;',
+    airtel:  'background:#FF0000;color:#fff;border-color:#FF0000;',
+    glo:     'background:#00A86B;color:#fff;border-color:#00A86B;',
+    '9mobile':'background:#006400;color:#fff;border-color:#006400;'
+};
+const NET_I = 'background:#f8fafc;color:#64748b;border-color:#e2e8f0;';
+
+function netBtns(cls, fn) {
+    return `<div class="net-grid">
+        <button class="${cls}" data-n="mtn"     onclick="${fn}('mtn')"     style="${NET_C.mtn}">MTN</button>
+        <button class="${cls}" data-n="airtel"  onclick="${fn}('airtel')"  style="${NET_I}">Airtel</button>
+        <button class="${cls}" data-n="glo"     onclick="${fn}('glo')"     style="${NET_I}">Glo</button>
+        <button class="${cls}" data-n="9mobile" onclick="${fn}('9mobile')" style="${NET_I}">9mobile</button>
+    </div>`;
+}
+function setNet(cls, n) {
+    document.querySelectorAll(`.${cls}[data-n]`).forEach(b => {
+        b.style.cssText = b.dataset.n === n
+            ? `${NET_C[n]}border-radius:8px;padding:9px 4px;font-weight:700;font-size:12px;cursor:pointer;border:2px solid;`
+            : `${NET_I}border-radius:8px;padding:9px 4px;font-weight:700;font-size:12px;cursor:pointer;border:2px solid;`;
+    });
+}
+
+// ─── EXTRACT PLANS from API response ──────────────────────────────────────────
+// Actual API shape: { status, data: { services: { data_recharge: [...] } } }
+// With dataType param: { status, data: [...plans] }  OR same shape above filtered
+function extractDataPlans(res, network, dataType) {
+    let plans = [];
+    if (Array.isArray(res.data)) {
+        // Direct array (returned when dataType is specified)
+        plans = res.data.filter(p => (p.sellingPrice || p.price || p.amount) > 0);
+    } else if (res.data?.services?.data_recharge) {
+        // Main shape without dataType
+        const all = res.data.services.data_recharge;
+        // Filter by dataType if we have it
+        if (dataType) {
+            plans = all.filter(p => (p.dataType || p.category || '').toLowerCase() === dataType.toLowerCase());
+            if (!plans.length) plans = all; // fallback: return all if filter empty
+        } else {
+            plans = all;
+        }
+        // Filter by network
+        const netPlans = plans.filter(p => (p.network || p.provider || '').toLowerCase() === network.toLowerCase());
+        if (netPlans.length) plans = netPlans;
+    } else if (res.data && Array.isArray(res.data[network.toLowerCase()])) {
+        plans = res.data[network.toLowerCase()];
+    } else if (res.data?.MOBILE_NETWORK) {
+        const km = { mtn:'MTN', glo:'Glo', '9mobile':'m_9mobile', airtel:'Airtel' };
+        const nd = res.data.MOBILE_NETWORK[km[network.toLowerCase()] || network];
+        if (Array.isArray(nd) && nd[0]?.PRODUCT)
+            plans = nd[0].PRODUCT.map(p => ({ _id:p.PRODUCT_ID, planName:p.PRODUCT_NAME, sellingPrice:p.PRODUCT_AMOUNT }));
+    } else if (Array.isArray(res)) {
+        plans = res;
+    }
+    return plans;
+}
+
+function extractCablePlans(res, provider) {
+    let plans = [];
+    if (res.data?.services) {
+        const svc = res.data.services;
+        const raw = svc.cable_tv || svc.cable || svc.cabletv || [];
+        plans = raw.filter(p => (p.provider || p.network || '').toLowerCase() === provider.toLowerCase());
+        if (!plans.length) plans = raw;
+    } else if (res.data?.TV_ID) {
+        const km = { dstv:'DStv', gotv:'GOtv', startimes:'Startimes', showmax:'Showmax' };
+        const k  = km[provider.toLowerCase()];
+        if (k && res.data.TV_ID[k]) {
+            const d = res.data.TV_ID[k];
+            if (Array.isArray(d) && d[0]?.PRODUCT) plans = d[0].PRODUCT;
+        }
+    } else if (Array.isArray(res.data)) {
+        plans = res.data.filter(p => (p.provider||'').toLowerCase() === provider.toLowerCase());
+        if (!plans.length) plans = res.data;
+    }
+    return plans;
+}
+
+function planLabel(p) {
+    return p.dataAmount || p.planName || p.name || p.plan || 'Plan';
+}
+function planPrice(p) {
+    return p.sellingPrice || p.price || p.amount || p.PRODUCT_AMOUNT || 0;
+}
+function planId(p) {
+    return p._id || p.planCode || p.id || p.planId || p.PRODUCT_ID || '';
+}
+function cablePlanLabel(p) {
+    return p.planName || p.PACKAGE_NAME || p.PRODUCT_NAME || p.name || p.description || 'Package';
+}
+function cablePlanId(p) {
+    return p._id || p.planCode || p.PACKAGE_ID || p.PRODUCT_CODE || p.id || p.planId || '';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════════════════════════════════════════
+let _dNet = 'mtn', _dPlans = [], _dType = null;
+
+function showData() {
+    _dNet = 'mtn'; _dPlans = []; _dType = null;
+    M.show('Buy Data', `
+        <div class="f-group">
+            <label class="f-label">Network</label>
+            ${netBtns('dnet-btn', 'selDNet')}
+        </div>
+        <div class="f-group">
+            <label class="f-label">Data Type</label>
+            <div id="dTypeWrap" style="display:flex;flex-wrap:wrap;gap:8px;min-height:32px">
+                <span style="color:#94a3b8;font-size:13px;line-height:32px">Loading...</span>
+            </div>
+        </div>
+        <div class="f-group">
+            <label class="f-label">Phone Number</label>
+            <input type="tel" id="dPhone" maxlength="11" placeholder="08012345678" class="f-input">
+        </div>
+        <div class="f-group">
+            <label class="f-label">Select Plan</label>
+            <select id="dPlan" class="f-input" disabled>
+                <option value="">Select data type first...</option>
+            </select>
+        </div>
+        <div class="f-group">
+            <label class="f-label">Transaction PIN</label>
+            <input type="password" id="dPin" maxlength="4" placeholder="••••" class="f-input">
+        </div>
+    `, `<button class="btn-s" onclick="M.close()">Cancel</button>
+        <button class="btn-p" onclick="submitData()">Buy Data</button>`);
+    loadDTypes('mtn');
+}
+
+function selDNet(n) {
+    _dNet = n; _dType = null; _dPlans = [];
+    setNet('dnet-btn', n);
+    const ps = document.getElementById('dPlan');
+    if (ps) { ps.innerHTML = '<option value="">Select data type first...</option>'; ps.disabled = true; }
+    const tw = document.getElementById('dTypeWrap');
+    if (tw) tw.innerHTML = '<span style="color:#94a3b8;font-size:13px;line-height:32px">Loading...</span>';
+    loadDTypes(n);
+}
+
+async function loadDTypes(n) {
+    const tw = document.getElementById('dTypeWrap');
+    try {
+        const res = await API.get(`${API_CONFIG.ENDPOINTS.DATA_PLANS}?network=${n}`);
+        const types = res.availableDataTypes;
+        if (!tw) return;
+        if (!types || !types.length) { tw.innerHTML = '<span style="color:#dc2626;font-size:13px">No types available</span>'; return; }
+        tw.innerHTML = types.map(t =>
+            `<button class="type-pill" data-t="${t}" onclick="selDType('${t}')">${t.charAt(0).toUpperCase()+t.slice(1)}</button>`
+        ).join('');
+    } catch(e) {
+        if (tw) tw.innerHTML = '<span style="color:#dc2626;font-size:13px">Failed to load types</span>';
+    }
+}
+
+async function selDType(t) {
+    _dType = t; _dPlans = [];
+    document.querySelectorAll('.type-pill[data-t]').forEach(b => b.classList.toggle('active', b.dataset.t === t));
+    const ps = document.getElementById('dPlan');
+    if (ps) { ps.innerHTML = '<option value="">Loading plans...</option>'; ps.disabled = true; }
+    try {
+        const res = await API.get(`${API_CONFIG.ENDPOINTS.DATA_PLANS}?network=${_dNet}&dataType=${t}`);
+        _dPlans = extractDataPlans(res, _dNet, t);
+        if (!ps) return;
+        if (!_dPlans.length) {
+            ps.innerHTML = '<option value="">No plans for this type</option>';
+            ps.disabled = true; return;
+        }
+        ps.disabled = false;
+        ps.innerHTML = '<option value="">Choose a plan</option>' + _dPlans.map((p, i) => {
+            const validity = p.validity ? ` (${p.validity})` : '';
+            const price    = planPrice(p);
+            return `<option value="${i}">${planLabel(p)}${validity} — &#8358;${Number(price).toLocaleString()}</option>`;
+        }).join('');
+    } catch(e) {
+        if (ps) { ps.innerHTML = '<option value="">Failed to load plans</option>'; ps.disabled = true; }
+    }
+}
+
+async function submitData() {
+    const phone = _v('dPhone'), pi = _v('dPlan'), pin = _v('dPin');
+    if (!phone || !/^\d{11}$/.test(phone)) { M.inlineErr('Enter a valid 11-digit phone number'); return; }
+    if (pi === '' || !_dPlans.length)       { M.inlineErr('Please select a data plan'); return; }
+    const plan = _dPlans[+pi];
+    if (!plan) { M.inlineErr('Invalid plan selected. Please try again.'); return; }
+    const amount = planPrice(plan);
+    if (!amount || amount <= 0) { M.inlineErr('Could not determine plan amount. Please try again.'); return; }
+    const pid = String(planId(plan)).replace(/\.0$/, '');
+    if (!pid) { M.inlineErr('Could not identify selected plan. Please try again.'); return; }
+    if (!pin || !/^\d{4}$/.test(pin)) { M.inlineErr('Enter your 4-digit transaction PIN'); return; }
+    M.loading(true);
+    try {
+        await API.post(API_CONFIG.ENDPOINTS.DATA_PURCHASE, { phoneNumber:phone, network:_dNet, dataPlan:pid, transactionPin:pin, amount });
+        M.close();
+        setTimeout(() => M.ok(`<p style="font-size:15px;font-weight:600;margin-bottom:4px">Data Purchased!</p><p style="font-size:13px;color:#64748b">${planLabel(plan)} sent to ${phone}</p>`), 300);
+    } catch(e) {
+        M.loading(false, 'Buy Data');
+        M.inlineErr(e.message || 'Purchase failed. Please try again.');
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  AIRTIME
+// ═══════════════════════════════════════════════════════════════════════════════
+let _aN = 'mtn';
+
+function showAirtime() {
+    _aN = 'mtn';
+    M.show('Buy Airtime', `
+        <div class="f-group">
+            <label class="f-label">Network</label>
+            ${netBtns('anet-btn', 'selANet')}
+        </div>
+        <div class="f-group">
+            <label class="f-label">Phone Number</label>
+            <input type="tel" id="aPhone" maxlength="11" placeholder="08012345678" class="f-input">
+        </div>
+        <div class="f-group">
+            <label class="f-label">Amount (&#8358;)</label>
+            <input type="number" id="aAmt" min="50" placeholder="Min &#8358;50" class="f-input">
+        </div>
+        <div class="f-group">
+            <label class="f-label">Transaction PIN</label>
+            <input type="password" id="aPin" maxlength="4" placeholder="••••" class="f-input">
+        </div>
+    `, `<button class="btn-s" onclick="M.close()">Cancel</button>
+        <button class="btn-p" onclick="submitAirtime()">Buy Airtime</button>`);
+}
+
+function selANet(n) { _aN = n; setNet('anet-btn', n); }
+
+async function submitAirtime() {
+    const phone = _v('aPhone'), amount = +_v('aAmt'), pin = _v('aPin');
+    if (!phone || phone.length !== 11) { M.inlineErr('Enter a valid 11-digit phone number'); return; }
+    if (!amount || amount < 50)        { M.inlineErr('Amount must be at least &#8358;50'); return; }
+    if (!pin || !/^\d{4}$/.test(pin))  { M.inlineErr('Enter your 4-digit transaction PIN'); return; }
+    M.loading(true);
+    try {
+        await API.post(API_CONFIG.ENDPOINTS.AIRTIME_PURCHASE, { phoneNumber:phone, network:_aN, amount, transactionPin:pin });
+        M.close();
+        setTimeout(() => M.ok(`<p style="font-size:15px;font-weight:600;margin-bottom:4px">Airtime Sent!</p><p style="font-size:13px;color:#64748b">&#8358;${amount.toLocaleString()} to ${phone}</p>`), 300);
+    } catch(e) {
+        M.loading(false, 'Buy Airtime');
+        M.inlineErr(e.message || 'Purchase failed. Please try again.');
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ELECTRICITY — 2-step: verify then pay
+// ═══════════════════════════════════════════════════════════════════════════════
+let _eV = null;
+
+async function showElec() {
+    _eV = null;
+    M.show('Pay Electricity', `
+        <div id="eS1">
+            <div class="f-group">
+                <label class="f-label">Select Disco</label>
+                <select id="eDisco" class="f-input"><option value="">Loading discos...</option></select>
+            </div>
+            <div class="f-group">
+                <label class="f-label">Meter Type</label>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                    <button class="meter-btn active" id="ePre" onclick="selMeter('prepaid')">Prepaid</button>
+                    <button class="meter-btn"        id="ePos" onclick="selMeter('postpaid')">Postpaid</button>
+                </div>
+            </div>
+            <div class="f-group">
+                <label class="f-label">Meter Number</label>
+                <input type="text" id="eMeter" placeholder="Enter meter number" class="f-input">
+            </div>
+        </div>
+        <div id="eS2" style="display:none">
+            <div class="verify-card" id="eCust"></div>
+            <div class="f-group">
+                <label class="f-label">Amount (&#8358;)</label>
+                <input type="number" id="eAmt" min="500" placeholder="Min &#8358;500" class="f-input">
+            </div>
+            <div class="f-group">
+                <label class="f-label">Phone Number</label>
+                <input type="tel" id="ePhone" maxlength="11" placeholder="08012345678" class="f-input">
+            </div>
+            <div class="f-group">
+                <label class="f-label">Transaction PIN</label>
+                <input type="password" id="ePin" maxlength="4" placeholder="••••" class="f-input">
+            </div>
+        </div>
+    `, `<button class="btn-s" onclick="M.close()">Cancel</button>
+        <button class="btn-p" id="eBtn" onclick="elecStep()">Verify Meter</button>`);
+    window._eMT = 'prepaid';
+    loadDiscos();
+}
+
+async function loadDiscos() {
+    const s = document.getElementById('eDisco');
+    if (!s) return;
+    try {
+        const res = await API.get('/bills/electricity/discos');
+        const list = res.data?.discos || res.discos || res.data?.data?.discos || [];
+        if (!list.length) { s.innerHTML = '<option value="">No discos available</option>'; return; }
+        s.innerHTML = '<option value="">Select Disco</option>';
+        list.forEach(d => {
+            const val  = d.key || d.serviceID || d.code || d.id;
+            const name = d.name || d.displayName;
+            if (val && name) { const o = document.createElement('option'); o.value = val; o.textContent = name; s.appendChild(o); }
         });
-    </script>
+    } catch(e) {
+        s.innerHTML = '<option value="">Failed to load — please retry</option>';
+        M.inlineErr('Could not load electricity providers.');
+    }
+}
+
+function selMeter(t) {
+    window._eMT = t;
+    document.getElementById('ePre').classList.toggle('active', t === 'prepaid');
+    document.getElementById('ePos').classList.toggle('active', t === 'postpaid');
+}
+
+async function elecStep() { _eV ? await payElec() : await verifyMeter(); }
+
+async function verifyMeter() {
+    const disco = _v('eDisco'), meter = _v('eMeter'), mt = window._eMT || 'prepaid';
+    if (!disco) { M.inlineErr('Please select a disco'); return; }
+    if (!meter) { M.inlineErr('Please enter meter number'); return; }
+    const btn = document.getElementById('eBtn');
+    btn.disabled = true; btn.textContent = 'Verifying...';
+    try {
+        const res = await API.post(API_CONFIG.ENDPOINTS.ELECTRICITY_VERIFY, { meterNumber:meter, disco, meterType:mt });
+        const d   = res.data || res;
+        // Extract customer name from various possible response shapes
+        const cName = d.raw?.data?.content?.Customer_Name || d.customerName || d.customer?.name || d.name;
+        const cAddr = d.raw?.data?.content?.Address || d.customerAddress || d.customer?.address || d.address;
+        const minAmt = d.raw?.data?.content?.Minimum_Amount || d.minimumAmount;
+        if (!cName || cName === 'N/A') {
+            btn.disabled = false; btn.textContent = 'Verify Meter';
+            M.inlineErr('Meter not found. Check the number and disco selection.'); return;
+        }
+        _eV = { meter, disco, meterType:mt, customerName:cName, customerAddress:cAddr, minimumAmount:minAmt };
+        const ci = document.getElementById('eCust');
+        if (ci) ci.innerHTML = `<div style="display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;background:#16a34a;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><div><p style="font-weight:700;color:#15803d;font-size:14px">${_esc(cName)}</p>${cAddr?`<p style="color:#64748b;font-size:12px">${_esc(cAddr)}</p>`:''}<p style="color:#64748b;font-size:12px">Meter: ${_esc(meter)} &middot; ${mt.charAt(0).toUpperCase()+mt.slice(1)}</p>${minAmt?`<p style="color:#f59e0b;font-size:11px;margin-top:3px">Min: &#8358;${minAmt.toLocaleString()}</p>`:''}</div></div>`;
+        if (minAmt) { const ai = document.getElementById('eAmt'); if (ai) { ai.placeholder = `Min &#8358;${minAmt.toLocaleString()}`; ai.min = minAmt; } }
+        document.getElementById('eS1').style.display = 'none';
+        document.getElementById('eS2').style.display = 'block';
+        btn.disabled = false; btn.textContent = 'Pay Now';
+        document.getElementById('eAmt')?.focus();
+    } catch(e) {
+        btn.disabled = false; btn.textContent = 'Verify Meter';
+        M.inlineErr(e.message || 'Could not verify meter. Please try again.');
+    }
+}
+
+async function payElec() {
+    if (!_eV) { M.inlineErr('Please verify meter first'); return; }
+    const amount = +_v('eAmt'), phone = _v('ePhone'), pin = _v('ePin');
+    if (_eV.minimumAmount && amount < _eV.minimumAmount) { M.inlineErr(`Min amount is &#8358;${_eV.minimumAmount.toLocaleString()}`); return; }
+    if (!amount || amount < 500)  { M.inlineErr('Amount must be at least &#8358;500'); return; }
+    if (!phone || phone.length !== 11) { M.inlineErr('Enter a valid 11-digit phone number'); return; }
+    if (!pin || !/^\d{4}$/.test(pin))  { M.inlineErr('Enter your 4-digit transaction PIN'); return; }
+    const btn = document.getElementById('eBtn');
+    btn.disabled = true; btn.textContent = 'Processing...';
+    try {
+        const res = await API.post(API_CONFIG.ENDPOINTS.ELECTRICITY_PURCHASE, {
+            meterNumber: _eV.meter, disco: _eV.disco, meterType: _eV.meterType,
+            amount, phoneNumber: phone, transactionPin: pin
+        });
+        const token = res.data?.token || res.data?.purchasedToken || res.token
+                   || res.data?.raw?.data?.content?.Token || res.data?.raw?.data?.token || '';
+        M.close();
+        setTimeout(() => M.ok(`
+            <p style="font-size:15px;font-weight:600;margin-bottom:4px">Payment Successful!</p>
+            <p style="font-size:13px;color:#64748b">&#8358;${amount.toLocaleString()} to meter ${_esc(_eV.meter)}</p>
+            ${token ? `<div style="margin-top:14px;padding:12px;background:#f0fdf4;border-radius:8px"><p style="font-size:11px;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Token</p><p style="font-size:20px;font-weight:700;color:#15803d;letter-spacing:3px" id="eToken">${_esc(token)}</p><button onclick="navigator.clipboard.writeText('${_esc(token)}').then(()=>UI.showToast('Copied!','success'))" style="margin-top:8px;padding:5px 14px;background:#16a34a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">Copy Token</button></div>` : ''}`
+        ), 300);
+    } catch(e) {
+        btn.disabled = false; btn.textContent = 'Pay Now';
+        M.inlineErr(e.message || 'Payment failed. Please try again.');
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  CABLE TV
+// ═══════════════════════════════════════════════════════════════════════════════
+let _tvPlans = [], _tvProv = 'dstv';
+
+async function showTV() {
+    _tvPlans = []; _tvProv = 'dstv';
+    M.show('Cable TV', `
+        <div class="f-group">
+            <label class="f-label">Provider</label>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+                <button class="prov-btn active" data-p="dstv"      onclick="selTV('dstv')">DSTV</button>
+                <button class="prov-btn"        data-p="gotv"      onclick="selTV('gotv')">GOTV</button>
+                <button class="prov-btn"        data-p="startimes" onclick="selTV('startimes')">Startimes</button>
+            </div>
+        </div>
+        <div class="f-group">
+            <label class="f-label">Smart Card / IUC Number</label>
+            <input type="text" id="tvCard" placeholder="Enter smart card number" class="f-input">
+        </div>
+        <div class="f-group">
+            <label class="f-label">Package</label>
+            <select id="tvPlan" class="f-input"><option value="">Loading packages...</option></select>
+            <div id="tvTtl" style="display:none;margin-top:6px;padding:7px 11px;background:#f0fdf4;border-radius:6px;color:#15803d;font-size:13px;font-weight:600"></div>
+        </div>
+        <div class="f-group">
+            <label class="f-label">Duration</label>
+            <select id="tvMonths" class="f-input" onchange="updTVTtl()">
+                <option value="1">1 Month</option><option value="2">2 Months</option>
+                <option value="3">3 Months</option><option value="6">6 Months</option>
+                <option value="12">12 Months</option>
+            </select>
+        </div>
+        <div class="f-group">
+            <label class="f-label">Transaction PIN</label>
+            <input type="password" id="tvPin" maxlength="4" placeholder="••••" class="f-input">
+        </div>
+    `, `<button class="btn-s" onclick="M.close()">Cancel</button>
+        <button class="btn-p" onclick="submitTV()">Subscribe</button>`);
+    await loadTV('dstv');
+}
+
+function selTV(p) {
+    _tvProv = p; _tvPlans = [];
+    document.querySelectorAll('.prov-btn[data-p]').forEach(b => b.classList.toggle('active', b.dataset.p === p));
+    loadTV(p);
+}
+
+async function loadTV(prov) {
+    const ps = document.getElementById('tvPlan');
+    const ttl = document.getElementById('tvTtl');
+    if (!ps) return;
+    ps.innerHTML = '<option value="">Loading packages...</option>';
+    if (ttl) ttl.style.display = 'none';
+    try {
+        const res = await API.get(`${API_CONFIG.ENDPOINTS.CABLE_PLANS}?provider=${prov}`);
+        _tvPlans = extractCablePlans(res, prov);
+        if (!_tvPlans.length) { ps.innerHTML = '<option value="">No packages available</option>'; return; }
+        ps.innerHTML = '<option value="">Choose package</option>' + _tvPlans.map((p, i) => {
+            const name  = cablePlanLabel(p);
+            const price = planPrice(p);
+            return `<option value="${i}" data-amt="${Math.round(Number(price))}">${name} — &#8358;${Math.round(Number(price)).toLocaleString()}</option>`;
+        }).join('');
+        ps.onchange = updTVTtl;
+    } catch(e) {
+        ps.innerHTML = '<option value="">Failed to load packages</option>';
+    }
+}
+
+function updTVTtl() {
+    const ps  = document.getElementById('tvPlan');
+    const ttl = document.getElementById('tvTtl');
+    if (!ps || !ttl) return;
+    const opt = ps.options[ps.selectedIndex];
+    const amt = opt?.dataset?.amt;
+    if (amt) {
+        const m = parseInt(document.getElementById('tvMonths')?.value || 1);
+        ttl.style.display = 'block';
+        ttl.textContent   = `Total: &#8358;${(+amt * m).toLocaleString()}`;
+    } else { ttl.style.display = 'none'; }
+}
+
+async function submitTV() {
+    const card = _v('tvCard'), pi = _v('tvPlan'), months = +(_v('tvMonths') || 1), pin = _v('tvPin');
+    if (!card)                           { M.inlineErr('Enter smart card / IUC number'); return; }
+    if (pi === '' || !_tvPlans.length)   { M.inlineErr('Please select a package'); return; }
+    if (!pin || !/^\d{4}$/.test(pin))    { M.inlineErr('Enter your 4-digit transaction PIN'); return; }
+    const plan = _tvPlans[+pi];
+    if (!plan) { M.inlineErr('Invalid package selected'); return; }
+    const pid = String(cablePlanId(plan));
+    if (!pid)  { M.inlineErr('Could not identify selected package. Please try again.'); return; }
+    M.loading(true);
+    try {
+        await API.post(API_CONFIG.ENDPOINTS.CABLE_PURCHASE, { smartCardNumber:card, provider:_tvProv, planId:pid, months, transactionPin:pin });
+        const name = cablePlanLabel(plan);
+        M.close();
+        setTimeout(() => M.ok(`<p style="font-size:15px;font-weight:600;margin-bottom:4px">Subscription Successful!</p><p style="font-size:13px;color:#64748b">${_esc(name)}</p><p style="font-size:13px;color:#64748b">${_tvProv.toUpperCase()} &middot; ${_esc(card)}</p>`), 300);
+    } catch(e) {
+        M.loading(false, 'Subscribe');
+        M.inlineErr(e.message || 'Subscription failed. Please try again.');
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  EDUCATION
+// ═══════════════════════════════════════════════════════════════════════════════
+const EDU_P = { waecdirect:3800, neco:1000, jamb:700, nabteb:900 };
+
+function showEdu() {
+    M.show('Education PIN', `
+        <div class="info-box">📚 Scratch cards will be emailed after purchase.</div>
+        <div class="f-group">
+            <label class="f-label">Exam Type</label>
+            <select id="eduType" class="f-input" onchange="updEduPr()">
+                <option value="waecdirect">WAEC Result Checker</option>
+                <option value="neco">NECO Result Checker</option>
+                <option value="jamb">JAMB E-PIN</option>
+                <option value="nabteb">NABTEB Result Checker</option>
+            </select>
+        </div>
+        <div class="f-group">
+            <label class="f-label">Quantity</label>
+            <select id="eduQty" class="f-input" onchange="updEduPr()">
+                <option value="1">1 PIN</option><option value="2">2 PINs</option>
+                <option value="3">3 PINs</option><option value="5">5 PINs</option>
+                <option value="10">10 PINs</option>
+            </select>
+        </div>
+        <div id="eduPr" style="display:none;padding:9px 12px;background:#f0fdf4;border-radius:8px;margin-bottom:4px;color:#15803d;font-size:13px;font-weight:600"></div>
+        <div class="f-group">
+            <label class="f-label">Transaction PIN</label>
+            <input type="password" id="eduPin" maxlength="4" placeholder="••••" class="f-input">
+        </div>
+    `, `<button class="btn-s" onclick="M.close()">Cancel</button>
+        <button class="btn-p" onclick="submitEdu()">Purchase</button>`);
+}
+
+function updEduPr() {
+    const t = _v('eduType'), q = +(_v('eduQty') || 1), el = document.getElementById('eduPr');
+    if (!el || !t) return;
+    const u = EDU_P[t];
+    el.style.display = u ? 'block' : 'none';
+    if (u) el.textContent = `Total: &#8358;${(u*q).toLocaleString()} (${q} × &#8358;${u.toLocaleString()})`;
+}
+
+async function submitEdu() {
+    const et = _v('eduType'), qty = +(_v('eduQty') || 1), pin = _v('eduPin');
+    if (!pin || !/^\d{4}$/.test(pin)) { M.inlineErr('Enter your 4-digit transaction PIN'); return; }
+    if (!qty || qty < 1)              { M.inlineErr('Select a valid quantity'); return; }
+    const lbl = { waecdirect:'WAEC', neco:'NECO', jamb:'JAMB', nabteb:'NABTEB' };
+    M.loading(true);
+    try {
+        await API.post(API_CONFIG.ENDPOINTS.EDUCATION_PURCHASE, { examType:et, quantity:qty, transactionPin:pin });
+        M.close();
+        setTimeout(() => M.ok(`<p style="font-size:15px;font-weight:600;margin-bottom:4px">Purchase Successful!</p><p style="font-size:13px;color:#64748b">${qty} × ${lbl[et]||et.toUpperCase()} PIN${qty>1?'s':''}</p><p style="font-size:12px;color:#94a3b8;margin-top:4px">Check your email for the scratch card(s)</p>`), 300);
+    } catch(e) {
+        M.loading(false, 'Purchase');
+        M.inlineErr(e.message || 'Purchase failed. Please try again.');
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  RECHARGE PIN
+// ═══════════════════════════════════════════════════════════════════════════════
+function showPin() {
+    M.show('Recharge PIN', `
+        <div class="f-group">
+            <label class="f-label">Network</label>
+            <select id="pinNet" class="f-input">
+                <option value="mtn">MTN</option><option value="airtel">Airtel</option>
+                <option value="glo">Glo</option><option value="9mobile">9mobile</option>
+            </select>
+        </div>
+        <div class="f-group">
+            <label class="f-label">Denomination</label>
+            <select id="pinAmt" class="f-input">
+                <option value="100">&#8358;100</option><option value="200">&#8358;200</option>
+                <option value="500">&#8358;500</option><option value="1000">&#8358;1,000</option>
+            </select>
+        </div>
+        <div class="f-group">
+            <label class="f-label">Quantity (max 10)</label>
+            <input type="number" id="pinQty" value="1" min="1" max="10" class="f-input">
+        </div>
+        <div class="f-group">
+            <label class="f-label">Transaction PIN</label>
+            <input type="password" id="pinTx" maxlength="4" placeholder="••••" class="f-input">
+        </div>
+    `, `<button class="btn-s" onclick="M.close()">Cancel</button>
+        <button class="btn-p" onclick="submitPin()">Purchase</button>`);
+}
+
+async function submitPin() {
+    const net = _v('pinNet'), amt = _v('pinAmt'), qty = +(_v('pinQty')||1), pin = _v('pinTx');
+    if (!pin || !/^\d{4}$/.test(pin))         { M.inlineErr('Enter your valid 4-digit transaction PIN'); return; }
+    if (!qty || qty < 1 || qty > 10)          { M.inlineErr('Enter a valid quantity (1–10)'); return; }
+    M.loading(true);
+    try {
+        const res  = await API.post(API_CONFIG.ENDPOINTS.RECHARGE_PIN_PURCHASE, { network:net, pinType:String(amt), quantity:qty, transactionPin:pin });
+        const pins = res.data?.pins || res.data?.TXN_EPIN || [];
+        const ref  = res.data?.reference || res.data?.orderId || '';
+        M.close();
+        setTimeout(() => {
+            if (!pins.length) {
+                M.ok(`<p style="font-size:15px;font-weight:600;margin-bottom:4px">Purchase Successful!</p><p style="font-size:13px;color:#64748b">${qty} × &#8358;${amt} ${net.toUpperCase()} PIN${qty>1?'s':''}</p><p style="font-size:12px;color:#94a3b8;margin-top:4px">PINs sent to your email${ref?' · Ref: '+ref:''}</p>`);
+                return;
+            }
+            // Show PIN cards modal
+            const cards = pins.map((p, i) => {
+                const code = p.pin || p.code || p;
+                return `<div class="pin-card"><div style="display:flex;align-items:center;justify-content:space-between"><div><p style="font-size:11px;color:#94a3b8;margin:0 0 3px">${p.mobilenetwork||net.toUpperCase()} · &#8358;${p.amount||amt}</p><p class="pin-val" id="rp${i}">${_esc(String(code))}</p>${p.sno?`<p style="font-size:10px;color:#cbd5e1;margin-top:3px">S/N: ${_esc(p.sno)}</p>`:''}</div><button onclick="cpPin('rp${i}',this)" style="background:#1E3D5C;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;flex-shrink:0;margin-left:8px">Copy</button></div></div>`;
+            }).join('');
+            M.show('Recharge PINs',
+                `<div style="background:#dcfce7;border:1px solid #bbf7d0;border-radius:8px;padding:9px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span style="color:#15803d;font-size:13px;font-weight:600">${pins.length} × &#8358;${amt} ${net.toUpperCase()} PIN${pins.length>1?'s':''} purchased</span></div>${cards}${ref?`<p style="font-size:11px;color:#cbd5e1;text-align:center;margin-top:8px">Ref: ${ref}</p>`:''}`,
+                `<button class="btn-p" onclick="M.close()">Done</button>`);
+        }, 300);
+    } catch(e) {
+        M.loading(false, 'Purchase');
+        M.inlineErr(e.message || 'Purchase failed. Please try again.');
+    }
+}
+
+function cpPin(id, btn) {
+    const p = document.getElementById(id)?.textContent?.trim();
+    if (!p) return;
+    navigator.clipboard.writeText(p).then(() => {
+        const o = btn.innerHTML; btn.innerHTML = '✓'; btn.style.background = '#16a34a';
+        setTimeout(() => { btn.innerHTML = o; btn.style.background = '#1E3D5C'; }, 2000);
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  AIRTIME SWAP
+// ═══════════════════════════════════════════════════════════════════════════════
+let _sN = 'mtn';
+
+function showSwap() {
+    _sN = 'mtn';
+    M.show('Airtime to Cash', `
+        <div class="f-group">
+            <label class="f-label">Network</label>
+            ${netBtns('snet-btn', 'selSNet')}
+        </div>
+        <div class="f-group">
+            <label class="f-label">Phone Number</label>
+            <input type="tel" id="sPhone" maxlength="11" placeholder="08012345678" class="f-input">
+        </div>
+        <div class="f-group">
+            <label class="f-label">Airtime Amount (&#8358;)</label>
+            <input type="number" id="sAmt" min="500" placeholder="Min &#8358;500" class="f-input" oninput="updSwap()">
+        </div>
+        <div id="swPrev" style="display:none;padding:12px;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;margin-bottom:4px">
+            <p style="font-size:13px;color:#92400e">You receive: <strong id="swRec">&#8358;0</strong> <span style="font-size:11px">(85% of airtime value)</span></p>
+        </div>
+        <div class="f-group">
+            <label class="f-label">Transaction PIN</label>
+            <input type="password" id="sPin" maxlength="4" placeholder="••••" class="f-input">
+        </div>
+    `, `<button class="btn-s" onclick="M.close()">Cancel</button>
+        <button class="btn-p" onclick="submitSwap()">Convert to Cash</button>`);
+}
+
+function selSNet(n) { _sN = n; setNet('snet-btn', n); }
+function updSwap() {
+    const a = +_v('sAmt') || 0;
+    document.getElementById('swRec').textContent  = `&#8358;${(a*0.85).toLocaleString()}`;
+    document.getElementById('swPrev').style.display = a > 0 ? 'block' : 'none';
+}
+
+async function submitSwap() {
+    const phone = _v('sPhone'), amount = +_v('sAmt'), pin = _v('sPin');
+    if (!phone || phone.length !== 11) { M.inlineErr('Enter a valid 11-digit phone number'); return; }
+    if (!amount || amount < 500)       { M.inlineErr('Minimum swap amount is &#8358;500'); return; }
+    if (!pin || !/^\d{4}$/.test(pin))  { M.inlineErr('Enter your 4-digit transaction PIN'); return; }
+    M.loading(true);
+    try {
+        await API.post(API_CONFIG.ENDPOINTS.AIRTIME_SWAP, { phoneNumber:phone, network:_sN, airtimeAmount:amount, transactionPin:pin });
+        M.close();
+        setTimeout(() => M.ok(`<p style="font-size:15px;font-weight:600;margin-bottom:4px">Swap Successful!</p><p style="font-size:13px;color:#64748b">&#8358;${amount.toLocaleString()} airtime → <strong style="color:#16a34a">&#8358;${(amount*0.85).toLocaleString()}</strong> cash</p>`), 300);
+    } catch(e) {
+        M.loading(false, 'Convert to Cash');
+        M.inlineErr(e.message || 'Swap failed. Please try again.');
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  BULK SMS
+// ═══════════════════════════════════════════════════════════════════════════════
+function showSMS() {
+    M.show('Bulk SMS', `
+        <div class="f-group">
+            <label class="f-label">Sender ID <span style="font-weight:400;text-transform:none;color:#94a3b8">(max 11 chars)</span></label>
+            <input type="text" id="smsSdr" value="Yareema" maxlength="11" class="f-input">
+        </div>
+        <div class="f-group">
+            <label class="f-label">Recipients <span style="font-weight:400;text-transform:none;color:#94a3b8">(comma-separated)</span></label>
+            <textarea id="smsPh" rows="3" class="f-input" placeholder="08012345678, 09050030090, ..." oninput="calcSMS()"></textarea>
+        </div>
+        <div class="f-group">
+            <label class="f-label">Message <span id="smsChars" style="font-weight:400;text-transform:none;color:#94a3b8">0/160</span></label>
+            <textarea id="smsMsg" rows="4" maxlength="160" class="f-input" placeholder="Type your message..." oninput="calcSMS()"></textarea>
+        </div>
+        <div class="sum-box">
+            <div class="sum-row"><span style="color:#64748b">Recipients</span><span id="smsRC" style="font-weight:700;color:#0f172a">0</span></div>
+            <div class="sum-row"><span style="color:#64748b">Pages</span><span id="smsPG" style="font-weight:700;color:#0f172a">1</span></div>
+            <div class="sum-row"><span style="color:#64748b">Est. units</span><span id="smsUU" style="font-weight:700;color:#0f172a">0</span></div>
+        </div>
+        <div class="f-group">
+            <label class="f-label">Transaction PIN</label>
+            <input type="password" id="smsPin" maxlength="4" placeholder="••••" class="f-input">
+        </div>
+    `, `<button class="btn-s" onclick="M.close()">Cancel</button>
+        <button class="btn-p" onclick="submitSMS()">Send SMS</button>`);
+    document.getElementById('smsMsg')?.addEventListener('input', function() {
+        document.getElementById('smsChars').textContent = this.value.length + '/160';
+        calcSMS();
+    });
+}
+
+function calcSMS() {
+    const ph = (_v('smsPh') || '').split(',').map(p => p.trim()).filter(Boolean);
+    const ml = (_v('smsMsg') || '').length;
+    const pg = Math.max(1, Math.ceil(ml / 160));
+    document.getElementById('smsRC').textContent = ph.length;
+    document.getElementById('smsPG').textContent = pg;
+    document.getElementById('smsUU').textContent = ph.length * pg;
+}
+
+async function submitSMS() {
+    const sdr = _v('smsSdr'), msg = _v('smsMsg'), pin = _v('smsPin');
+    const ph  = (_v('smsPh') || '').split(',').map(p => p.trim()).filter(Boolean);
+    if (!sdr)                    { M.inlineErr('Enter a Sender ID'); return; }
+    if (sdr.length > 11)         { M.inlineErr('Sender ID must be max 11 characters'); return; }
+    if (!ph.length)              { M.inlineErr('Enter at least one recipient number'); return; }
+    if (!msg)                    { M.inlineErr('Enter a message'); return; }
+    if (!/^\d{4}$/.test(pin))    { M.inlineErr('Enter your 4-digit transaction PIN'); return; }
+    const inv = ph.filter(p => !/^\d{10,14}$/.test(p));
+    if (inv.length) { M.inlineErr(`Invalid number(s): ${inv.slice(0,3).join(', ')}${inv.length>3?'…':''}`); return; }
+    M.loading(true);
+    try {
+        const res  = await API.post(API_CONFIG.ENDPOINTS.SMS_SEND, { from:sdr, to:ph.join(','), body:msg, gateway:'direct-corporate', appendSender:'hosted', transactionPin:pin });
+        const sent = res.data?.sent ?? res.data?.messageCount ?? ph.length;
+        M.close();
+        setTimeout(() => M.ok(`<p style="font-size:15px;font-weight:600;margin-bottom:4px">SMS Sent!</p><p style="font-size:13px;color:#64748b">${sent} message${sent!==1?'s':''} delivered</p>${res.data?.reference?`<p style="font-size:12px;color:#94a3b8;margin-top:4px">Ref: ${res.data.reference}</p>`:''}`), 300);
+    } catch(e) {
+        M.loading(false, 'Send SMS');
+        M.inlineErr(e.message || 'Failed to send SMS. Please try again.');
+    }
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+Auth.protectPage();
+fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();initSidebar();});
+fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('services');if(typeof initHeader==='function')initHeader();lucide.createIcons();});
+lucide.createIcons();
+</script>
 </body>
 </html>

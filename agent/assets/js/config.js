@@ -29,9 +29,17 @@ if (typeof API_CONFIG === 'undefined') {
             WALLET_TRANSFER: '/wallet/transfer',
             
             DATA_PLANS: '/telecom/data/plans',
+            DATA_PURCHASE: '/telecom/data/purchase',
+            AIRTIME_PURCHASE: '/telecom/airtime/purchase',
+            AIRTIME_SWAP: '/telecom/airtime/swap',
+            RECHARGE_PIN_PURCHASE: '/telecom/recharge-pin/purchase',
             CABLE_PLANS: '/bills/cable/plans',
-            ELECTRICITY_VERIFY: '/bills/electricity/verify',
+            CABLE_PURCHASE: '/bills/cable/purchase',
             CABLE_VERIFY: '/bills/cable/verify',
+            ELECTRICITY_VERIFY: '/bills/electricity/verify',
+            ELECTRICITY_PURCHASE: '/bills/electricity/purchase',
+            EDUCATION_PURCHASE: '/bills/education/purchase',
+            SMS_SEND: '/sms/send',
             
             PAYMENT_INITIATE: '/payment/initiate',
             PAYMENT_VERIFY: '/payment/verify',

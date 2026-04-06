@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cable TV - Yareema Agent Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{yareema:{primary:'#1E3D5C',secondary:'#16304a'}}}}}</script>
+</head>
+<body class="text-slate-800 antialiased">
+<div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+<div class="w-full min-h-screen">
+    <div id="sidebarContainer"></div>
+    <main class="lg:ml-64 flex flex-col min-h-screen bg-slate-50">
+        <div id="headerContainer"></div>
+        <div class="p-4 lg:p-8 flex-1 overflow-y-auto space-y-6">
+            <div id="pageMsg" class="hidden p-4 rounded-xl text-sm font-medium"></div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h3 class="font-bold text-slate-900 mb-4">Select Provider</h3>
+                <div class="grid grid-cols-3 gap-3">
+                    <button onclick="selProv('dstv')" id="prov-dstv"
+                        class="prov-btn flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-yareema-primary bg-yareema-primary text-white font-bold text-sm transition-all">
+                        <i data-lucide="tv" class="w-8 h-8"></i><span>DSTV</span></button>
+                    <button onclick="selProv('gotv')" id="prov-gotv"
+                        class="prov-btn flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-slate-200 bg-white text-slate-500 font-bold text-sm transition-all hover:border-yareema-primary">
+                        <i data-lucide="tv" class="w-8 h-8"></i><span>GOTV</span></button>
+                    <button onclick="selProv('startimes')" id="prov-startimes"
+                        class="prov-btn flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-slate-200 bg-white text-slate-500 font-bold text-sm transition-all hover:border-yareema-primary">
+                        <i data-lucide="tv" class="w-8 h-8"></i><span>Startimes</span></button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h3 class="font-bold text-slate-900 mb-1">Subscription Details</h3>
+                <p class="text-sm text-slate-500 mb-6">Fill in all details to subscribe</p>
+                <form onsubmit="submitTV(event)" class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Smart Card / IUC Number</label>
+                        <input id="tvCard" type="text" placeholder="Enter smart card number"
+                            class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Package</label>
+                        <select id="tvPlan" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" onchange="updTotal()" required>
+                            <option value="">Loading packages...</option>
+                        </select>
+                        <div id="tvTotal" class="hidden mt-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-sm font-semibold text-green-700"></div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Duration</label>
+                        <select id="tvMonths" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" onchange="updTotal()">
+                            <option value="1">1 Month</option><option value="2">2 Months</option>
+                            <option value="3">3 Months</option><option value="6">6 Months</option><option value="12">12 Months</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Transaction PIN</label>
+                        <input id="tvPin" type="password" maxlength="4" placeholder="Enter 4-digit PIN"
+                            class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
+                    </div>
+                    <button type="submit" id="tvBtn" class="w-full py-4 text-white font-bold rounded-xl hover:opacity-90 transition-all text-base flex items-center justify-center gap-2" style="background:linear-gradient(135deg,#1E3D5C,#16304a)">
+                        <i data-lucide="tv" class="w-5 h-5"></i> Subscribe
+                    </button>
+                </form>
+            </div>
+        </div>
+    </main>
+</div>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+Auth.protectPage();
+fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();initSidebar();});
+fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('cable');if(typeof initHeader==='function')initHeader();lucide.createIcons();});
+
+let _prov='dstv', _plans=[];
+
+function selProv(p) {
+    _prov=p; _plans=[];
+    const aS='prov-btn flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-yareema-primary bg-yareema-primary text-white font-bold text-sm transition-all';
+    const iS='prov-btn flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-slate-200 bg-white text-slate-500 font-bold text-sm transition-all hover:border-yareema-primary';
+    document.querySelectorAll('.prov-btn').forEach(b=>{b.className=b.id==='prov-'+p?aS:iS;});
+    loadPlans(p);
+}
+
+async function loadPlans(prov) {
+    const ps=document.getElementById('tvPlan'), ttl=document.getElementById('tvTotal');
+    ps.innerHTML='<option value="">Loading packages...</option>'; if(ttl)ttl.classList.add('hidden');
+    try {
+        const res=await API.get(`${API_CONFIG.ENDPOINTS.CABLE_PLANS}?provider=${prov}`);
+        let plans=[];
+        if (res.data?.services) {
+            const svc=res.data.services; const raw=svc.cable_tv||svc.cable||svc.cabletv||[];
+            plans=raw.filter(p=>(p.provider||p.network||'').toLowerCase()===prov.toLowerCase());
+            if (!plans.length) plans=raw;
+        } else if (res.data?.TV_ID) {
+            const km={dstv:'DStv',gotv:'GOtv',startimes:'Startimes'}; const k=km[prov];
+            if (k&&res.data.TV_ID[k]){const d=res.data.TV_ID[k];if(Array.isArray(d)&&d[0]?.PRODUCT)plans=d[0].PRODUCT;}
+        } else if (Array.isArray(res.data)) { plans=res.data.filter(p=>(p.provider||'').toLowerCase()===prov.toLowerCase()); if(!plans.length)plans=res.data; }
+        _plans=plans;
+        if (!plans.length){ps.innerHTML='<option value="">No packages available</option>';return;}
+        ps.innerHTML='<option value="">Choose package</option>'+plans.map((p,i)=>{
+            const name=p.planName||p.PACKAGE_NAME||p.PRODUCT_NAME||p.name||'Package';
+            const price=p.sellingPrice||p.price||p.amount||p.PACKAGE_AMOUNT||p.PRODUCT_AMOUNT||0;
+            return `<option value="${i}" data-amt="${Math.round(Number(price))}">${name} — ₦${Math.round(Number(price)).toLocaleString()}</option>`;
+        }).join('');
+        ps.onchange=updTotal;
+    } catch(e){ps.innerHTML='<option value="">Failed to load packages</option>';}
+}
+
+function updTotal() {
+    const ps=document.getElementById('tvPlan'), ttl=document.getElementById('tvTotal');
+    const opt=ps.options[ps.selectedIndex], amt=opt?.dataset?.amt;
+    if (amt&&ttl){const m=+document.getElementById('tvMonths').value||1;ttl.classList.remove('hidden');ttl.textContent=`Total: ₦${(+amt*m).toLocaleString()}`;}
+    else if(ttl) ttl.classList.add('hidden');
+}
+
+async function submitTV(e) {
+    e.preventDefault();
+    const card=document.getElementById('tvCard').value.trim(), pi=document.getElementById('tvPlan').value, months=+document.getElementById('tvMonths').value||1, pin=document.getElementById('tvPin').value.trim();
+    if (!card){showMsg('Enter smart card / IUC number','error');return;}
+    if (!pi||!_plans.length){showMsg('Please select a package','error');return;}
+    if (!pin||!/^\d{4}$/.test(pin)){showMsg('Enter your 4-digit transaction PIN','error');return;}
+    const plan=_plans[+pi]; if(!plan){showMsg('Invalid package','error');return;}
+    const planId=String(plan._id||plan.planCode||plan.PACKAGE_ID||plan.PRODUCT_CODE||plan.id||plan.planId||'');
+    if (!planId){showMsg('Could not identify package. Please try again.','error');return;}
+    const btn=document.getElementById('tvBtn');
+    btn.disabled=true; btn.innerHTML='<span class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></span>Processing...';
+    try {
+        await API.post(API_CONFIG.ENDPOINTS.CABLE_PURCHASE,{smartCardNumber:card,provider:_prov,planId,months,transactionPin:pin});
+        const name=plan.planName||plan.PACKAGE_NAME||plan.name||'Package';
+        showMsg(`${name} subscription successful for ${card}!`,'success');
+        document.getElementById('tvCard').value=''; document.getElementById('tvPin').value='';
+    } catch(err){showMsg(err.message||'Subscription failed. Please try again.','error');}
+    finally{btn.disabled=false;btn.innerHTML='<i data-lucide="tv" class="w-5 h-5"></i> Subscribe';lucide.createIcons();}
+}
+
+function showMsg(msg,type){const el=document.getElementById('pageMsg');el.className='p-4 rounded-xl text-sm font-medium '+(type==='success'?'bg-green-50 text-green-700 border border-green-200':'bg-red-50 text-red-700 border border-red-200');el.textContent=msg;el.classList.remove('hidden');if(type==='success')setTimeout(()=>el.classList.add('hidden'),5000);el.scrollIntoView({behavior:'smooth',block:'nearest'});}
+
+selProv('dstv'); lucide.createIcons();
+</script>
+</body>
+</html>
