@@ -316,11 +316,13 @@
                         const type = (announcement.type || 'info').toLowerCase();
                         const typeIcon = { info:'ℹ️', alert:'🚨', update:'🔄', promo:'📢', warning:'⚠️' }[type] || '📣';
                         const msg = announcement.message || announcement.body || announcement.content || '';
+                        const bannerImageUrl = announcement.bannerImageUrl || announcement.bannerImage || announcement.imageUrl || announcement.image || '';
 
                         setTimeout(() => {
                             showModal(
                                 `${typeIcon} ${announcement.title || 'Announcement'}`,
                                 `<div style="padding:8px 0 4px;">
+                                    ${bannerImageUrl ? `<img src="${bannerImageUrl}" alt="Announcement banner" style="width:100%;max-height:180px;object-fit:cover;border-radius:14px;margin:0 0 14px;display:block;">` : ''}
                                     <p style="color:#334155;font-size:14px;line-height:1.65;margin:0;">${msg}</p>
                                 </div>`,
                                 `<button onclick="closeModal()" class="btn-primary" style="flex:1;">Got it</button>`

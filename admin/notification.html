@@ -137,6 +137,17 @@
                                         <span id="bell-msg-count" class="text-xs text-slate-400">0 / 200</span>
                                     </div>
                                 </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Target Audience</label>
+                                    <select id="bell-target"
+                                        class="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                                        <option value="all">All</option>
+                                        <option value="users">Users</option>
+                                        <option value="agents">Agents</option>
+                                        <option value="admins">Admins</option>
+                                    </select>
+                                </div>
                             </div>
 
                             <div class="flex items-center justify-between mt-6 pt-5 border-t border-slate-100">
@@ -201,6 +212,29 @@
                                     <div class="flex justify-end mt-1">
                                         <span id="announce-msg-count" class="text-xs text-slate-400">0 / 200</span>
                                     </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Target Audience</label>
+                                    <select id="announce-target"
+                                        class="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary">
+                                        <option value="all">All</option>
+                                        <option value="users">Users</option>
+                                        <option value="agents">Agents</option>
+                                        <option value="admins">Admins</option>
+                                    </select>
+                                </div>
+
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                                        Banner Image URL <span class="text-slate-400">(optional)</span>
+                                    </label>
+                                    <input type="url" id="announce-banner"
+                                        placeholder="https://your-cdn.com/banners/maintenance.jpg"
+                                        class="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary">
+                                    <p class="text-xs text-slate-400 mt-1">
+                                        Use a hosted image link so users see the banner when they log in.
+                                    </p>
                                 </div>
                             </div>
 
@@ -315,14 +349,16 @@
         // ─── Clear forms ──────────────────────────────────────────────────────
         function clearBell() {
             ['bell-title', 'bell-message'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('bell-target').value = 'all';
             ['bell-title-count', 'bell-msg-count'].forEach(id => {
                 document.getElementById(id).textContent = '0 / ' + (id.includes('title') ? 65 : 200);
                 document.getElementById(id).className = 'text-xs text-slate-400';
             });
         }
         function clearAnnounce() {
-            ['announce-title', 'announce-message'].forEach(id => document.getElementById(id).value = '');
+            ['announce-title', 'announce-message', 'announce-banner'].forEach(id => document.getElementById(id).value = '');
             document.getElementById('announce-type').value = 'info';
+            document.getElementById('announce-target').value = 'all';
             ['announce-title-count', 'announce-msg-count'].forEach(id => {
                 document.getElementById(id).textContent = '0 / ' + (id.includes('title') ? 65 : 200);
                 document.getElementById(id).className = 'text-xs text-slate-400';
@@ -331,16 +367,19 @@
 
         // ─── Confirm & Send ───────────────────────────────────────────────────
         function confirmSend(kind) {
-            let title, message, type;
+            let title, message, type, bannerImageUrl = '', targetUsers = 'all';
 
             if (kind === 'bell') {
                 title   = document.getElementById('bell-title').value.trim();
                 message = document.getElementById('bell-message').value.trim();
                 type    = 'broadcast';
+                targetUsers = document.getElementById('bell-target').value;
             } else {
                 title   = document.getElementById('announce-title').value.trim();
                 message = document.getElementById('announce-message').value.trim();
                 type    = document.getElementById('announce-type').value;
+                bannerImageUrl = document.getElementById('announce-banner').value.trim();
+                targetUsers = document.getElementById('announce-target').value;
             }
 
             if (!title || !message) {
@@ -371,8 +410,13 @@
                             </div>
                             <div style="display:flex;justify-content:space-between;">
                                 <span>Target:</span>
-                                <strong style="color:#0f172a;">All Users</strong>
+                                <strong style="color:#0f172a;">${formatAudienceLabel(targetUsers)}</strong>
                             </div>
+                            ${!isBell && bannerImageUrl ? `
+                            <div style="display:flex;justify-content:space-between;">
+                                <span>Banner:</span>
+                                <strong style="color:#0f172a;">Included</strong>
+                            </div>` : ''}
                         </div>
                     </div>`,
                 showCancelButton: true,
@@ -382,12 +426,21 @@
                 cancelButtonColor: '#94a3b8',
                 reverseButtons: true
             }).then(r => {
-                if (r.isConfirmed) doSend(kind, title, message, type);
+                if (r.isConfirmed) doSend(kind, title, message, type, bannerImageUrl, targetUsers);
             });
         }
 
+        function formatAudienceLabel(targetUsers) {
+            return {
+                all: 'All',
+                users: 'Users',
+                agents: 'Agents',
+                admins: 'Admins'
+            }[targetUsers] || targetUsers;
+        }
+
         // ─── API Calls ────────────────────────────────────────────────────────
-        async function doSend(kind, title, message, type) {
+        async function doSend(kind, title, message, type, bannerImageUrl = '', targetUsers = 'all') {
             const btnId = kind === 'bell' ? 'bell-btn' : 'announce-btn';
             const btn   = document.getElementById(btnId);
             const orig  = btn.innerHTML;
@@ -406,18 +459,19 @@
 
                 if (kind === 'bell') {
                     // POST /api/v1/notifications/admin/broadcast
-                    // body: { title, message, type: "broadcast" }
-                    res = await api.bellBroadcast({ title, message, type: 'broadcast' });
+                    // body: { title, message, type: "broadcast", targetUsers }
+                    res = await api.bellBroadcast({ title, message, type: 'broadcast', targetUsers });
                     statBell++;
                     document.getElementById('stat-bell').textContent = statBell;
                 } else {
                     // POST /api/v1/admin/broadcast
-                    // body: { title, message, type, targetUsers: "all", sendEmail: false, sendSMS: false }
+                    // body: { title, message, type, targetUsers, sendEmail: false, sendSMS: false }
                     res = await api.broadcastNotification({
                         title,
                         message,
                         type,
-                        targetUsers: 'all',
+                        bannerImageUrl,
+                        targetUsers,
                         sendEmail:   false,
                         sendSMS:     false
                     });
@@ -455,7 +509,7 @@
                 });
             }
 
-            addHistory({ title, message, type, kind, status, apiMsg, sentAt: new Date() });
+            addHistory({ title, message, type, kind, status, apiMsg, bannerImageUrl, targetUsers, sentAt: new Date() });
             btn.disabled  = false;
             btn.innerHTML = orig;
             lucide.createIcons();
@@ -502,6 +556,7 @@
                     <td class="px-6 py-4">
                         <p class="text-sm font-medium text-slate-900 truncate max-w-xs">${n.title}</p>
                         <p class="text-xs text-slate-400 mt-0.5 truncate max-w-xs">${n.message}</p>
+                        <p class="text-xs text-slate-400 mt-1">Audience: ${formatAudienceLabel(n.targetUsers || 'all')}</p>
                     </td>
                     <td class="px-6 py-4">
                         <span class="text-xs font-medium px-2.5 py-1 rounded-full ${t.cls}">${t.label}</span>
