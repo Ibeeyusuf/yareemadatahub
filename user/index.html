@@ -180,11 +180,9 @@
                 </div>
                 <div class="service-name" style="font-size:10px;">Remita</div>
             </div>
-            <div class="service-card" onclick="openModal('alpha')" style="padding:6px 0;">
-                <div class="service-icon" style="background:#faf5ff;width:32px;height:32px;margin-bottom:4px;">
-                    <i data-lucide="diamond" style="width:15px;height:15px;color:#9333ea;"></i>
-                </div>
-                <div class="service-name" style="font-size:10px;">Alpha</div>
+            <div class="service-card" onclick="openModal('alpha-caller')" style="text-align:center;">
+                <div class="service-icon" style="background:#faf5ff;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;"><i data-lucide="phone-call" style="width:18px;height:18px;color:#9333ea;"></i></div>
+                <div class="service-name" style="font-size:9px;color:#333;">Alpha Caller</div>
             </div>
             <div class="service-card" onclick="window.location.href='referral.html'" style="padding:6px 0;">
                 <div class="service-icon" style="background:#eff6ff;width:32px;height:32px;margin-bottom:4px;">
@@ -216,6 +214,8 @@
     <script src="assets/js/config.js"></script>
     <script src="assets/js/api.js"></script>
     <script src="modals/native-modals.js"></script>
+    <script src="modals/extended-modals.js"></script>
+
     <script>
         function toggleSidebar() {
             document.querySelector('.sidebar').classList.toggle('open');
