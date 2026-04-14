@@ -6,37 +6,23 @@
     <title>Services</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
-    
+    <div id="sidebarOverlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
     <div class="sidebar">
         <div class="sidebar-logo">
             <img src="assets/images/logo.png" alt="Logo">
             <h1>Yareema Data Hub</h1>
         </div>
         <div class="sidebar-nav">
-            <a href="index.html" class="nav-item">
-                <i data-lucide="home" style="width: 20px; height: 20px;"></i><span>Dashboard</span>
-            </a>
-            <a href="services.html" class="nav-item active">
-                <i data-lucide="grid" style="width: 20px; height: 20px;"></i><span>Services</span>
-            </a>
-            <a href="transactions.html" class="nav-item">
-                <i data-lucide="banknote" class="w-5 h-5"></i><span>Transactions</span>
-            </a>
-            <a href="wallet.html" class="nav-item">
-                <i data-lucide="wallet" style="width: 20px; height: 20px;"></i><span>Wallet</span>
-            </a>
-            <a href="profile.html" class="nav-item">
-                <i data-lucide="user" style="width: 20px; height: 20px;"></i><span>Profile</span>
-            </a>
-            <a href="#" class="nav-item logout" onclick="logout(); return false;" style="margin-top: 16px;">
-                <i data-lucide="log-out" style="width: 20px; height: 20px;"></i>
-                <span>Logout</span>
-            </a>
+            <a href="index.html" class="nav-item"><i data-lucide="home" style="width:20px;height:20px;"></i><span>Dashboard</span></a>
+            <a href="services.html" class="nav-item active"><i data-lucide="grid" style="width:20px;height:20px;"></i><span>Services</span></a>
+            <a href="transactions.html" class="nav-item"><i data-lucide="banknote" style="width:20px;height:20px;"></i><span>Transactions</span></a>
+            <a href="wallet.html" class="nav-item"><i data-lucide="wallet" style="width:20px;height:20px;"></i><span>Wallet</span></a>
+            <a href="profile.html" class="nav-item"><i data-lucide="user" style="width:20px;height:20px;"></i><span>Profile</span></a>
+            <a href="#" class="nav-item logout" onclick="logout(); return false;" style="margin-top:16px;"><i data-lucide="log-out" style="width:20px;height:20px;"></i><span>Logout</span></a>
         </div>
         <div class="sidebar-footer">
             <div class="user-profile" onclick="window.location.href='profile.html'">
@@ -45,101 +31,119 @@
             </div>
         </div>
     </div>
-    <div class="main-content" style="padding: 12px;">
-        <!-- Top Bar -->
-        <div class="top-bar" style="display:flex; align-items:center; gap:8px; margin-bottom: 16px;">
-            <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Open menu" style="background: none; border: none; padding: 4px;">
+
+    <div class="main-content" style="padding:12px;">
+        <div class="top-bar" style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+            <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Open menu" style="background:none;border:none;padding:4px;">
                 <i data-lucide="menu" style="width:16px;height:16px;"></i>
             </button>
-            <h1 style="font-size: 16px; font-weight: 600; margin: 0;">All Services</h1>
+            <h1 style="font-size:16px;font-weight:600;margin:0;">All Services</h1>
         </div>
-        
-        <!-- Section Header -->
-        <div class="section-header" style="margin-bottom: 8px;">
-            <h2 class="section-title" style="font-size: 12px; font-weight: 600; color: #64748b; margin: 0;">Telecom Services</h2>
-        </div>
-        
+
         <!-- Telecom Services -->
-        <div class="services-grid" style="margin-bottom: 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
-            <div class="service-card" onclick="openModal('data')" style="text-align: center;">
-                <div class="service-icon" style="background: #eff6ff; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 4px;">
-                    <i data-lucide="wifi" style="width: 18px; height: 18px; color: #2563eb;"></i>
-                </div>
-                <div class="service-name" style="font-size: 9px; color: #333;">Buy Data</div>
+        <div class="section-header" style="margin-bottom:8px;">
+            <h2 class="section-title" style="font-size:12px;font-weight:600;color:#64748b;margin:0;">Telecom Services</h2>
+        </div>
+        <div class="services-grid" style="margin-bottom:20px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+            <div class="service-card" onclick="openModal('data')" style="text-align:center;">
+                <div class="service-icon" style="background:#eff6ff;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;"><i data-lucide="wifi" style="width:18px;height:18px;color:#2563eb;"></i></div>
+                <div class="service-name" style="font-size:9px;color:#333;">Buy Data</div>
             </div>
-            <div class="service-card" onclick="openModal('airtime')" style="text-align: center;">
-                <div class="service-icon" style="background: #f0fdf4; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 4px;">
-                    <i data-lucide="phone" style="width: 18px; height: 18px; color: #16a34a;"></i>
-                </div>
-                <div class="service-name" style="font-size: 9px; color: #333;">Buy Airtime</div>
+            <div class="service-card" onclick="openModal('airtime')" style="text-align:center;">
+                <div class="service-icon" style="background:#f0fdf4;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;"><i data-lucide="phone" style="width:18px;height:18px;color:#16a34a;"></i></div>
+                <div class="service-name" style="font-size:9px;color:#333;">Buy Airtime</div>
             </div>
-            <div class="service-card" onclick="openModal('sms')" style="text-align: center;">
-                <div class="service-icon" style="background: #ecfeff; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 4px;">
-                    <i data-lucide="message-circle" style="width: 18px; height: 18px; color: #0891b2;"></i>
-                </div>
-                <div class="service-name" style="font-size: 9px; color: #333;">Bulk SMS</div>
+            <div class="service-card" onclick="openModal('sms')" style="text-align:center;">
+                <div class="service-icon" style="background:#ecfeff;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;"><i data-lucide="message-circle" style="width:18px;height:18px;color:#0891b2;"></i></div>
+                <div class="service-name" style="font-size:9px;color:#333;">Bulk SMS</div>
             </div>
-            <div class="service-card" onclick="openModal('rechargepin')" style="text-align: center;">
-                <div class="service-icon" style="background: #fdf4ff; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 4px;">
-                    <i data-lucide="ticket" style="width: 18px; height: 18px; color: #a21caf;"></i>
-                </div>
-                <div class="service-name" style="font-size: 9px; color: #333;">Airtime PIN</div>
+            <div class="service-card" onclick="openModal('rechargepin')" style="text-align:center;">
+                <div class="service-icon" style="background:#fdf4ff;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;"><i data-lucide="ticket" style="width:18px;height:18px;color:#a21caf;"></i></div>
+                <div class="service-name" style="font-size:9px;color:#333;">Airtime PIN</div>
             </div>
         </div>
-        
+
         <!-- Bill Payments -->
-        <div class="section-header" style="margin-bottom: 8px;">
-            <h2 class="section-title" style="font-size: 12px; font-weight: 600; color: #64748b; margin: 0;">Bill Payments</h2>
+        <div class="section-header" style="margin-bottom:8px;">
+            <h2 class="section-title" style="font-size:12px;font-weight:600;color:#64748b;margin:0;">Bill Payments</h2>
         </div>
-        <div class="services-grid" style="margin-bottom: 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
-            <div class="service-card" onclick="openModal('electricity')" style="text-align: center;">
-                <div class="service-icon" style="background: #fffbeb; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 4px;">
-                    <i data-lucide="zap" style="width: 18px; height: 18px; color: #d97706;"></i>
-                </div>
-                <div class="service-name" style="font-size: 9px; color: #333;">Electricity</div>
+        <div class="services-grid" style="margin-bottom:20px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+            <div class="service-card" onclick="openModal('electricity')" style="text-align:center;">
+                <div class="service-icon" style="background:#fffbeb;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;"><i data-lucide="zap" style="width:18px;height:18px;color:#d97706;"></i></div>
+                <div class="service-name" style="font-size:9px;color:#333;">Electricity</div>
             </div>
-            <div class="service-card" onclick="openModal('tv')" style="text-align: center;">
-                <div class="service-icon" style="background: #faf5ff; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 4px;">
-                    <i data-lucide="tv" style="width: 18px; height: 18px; color: #9333ea;"></i>
-                </div>
-                <div class="service-name" style="font-size: 9px; color: #333;">Cable TV</div>
+            <div class="service-card" onclick="openModal('tv')" style="text-align:center;">
+                <div class="service-icon" style="background:#faf5ff;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;"><i data-lucide="tv" style="width:18px;height:18px;color:#9333ea;"></i></div>
+                <div class="service-name" style="font-size:9px;color:#333;">Cable TV</div>
+            </div>
+            <div class="service-card" onclick="openModal('spectranet')" style="text-align:center;">
+                <div class="service-icon" style="background:#f0fdfa;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;"><i data-lucide="signal" style="width:18px;height:18px;color:#0d9488;"></i></div>
+                <div class="service-name" style="font-size:9px;color:#333;">Spectranet</div>
             </div>
         </div>
-        
+
+        <!-- International & Travel -->
+        <div class="section-header" style="margin-bottom:8px;">
+            <h2 class="section-title" style="font-size:12px;font-weight:600;color:#64748b;margin:0;">International & Travel</h2>
+        </div>
+        <div class="services-grid" style="margin-bottom:20px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+            <div class="service-card" onclick="openModal('intl-airtime')" style="text-align:center;">
+                <div class="service-icon" style="background:#eff6ff;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;"><i data-lucide="globe" style="width:18px;height:18px;color:#2563eb;"></i></div>
+                <div class="service-name" style="font-size:9px;color:#333;">Intl Airtime</div>
+            </div>
+            <div class="service-card" onclick="openModal('flights')" style="text-align:center;">
+                <div class="service-icon" style="background:#f0f9ff;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;"><i data-lucide="plane" style="width:18px;height:18px;color:#0284c7;"></i></div>
+                <div class="service-name" style="font-size:9px;color:#333;">Flights</div>
+            </div>
+        </div>
+
+        <!-- Digital Services -->
+        <div class="section-header" style="margin-bottom:8px;">
+            <h2 class="section-title" style="font-size:12px;font-weight:600;color:#64748b;margin:0;">Digital Services</h2>
+        </div>
+        <div class="services-grid" style="margin-bottom:20px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+            <div class="service-card" onclick="openModal('giftcards')" style="text-align:center;">
+                <div class="service-icon" style="background:#fff7ed;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;"><i data-lucide="gift" style="width:18px;height:18px;color:#ea580c;"></i></div>
+                <div class="service-name" style="font-size:9px;color:#333;">Gift Cards</div>
+            </div>
+            <div class="service-card" onclick="openModal('smile')" style="text-align:center;">
+                <div class="service-icon" style="background:#fef9c3;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;"><i data-lucide="smile" style="width:18px;height:18px;color:#ca8a04;"></i></div>
+                <div class="service-name" style="font-size:9px;color:#333;">Smile</div>
+            </div>
+            <div class="service-card" onclick="openModal('alpha-caller')" style="text-align:center;">
+                <div class="service-icon" style="background:#faf5ff;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;"><i data-lucide="phone-call" style="width:18px;height:18px;color:#9333ea;"></i></div>
+                <div class="service-name" style="font-size:9px;color:#333;">Alpha Caller</div>
+            </div>
+        </div>
+
         <!-- Other Services -->
-        <div class="section-header" style="margin-bottom: 8px;">
-            <h2 class="section-title" style="font-size: 12px; font-weight: 600; color: #64748b; margin: 0;">Other Services</h2>
+        <div class="section-header" style="margin-bottom:8px;">
+            <h2 class="section-title" style="font-size:12px;font-weight:600;color:#64748b;margin:0;">Other Services</h2>
         </div>
-        <div class="services-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
-            <div class="service-card" onclick="openModal('education')" style="text-align: center;">
-                <div class="service-icon" style="background: #eef2ff; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 4px;">
-                    <i data-lucide="graduation-cap" style="width: 18px; height: 18px; color: #4f46e5;"></i>
-                </div>
-                <div class="service-name" style="font-size: 9px; color: #333;">Education</div>
+        <div class="services-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+            <div class="service-card" onclick="openModal('education')" style="text-align:center;">
+                <div class="service-icon" style="background:#eef2ff;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;"><i data-lucide="graduation-cap" style="width:18px;height:18px;color:#4f46e5;"></i></div>
+                <div class="service-name" style="font-size:9px;color:#333;">Education</div>
             </div>
-            <div class="service-card" onclick="openWhatsAppLang()" style="text-align: center;">
-                <div class="service-icon" style="background: #fff7ed; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 4px;">
-                    <i data-lucide="repeat" style="width: 18px; height: 18px; color: #ea580c;"></i>
-                </div>
-                <div class="service-name" style="font-size: 9px; color: #333;">Airtime2Cash</div>
+            <div class="service-card" onclick="openWhatsAppLang()" style="text-align:center;">
+                <div class="service-icon" style="background:#fff7ed;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;"><i data-lucide="repeat" style="width:18px;height:18px;color:#ea580c;"></i></div>
+                <div class="service-name" style="font-size:9px;color:#333;">Airtime2Cash</div>
             </div>
-            <div class="service-card" onclick="window.location.href='rrr-payment.html'" style="text-align: center;">
-                <div class="service-icon" style="background: #fef2f2; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 4px;">
-                    <i data-lucide="credit-card" style="width: 18px; height: 18px; color: #dc2626;"></i>
-                </div>
-                <div class="service-name" style="font-size: 9px; color: #333;">Remita</div>
+            <div class="service-card" onclick="window.location.href='rrr-payment.html'" style="text-align:center;">
+                <div class="service-icon" style="background:#fef2f2;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;"><i data-lucide="credit-card" style="width:18px;height:18px;color:#dc2626;"></i></div>
+                <div class="service-name" style="font-size:9px;color:#333;">Remita</div>
             </div>
-            <div class="service-card" onclick="openModal('alpha')" style="text-align: center;">
-                <div class="service-icon" style="background: #faf5ff; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 4px;">
-                    <i data-lucide="diamond" style="width: 18px; height: 18px; color: #9333ea;"></i>
-                </div>
-                <div class="service-name" style="font-size: 9px; color: #333;">Alpha</div>
+            <div class="service-card" onclick="openModal('alpha')" style="text-align:center;">
+                <div class="service-icon" style="background:#faf5ff;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;"><i data-lucide="diamond" style="width:18px;height:18px;color:#9333ea;"></i></div>
+                <div class="service-name" style="font-size:9px;color:#333;">Alpha</div>
             </div>
         </div>
     </div>
+
     <script src="assets/js/config.js"></script>
     <script src="assets/js/api.js"></script>
     <script src="modals/native-modals.js"></script>
+    <script src="modals/extended-modals.js"></script>
     <script>
         if (!api.getToken()) window.location.href = '../login.html';
         const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -148,8 +152,6 @@
             document.getElementById('sidebarAvatar').textContent = (user.firstName[0] + (user.lastName?.[0] || '')).toUpperCase();
         }
         lucide.createIcons();
-    </script>
-    <script>
         function toggleSidebar() {
             document.querySelector('.sidebar').classList.toggle('open');
             document.getElementById('sidebarOverlay').classList.toggle('active');
