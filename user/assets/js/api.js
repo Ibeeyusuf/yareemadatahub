@@ -343,6 +343,63 @@ class YareemaUserAPI {
         });
     }
 
+    // ==================== GIFT CARDS ====================
+
+    async getGiftCardProducts(params = {}) {
+        const q = new URLSearchParams({ page: 1, limit: 50, country: 'NG', ...params }).toString();
+        return await this.request(`/api/v1/giftcards/products?${q}`);
+    }
+
+    async purchaseGiftCard(data) {
+        return await this.request('/api/v1/giftcards/purchase', { method: 'POST', body: data });
+    }
+
+    // ==================== FLIGHTS ====================
+
+    async searchAirports(q) {
+        return await this.request(`/api/v1/flights/airports?q=${encodeURIComponent(q)}`);
+    }
+
+    async searchDomesticFlights(data) {
+        return await this.request('/api/v1/flights/domestic/search', { method: 'POST', body: data });
+    }
+
+    async bookDomesticFlight(data) {
+        return await this.request('/api/v1/flights/domestic/book', { method: 'POST', body: data });
+    }
+
+    async searchInternationalFlights(data) {
+        return await this.request('/api/v1/flights/international/search', { method: 'POST', body: data });
+    }
+
+    async bookInternationalFlight(data) {
+        return await this.request('/api/v1/flights/international/book', { method: 'POST', body: data });
+    }
+
+    // ==================== ALPHA & KIRANI ====================
+
+    async getAlphaPlans() {
+        return await this.request('/api/v1/telecom/alpha/plans');
+    }
+
+    async purchaseAlpha(phone, planid, transactionPin) {
+        return await this.request('/api/v1/telecom/alpha/purchase', {
+            method: 'POST',
+            body: { phone, planid, transactionPin }
+        });
+    }
+
+    async getKiraniPlans() {
+        return await this.request('/api/v1/telecom/kirani/plans');
+    }
+
+    async purchaseKirani(phone, planid, transactionPin) {
+        return await this.request('/api/v1/telecom/kirani/purchase', {
+            method: 'POST',
+            body: { phone, planid, transactionPin }
+        });
+    }
+
     // ==================== BULK SMS ====================
 
     async sendBulkSMS(from, to, body, transactionPin, gateway = 'direct-corporate', appendSender = 'hosted') {

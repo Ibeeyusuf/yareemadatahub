@@ -1,5 +1,4 @@
 // ==================== EXTENDED MODALS ====================
-// Patch openModal to include new services
 (function patchOpenModal() {
     const _orig = window.openModal;
     window.openModal = function(type) {
@@ -7,6 +6,7 @@
             'intl-airtime':  showIntlAirtimeModal,
             'smile':         showSmileModal,
             'alpha-caller':  showAlphaCallerModal,
+            'kirani':        showKiraniModal,
             'giftcards':     showGiftCardsModal,
             'spectranet':    showSpectranetModal,
             'flights':       showFlightsModal,
@@ -17,245 +17,528 @@
     };
 })();
 
-// ============================================================
-// 1. INTERNATIONAL AIRTIME TOP-UP
-// ============================================================
 
-const INTL_COUNTRIES = [
-    { code: 'GH', name: 'Ghana', flag: '🇬🇭', dial: '+233' },
-    { code: 'KE', name: 'Kenya', flag: '🇰🇪', dial: '+254' },
-    { code: 'ZA', name: 'South Africa', flag: '🇿🇦', dial: '+27' },
-    { code: 'US', name: 'United States', flag: '🇺🇸', dial: '+1' },
-    { code: 'GB', name: 'United Kingdom', flag: '🇬🇧', dial: '+44' },
-    { code: 'CA', name: 'Canada', flag: '🇨🇦', dial: '+1' },
-    { code: 'SN', name: 'Senegal', flag: '🇸🇳', dial: '+221' },
-    { code: 'CM', name: 'Cameroon', flag: '🇨🇲', dial: '+237' },
-    { code: 'CI', name: "Côte d'Ivoire", flag: '🇨🇮', dial: '+225' },
-    { code: 'DE', name: 'Germany', flag: '🇩🇪', dial: '+49' },
-    { code: 'FR', name: 'France', flag: '🇫🇷', dial: '+33' },
-    { code: 'IN', name: 'India', flag: '🇮🇳', dial: '+91' },
-];
+// ============================================================
+// EXTEND API — new methods patched onto existing api instance
+// ============================================================
+Object.assign(api.__proto__, {
 
-const INTL_AMOUNTS = [500, 1000, 2000, 3000, 5000];
+    // Spectranet
+    async getSpectranetPackages() {
+        return await this.request('/api/v1/telecom/spectranet/packages');
+    },
+    async purchaseSpectranet(deviceId, planId, transactionPin) {
+        return await this.request('/api/v1/telecom/spectranet/purchase', {
+            method: 'POST', body: { deviceId, planId, transactionPin }
+        });
+    },
+
+    // Smile
+    async getSmilePackages() {
+        return await this.request('/api/v1/telecom/smile/packages');
+    },
+    async purchaseSmile(accountId, planId, transactionPin) {
+        return await this.request('/api/v1/telecom/smile/purchase', {
+            method: 'POST', body: { accountId, planId, transactionPin }
+        });
+    },
+
+    // International Airtime
+    async getIntlCountries() {
+        return await this.request('/api/v1/telecom/international/countries');
+    },
+    async getIntlOperators(countryCode) {
+        return await this.request(`/api/v1/telecom/international/operators/${countryCode}?page=1&size=100`);
+    },
+    async sendIntlTopup(payload) {
+        return await this.request('/api/v1/telecom/international/topup', {
+            method: 'POST', body: payload
+        });
+    },
+    async getIntlTransactions(page = 0, size = 20) {
+        return await this.request(`/api/v1/telecom/international/transactions?page=${page}&size=${size}`);
+    },
+    async getIntlTransactionByRef(reference) {
+        return await this.request(`/api/v1/telecom/international/transactions/${reference}`);
+    },
+
+    // Gift Cards — Prestmit
+    async getGiftCardCategories() {
+        return await this.request('/api/v1/giftcards/categories');
+    },
+    async getGiftCardOrders(page = 1, limit = 20) {
+        return await this.request(`/api/v1/giftcards/orders?page=${page}&limit=${limit}`);
+    },
+    async getGiftCardOrderById(orderId) {
+        return await this.request(`/api/v1/giftcards/orders/${orderId}`);
+    },
+
+    // Gift Cards — Zendit
+    async getZenditProducts(limit = 50, offset = 0, country = 'NG') {
+        return await this.request(`/api/v1/giftcards/zendit/products?limit=${limit}&offset=${offset}&country=${country}`);
+    },
+    async getZenditProductById(offerId) {
+        return await this.request(`/api/v1/giftcards/zendit/products/${offerId}`);
+    },
+    async purchaseZenditGiftCard(payload) {
+        return await this.request('/api/v1/giftcards/zendit/purchase', {
+            method: 'POST', body: payload
+        });
+    },
+    async getZenditOrderStatus(transactionId) {
+        return await this.request(`/api/v1/giftcards/zendit/orders/${transactionId}`);
+    },
+
+    // Flights extra
+    async getDomesticAirlines() {
+        return await this.request('/api/v1/flights/domestic/airlines');
+    },
+    async getDomesticBookings() {
+        return await this.request('/api/v1/flights/domestic/bookings');
+    },
+    async getIntlBookings(limit = 20, offset = 0) {
+        return await this.request(`/api/v1/flights/international/bookings?limit=${limit}&offset=${offset}`);
+    },
+    async getIntlBookingById(orderId) {
+        return await this.request(`/api/v1/flights/international/bookings/${orderId}`);
+    },
+});
+
+
+// ============================================================
+// 1. INTERNATIONAL AIRTIME
+// ============================================================
+let intlCountriesList = [];
+let intlOperatorsList = [];
+let intlSelectedOp    = null;
 
 function showIntlAirtimeModal() {
+    intlCountriesList = [];
+    intlOperatorsList = [];
+    intlSelectedOp    = null;
+
     showModal('International Airtime', `
-        <div class="form-group">
-            <label>Select Country</label>
-            <select id="intlCountry" class="form-input" onchange="onIntlCountryChange()">
-                <option value="">-- Choose Country --</option>
-                ${INTL_COUNTRIES.map(c => `<option value="${c.code}" data-dial="${c.dial}">${c.flag} ${c.name} (${c.dial})</option>`).join('')}
-            </select>
+        <div style="display:flex;gap:0;background:#f1f5f9;border-radius:10px;padding:4px;margin-bottom:16px;">
+            <button type="button" id="intlTabTopup" onclick="intlSwitchTab('topup')"
+                style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:#2563eb;color:#fff;transition:all .2s;">📤 Top-Up</button>
+            <button type="button" id="intlTabHistory" onclick="intlSwitchTab('history')"
+                style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:transparent;color:#64748b;transition:all .2s;">📋 History</button>
+            <button type="button" id="intlTabLookup" onclick="intlSwitchTab('lookup')"
+                style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:transparent;color:#64748b;transition:all .2s;">🔍 Lookup</button>
         </div>
-        <div class="form-group">
-            <label>Phone Number</label>
-            <div style="display:flex;gap:8px;align-items:center;">
-                <span id="intlDialCode" style="padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0;
-                    border-radius:8px;font-size:14px;font-weight:600;color:#1e3d5c;white-space:nowrap;min-width:60px;text-align:center;">
-                    —
-                </span>
-                <input type="tel" id="intlPhone" class="form-input" placeholder="Phone number" style="flex:1;">
+
+        <!-- TOP-UP TAB -->
+        <div id="intlTopupTab">
+            <div class="form-group">
+                <label>Select Country</label>
+                <select id="intlCountry" class="form-input" onchange="onIntlCountryChange()">
+                    <option value="">Loading countries…</option>
+                </select>
             </div>
-            <div id="intlOperator" style="margin-top:8px;display:none;padding:8px 12px;background:#eff6ff;
-                border-radius:8px;font-size:12px;font-weight:600;color:#1e3d5c;"></div>
+            <div class="form-group" id="intlOperatorGroup" style="display:none;">
+                <label>Select Operator</label>
+                <div id="intlOperatorList" style="display:flex;flex-direction:column;gap:8px;"></div>
+            </div>
+            <div class="form-group" id="intlPhoneGroup" style="display:none;">
+                <label>Recipient Phone Number <span style="font-size:11px;color:#94a3b8;">(without country code)</span></label>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <span id="intlDialCode" style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:600;color:#1e3d5c;white-space:nowrap;">—</span>
+                    <input type="tel" id="intlPhone" class="form-input" placeholder="e.g. 241234567" style="flex:1;" oninput="updateIntlReceipt()">
+                </div>
+            </div>
+            <div class="form-group" id="intlAmountGroup" style="display:none;">
+                <label id="intlAmountLabel">Amount</label>
+                <div id="intlFixedDenoms" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;"></div>
+                <input type="number" id="intlAmount" class="form-input" placeholder="Enter amount" oninput="updateIntlReceipt()">
+                <div id="intlAmountHint" style="font-size:11px;color:#94a3b8;margin-top:4px;"></div>
+            </div>
+            <div class="form-group" id="intlNgnGroup" style="display:none;">
+                <label id="intlNgnLabel">NGN Amount to Debit from Wallet</label>
+                <input type="number" id="intlAmountNgn" class="form-input" placeholder="e.g. 8500" oninput="updateIntlReceipt()">
+            </div>
+            <div id="intlReceipt" style="display:none;background:#f8fafc;border-radius:10px;padding:14px;margin-bottom:8px;">
+                <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;">
+                    <span style="color:#64748b;">Operator</span><span id="intlReceiptOp" style="font-weight:600;color:#0f172a;"></span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;">
+                    <span style="color:#64748b;">Number</span><span id="intlReceiptNum" style="font-weight:600;color:#0f172a;"></span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;">
+                    <span style="color:#64748b;">Amount</span><span id="intlReceiptAmt" style="font-weight:600;color:#0f172a;"></span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;">
+                    <span style="color:#64748b;">NGN Debit</span><span id="intlReceiptNgn" style="font-weight:600;color:#16a34a;"></span>
+                </div>
+            </div>
+            <div class="form-group" id="intlPinGroup" style="display:none;">
+                <label>Transaction PIN</label>
+                <input type="password" id="intlPin" class="form-input" placeholder="Enter 4-digit PIN" maxlength="4" inputmode="numeric">
+            </div>
         </div>
-        <div class="form-group">
-            <label>Amount (₦)</label>
-            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-                ${INTL_AMOUNTS.map(a => `
-                    <button type="button" onclick="selectIntlAmount(${a}, this)"
-                        style="padding:8px 14px;border:1.5px solid #e2e8f0;border-radius:8px;
-                               background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;">
-                        ₦${a.toLocaleString()}
-                    </button>`).join('')}
+
+        <!-- HISTORY TAB -->
+        <div id="intlHistoryTab" style="display:none;">
+            <div id="intlHistoryList" style="display:flex;flex-direction:column;gap:8px;">
+                <div style="text-align:center;padding:24px 0;color:#94a3b8;font-size:13px;">
+                    <div style="width:28px;height:28px;border:3px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 10px;"></div>
+                    Loading transactions…
+                </div>
             </div>
-            <input type="number" id="intlAmount" class="form-input" placeholder="Or enter custom amount">
         </div>
-        <div id="intlReceipt" style="display:none;background:#f8fafc;border-radius:10px;padding:14px;margin-top:-8px;margin-bottom:8px;">
-            <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;">
-                <span style="color:#64748b;">Destination</span>
-                <span id="intlReceiptDest" style="font-weight:600;color:#0f172a;"></span>
+
+        <!-- LOOKUP TAB -->
+        <div id="intlLookupTab" style="display:none;">
+            <div class="form-group">
+                <label>Transaction Reference</label>
+                <div style="display:flex;gap:8px;">
+                    <input type="text" id="intlLookupRef" class="form-input" placeholder="Enter reference" style="flex:1;">
+                    <button onclick="lookupIntlTransaction()"
+                        style="padding:0 16px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Search</button>
+                </div>
             </div>
-            <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;">
-                <span style="color:#64748b;">Amount</span>
-                <span id="intlReceiptAmt" style="font-weight:600;color:#0f172a;"></span>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;">
-                <span style="color:#64748b;">Payment</span>
-                <span style="font-weight:600;color:#16a34a;">Wallet</span>
-            </div>
+            <div id="intlLookupResult" style="display:none;"></div>
         </div>
     `, `
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
-        <button onclick="submitIntlAirtime()" class="btn-primary">Top-Up Now</button>
+        <button id="intlSubmitBtn" onclick="submitIntlAirtime()" class="btn-primary">Top-Up Now</button>
     `);
+    _loadIntlCountries();
 }
 
-function onIntlCountryChange() {
-    const sel = document.getElementById('intlCountry');
-    const opt = sel.options[sel.selectedIndex];
-    const dial = opt.dataset.dial || '—';
-    document.getElementById('intlDialCode').textContent = dial;
-    const phoneInput = document.getElementById('intlPhone');
-    if (phoneInput) phoneInput.addEventListener('input', detectIntlOperator);
+function intlSwitchTab(tab) {
+    const ACTIVE   = 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:#2563eb;color:#fff;transition:all .2s;';
+    const INACTIVE = 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:transparent;color:#64748b;transition:all .2s;';
+    document.getElementById('intlTabTopup').style.cssText   = tab === 'topup'   ? ACTIVE : INACTIVE;
+    document.getElementById('intlTabHistory').style.cssText = tab === 'history' ? ACTIVE : INACTIVE;
+    document.getElementById('intlTabLookup').style.cssText  = tab === 'lookup'  ? ACTIVE : INACTIVE;
+    document.getElementById('intlTopupTab').style.display   = tab === 'topup'   ? '' : 'none';
+    document.getElementById('intlHistoryTab').style.display = tab === 'history' ? '' : 'none';
+    document.getElementById('intlLookupTab').style.display  = tab === 'lookup'  ? '' : 'none';
+    const btn = document.getElementById('intlSubmitBtn');
+    if (btn) btn.style.display = tab === 'topup' ? '' : 'none';
+    if (tab === 'history') _loadIntlHistory();
 }
 
-function detectIntlOperator() {
-    const phone = document.getElementById('intlPhone').value;
-    const opDiv = document.getElementById('intlOperator');
-    if (phone.length >= 4) {
-        opDiv.style.display = 'block';
-        opDiv.textContent = '📡 Auto-detecting network operator...';
-        setTimeout(() => { opDiv.textContent = '✅ Operator detected'; }, 800);
-    } else {
-        opDiv.style.display = 'none';
+async function _loadIntlCountries() {
+    try {
+        const res = await api.getIntlCountries();
+        intlCountriesList = res.data || res.countries || (Array.isArray(res) ? res : []);
+        const sel = document.getElementById('intlCountry');
+        if (!sel) return;
+        if (!intlCountriesList.length) { sel.innerHTML = '<option value="">No countries available</option>'; return; }
+        sel.innerHTML = '<option value="">— Choose Country —</option>' +
+            intlCountriesList.map(c => {
+                const code = c.isoCode || c.countryCode || c.iso2 || c.code || '';
+                const name = c.name || c.isoName || c.countryName || code;
+                const dial = (c.callingCodes || c.callingCode || ['+?'])[0] || '+?';
+                return `<option value="${code}" data-dial="${dial}">${name} (${dial})</option>`;
+            }).join('');
+    } catch (e) {
+        const sel = document.getElementById('intlCountry');
+        if (sel) sel.innerHTML = '<option value="">Failed to load — retry</option>';
     }
 }
 
-function selectIntlAmount(amount, btn) {
-    document.querySelectorAll('#modalBody button[onclick^="selectIntlAmount"]').forEach(b => {
-        b.style.borderColor = '#e2e8f0'; b.style.background = '#fff'; b.style.color = '#0f172a';
-    });
-    btn.style.borderColor = '#1e3d5c'; btn.style.background = '#eff6ff'; btn.style.color = '#1e3d5c';
-    document.getElementById('intlAmount').value = amount;
+async function onIntlCountryChange() {
+    const sel  = document.getElementById('intlCountry');
+    const code = sel.value;
+    const dial = sel.options[sel.selectedIndex]?.dataset?.dial || '—';
+    intlOperatorsList = [];
+    intlSelectedOp    = null;
+    document.getElementById('intlDialCode').textContent = dial;
+    document.getElementById('intlOperatorGroup').style.display = 'none';
+    document.getElementById('intlPhoneGroup').style.display    = 'none';
+    document.getElementById('intlAmountGroup').style.display   = 'none';
+    document.getElementById('intlNgnGroup').style.display      = 'none';
+    document.getElementById('intlPinGroup').style.display      = 'none';
+    document.getElementById('intlReceipt').style.display       = 'none';
+    if (!code) return;
+
+    const opList = document.getElementById('intlOperatorList');
+    document.getElementById('intlOperatorGroup').style.display = '';
+    opList.innerHTML = `<div style="text-align:center;padding:20px 0;color:#94a3b8;font-size:13px;">
+        <div style="width:24px;height:24px;border:3px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 8px;"></div>
+        Loading operators…
+    </div>`;
+    try {
+        const res = await api.getIntlOperators(code);
+        intlOperatorsList = res.data?.content || res.data || res.operators || (Array.isArray(res) ? res : []);
+        if (!intlOperatorsList.length) {
+            opList.innerHTML = '<div style="font-size:13px;color:#94a3b8;text-align:center;padding:12px 0;">No operators found for this country.</div>';
+            return;
+        }
+        opList.innerHTML = intlOperatorsList.map((op, i) => {
+            const name = op.name || op.operatorName || `Operator ${i + 1}`;
+            const fx   = op.fxRate ? `1 USD ≈ ₦${Number(op.fxRate).toLocaleString(undefined, {maximumFractionDigits:2})}` : '';
+            const minMax = [
+                op.minAmount != null ? `Min: ${op.minAmount}` : '',
+                op.maxAmount != null ? `Max: ${op.maxAmount}` : ''
+            ].filter(Boolean).join(' · ');
+            return `<div onclick="selectIntlOperator(${i}, this)" data-opidx="${i}"
+                style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;
+                       border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;background:#fff;transition:all .2s;">
+                <div>
+                    <div style="font-size:13px;font-weight:600;color:#0f172a;">${name}</div>
+                    ${fx ? `<div style="font-size:11px;color:#94a3b8;margin-top:2px;">${fx}</div>` : ''}
+                </div>
+                <div style="font-size:11px;color:#2563eb;font-weight:600;">${minMax}</div>
+            </div>`;
+        }).join('');
+    } catch (e) {
+        opList.innerHTML = `<div style="font-size:13px;color:#dc2626;text-align:center;padding:12px 0;">${e.message || 'Failed to load operators.'}</div>`;
+    }
+}
+
+function selectIntlOperator(idx, el) {
+    intlSelectedOp = intlOperatorsList[idx];
+    document.querySelectorAll('[data-opidx]').forEach(d => { d.style.borderColor = '#e2e8f0'; d.style.background = '#fff'; });
+    el.style.borderColor = '#2563eb'; el.style.background = '#eff6ff';
+
+    document.getElementById('intlPhoneGroup').style.display = '';
+    document.getElementById('intlAmountGroup').style.display = '';
+    document.getElementById('intlNgnGroup').style.display = '';
+    document.getElementById('intlPinGroup').style.display = '';
+
+    const op = intlSelectedOp;
+    const useLocal = !!op.localAmountsSupported;
+    const currency = useLocal ? (op.destinationCurrencyCode || 'Local') : 'USD';
+    document.getElementById('intlAmountLabel').textContent = `Amount (${currency})`;
+
+    const hint = [];
+    if (op.minAmount != null) hint.push(`Min: ${op.minAmount} ${currency}`);
+    if (op.maxAmount != null) hint.push(`Max: ${op.maxAmount} ${currency}`);
+    document.getElementById('intlAmountHint').textContent = hint.join('  ·  ');
+
+    const ngnLabel = document.getElementById('intlNgnLabel');
+    if (ngnLabel && op.fxRate) {
+        ngnLabel.innerHTML = `NGN Amount to Debit from Wallet <span style="font-size:11px;color:#94a3b8;">(FX: 1 USD ≈ ₦${Number(op.fxRate).toLocaleString(undefined, {maximumFractionDigits:2})})</span>`;
+    }
+
+    const denoms = op.denominationType === 'FIXED' ? (op.fixedAmounts || op.fixedAmountsList || []) : [];
+    const denomContainer = document.getElementById('intlFixedDenoms');
+    if (denoms.length) {
+        denomContainer.innerHTML = denoms.slice(0, 8).map(d =>
+            `<button type="button" onclick="selectIntlFixedDenom(${d}, this)"
+                style="padding:7px 14px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;">
+                ${currency} ${d}
+            </button>`
+        ).join('');
+        document.getElementById('intlAmount').placeholder = 'Or type custom amount';
+    } else {
+        denomContainer.innerHTML = '';
+        document.getElementById('intlAmount').placeholder = `Amount in ${currency}`;
+    }
+    updateIntlReceipt();
+}
+
+function selectIntlFixedDenom(val, btn) {
+    document.querySelectorAll('#intlFixedDenoms button').forEach(b => { b.style.borderColor = '#e2e8f0'; b.style.background = '#fff'; });
+    btn.style.borderColor = '#2563eb'; btn.style.background = '#eff6ff';
+    document.getElementById('intlAmount').value = val;
     updateIntlReceipt();
 }
 
 function updateIntlReceipt() {
-    const country = document.getElementById('intlCountry');
-    const phone = document.getElementById('intlPhone').value;
-    const amount = document.getElementById('intlAmount').value;
-    const receipt = document.getElementById('intlReceipt');
-    if (country.value && phone && amount) {
-        const opt = country.options[country.selectedIndex];
-        receipt.style.display = 'block';
-        document.getElementById('intlReceiptDest').textContent = `${opt.dataset.dial || ''} ${phone}`;
-        document.getElementById('intlReceiptAmt').textContent = `₦${Number(amount).toLocaleString()}`;
-    }
+    if (!intlSelectedOp) return;
+    const phone     = document.getElementById('intlPhone')?.value || '';
+    const amount    = parseFloat(document.getElementById('intlAmount')?.value) || 0;
+    const amountNgn = parseFloat(document.getElementById('intlAmountNgn')?.value) || 0;
+    const receipt   = document.getElementById('intlReceipt');
+    if (!phone || !amount || !amountNgn) { receipt.style.display = 'none'; return; }
+    const op       = intlSelectedOp;
+    const useLocal = !!op.localAmountsSupported;
+    const currency = useLocal ? (op.destinationCurrencyCode || '') : 'USD';
+    receipt.style.display = '';
+    document.getElementById('intlReceiptOp').textContent  = op.name || op.operatorName || '—';
+    document.getElementById('intlReceiptNum').textContent = phone;
+    document.getElementById('intlReceiptAmt').textContent = `${amount} ${currency}`;
+    document.getElementById('intlReceiptNgn').textContent = `₦${Number(amountNgn).toLocaleString()}`;
 }
 
 async function submitIntlAirtime() {
-    const country = document.getElementById('intlCountry').value;
-    const phone = document.getElementById('intlPhone').value;
-    const amount = document.getElementById('intlAmount').value;
-    if (!country) { showInlineError('Please select a country'); return; }
-    if (!phone || phone.length < 5) { showInlineError('Please enter a valid phone number'); return; }
-    if (!amount || Number(amount) < 100) { showInlineError('Minimum amount is ₦100'); return; }
-    setSubmitLoading(true, 'Processing...');
+    const sel       = document.getElementById('intlCountry');
+    const code      = sel?.value;
+    const phone     = document.getElementById('intlPhone')?.value.trim();
+    const amount    = parseFloat(document.getElementById('intlAmount')?.value);
+    const amountNgn = parseFloat(document.getElementById('intlAmountNgn')?.value);
+    const pin       = document.getElementById('intlPin')?.value.trim();
+    if (!code)                        { showInlineError('Please select a country'); return; }
+    if (!intlSelectedOp)              { showInlineError('Please select an operator'); return; }
+    if (!phone || phone.length < 4)   { showInlineError('Please enter a valid recipient phone number'); return; }
+    if (!amount || amount <= 0)       { showInlineError('Please enter a valid amount'); return; }
+    if (!amountNgn || amountNgn <= 0) { showInlineError('Please enter the NGN amount to debit from your wallet'); return; }
+    if (!pin || !/^\d{4}$/.test(pin)) { showInlineError('Please enter your 4-digit transaction PIN'); return; }
+    setSubmitLoading(true, 'Processing…');
     try {
-        await new Promise(r => setTimeout(r, 1500)); // replace with actual API call
+        await api.sendIntlTopup({
+            operatorId:           intlSelectedOp.id || intlSelectedOp.operatorId,
+            amount,
+            useLocalAmount:       !!intlSelectedOp.localAmountsSupported,
+            recipientCountryCode: code,
+            recipientNumber:      phone,
+            amountNgn,
+            transactionPin:       pin
+        });
         closeModal();
-        setTimeout(() => showSuccess(`₦${Number(amount).toLocaleString()} airtime sent to ${phone} successfully!`), 300);
+        const opName = intlSelectedOp.name || intlSelectedOp.operatorName || 'Operator';
+        setTimeout(() => showSuccess(`${amount} top-up sent to ${phone} via ${opName}!`), 300);
     } catch (e) {
         setSubmitLoading(false, '', 'Top-Up Now');
         showInlineError(e.message || 'Transaction failed. Please try again.');
     }
 }
 
+async function _loadIntlHistory() {
+    const container = document.getElementById('intlHistoryList');
+    if (!container) return;
+    try {
+        const res  = await api.getIntlTransactions(0, 20);
+        const txns = res.data?.content || res.data?.transactions || res.data || (Array.isArray(res) ? res : []);
+        if (!txns.length) {
+            container.innerHTML = '<div style="text-align:center;padding:20px 0;color:#94a3b8;font-size:13px;">No transactions found.</div>';
+            return;
+        }
+        container.innerHTML = txns.map(t => {
+            const status    = (t.status || t.transactionStatus || '').toLowerCase();
+            const statusColor = status === 'successful' || status === 'success' ? '#16a34a' : status === 'failed' ? '#dc2626' : '#f59e0b';
+            const date = t.createdAt || t.transactionDate || '';
+            return `<div style="padding:12px 14px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <div style="font-size:13px;font-weight:600;color:#0f172a;">${t.operatorName || t.operator || '—'}</div>
+                        <div style="font-size:11px;color:#94a3b8;margin-top:2px;">${t.recipientPhone || t.recipientNumber || '—'} · ${date ? new Date(date).toLocaleDateString() : ''}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:13px;font-weight:700;color:#0f172a;">₦${Number(t.amountNgn || t.requestedAmount || 0).toLocaleString()}</div>
+                        <div style="font-size:11px;font-weight:600;color:${statusColor};margin-top:2px;">${status || 'pending'}</div>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    } catch (e) {
+        container.innerHTML = `<div style="text-align:center;padding:16px;color:#dc2626;font-size:13px;">${e.message || 'Failed to load history.'}</div>`;
+    }
+}
+
+async function lookupIntlTransaction() {
+    const ref = document.getElementById('intlLookupRef')?.value.trim();
+    if (!ref) { showInlineError('Please enter a transaction reference'); return; }
+    const result = document.getElementById('intlLookupResult');
+    result.style.display = '';
+    result.innerHTML = `<div style="text-align:center;padding:16px;color:#94a3b8;font-size:13px;">
+        <div style="width:24px;height:24px;border:3px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 8px;"></div>
+        Looking up…
+    </div>`;
+    try {
+        const res = await api.getIntlTransactionByRef(ref);
+        const t   = res.data || res;
+        const status = (t.status || t.transactionStatus || '').toLowerCase();
+        const statusColor = status === 'successful' || status === 'success' ? '#16a34a' : status === 'failed' ? '#dc2626' : '#f59e0b';
+        result.innerHTML = `<div style="background:#f8fafc;border-radius:10px;padding:14px;">
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;">
+                <span style="color:#64748b;">Reference</span><span style="font-weight:600;">${t.customIdentifier || t.transactionId || ref}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;">
+                <span style="color:#64748b;">Operator</span><span style="font-weight:600;">${t.operatorName || t.operator || '—'}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;">
+                <span style="color:#64748b;">Recipient</span><span style="font-weight:600;">${t.recipientPhone || t.recipientNumber || '—'}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;">
+                <span style="color:#64748b;">Amount</span><span style="font-weight:600;">₦${Number(t.amountNgn || t.requestedAmount || 0).toLocaleString()}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;">
+                <span style="color:#64748b;">Status</span><span style="font-weight:700;color:${statusColor};">${status || 'unknown'}</span>
+            </div>
+        </div>`;
+    } catch (e) {
+        result.innerHTML = `<div style="padding:12px 14px;background:#fee2e2;border-radius:8px;font-size:13px;color:#dc2626;">${e.message || 'Transaction not found.'}</div>`;
+    }
+}
+
 
 // ============================================================
-// 2. SMILE DATA & VOICE
+// 2. SMILE
 // ============================================================
-
-const SMILE_PLANS = {
-    data: [
-        { id: 'sm-1gb-d', label: '1GB Daily', price: 200, validity: '1 Day' },
-        { id: 'sm-2gb-w', label: '2GB Weekly', price: 500, validity: '7 Days' },
-        { id: 'sm-5gb-m', label: '5GB Monthly', price: 1200, validity: '30 Days' },
-        { id: 'sm-10gb-m', label: '10GB Monthly', price: 2200, validity: '30 Days' },
-        { id: 'sm-unl-m', label: 'Unlimited Monthly', price: 4500, validity: '30 Days' },
-    ],
-    voice: [
-        { id: 'sm-v50-d', label: '50 Mins Daily', price: 150, validity: '1 Day' },
-        { id: 'sm-v200-w', label: '200 Mins Weekly', price: 500, validity: '7 Days' },
-        { id: 'sm-v500-m', label: '500 Mins Monthly', price: 1000, validity: '30 Days' },
-        { id: 'sm-unl-v', label: 'Unlimited Calls', price: 3500, validity: '30 Days' },
-    ]
-};
-
-let smileTab = 'data';
+let smilePkgList        = [];
+let selectedSmilePlanObj = null;
 
 function showSmileModal() {
-    smileTab = 'data';
-    showModal('Smile Data & Voice', `
-        <div style="display:flex;gap:0;background:#f1f5f9;border-radius:10px;padding:4px;margin-bottom:18px;">
-            <button id="smileTabData" onclick="switchSmileTab('data')"
-                style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;
-                       background:#1e3d5c;color:#fff;transition:all .2s;">
-                📶 Data Bundles
-            </button>
-            <button id="smileTabVoice" onclick="switchSmileTab('voice')"
-                style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;
-                       background:transparent;color:#64748b;transition:all .2s;">
-                📞 Voice Recharge
-            </button>
-        </div>
+    smilePkgList         = [];
+    selectedSmilePlanObj = null;
+    showModal('Smile Internet', `
         <div class="form-group">
-            <label>Smile Account Number</label>
-            <input type="text" id="smileAccount" class="form-input" placeholder="e.g. 0712345678" maxlength="12">
+            <label>Smile Account ID</label>
+            <input type="text" id="smileAccount" class="form-input" placeholder="e.g. 0712345678" maxlength="15">
         </div>
         <div class="form-group">
             <label>Select Plan</label>
-            <div id="smilePlans" style="display:flex;flex-direction:column;gap:8px;"></div>
+            <div id="smilePlans" style="display:flex;flex-direction:column;gap:8px;">
+                <div style="text-align:center;padding:24px 0;color:#94a3b8;font-size:13px;">
+                    <div style="width:28px;height:28px;border:3px solid #e2e8f0;border-top-color:#ca8a04;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 10px;"></div>
+                    Loading plans…
+                </div>
+            </div>
         </div>
-        <div id="smileHistory" style="display:none;margin-top:4px;">
-            <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px;">Recent Transactions</div>
-            <div style="font-size:12px;color:#94a3b8;text-align:center;padding:12px 0;">No recent transactions</div>
+        <div class="form-group">
+            <label>Transaction PIN</label>
+            <input type="password" id="smilePin" class="form-input" placeholder="Enter 4-digit PIN" maxlength="4" inputmode="numeric">
         </div>
     `, `
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
         <button onclick="submitSmile()" class="btn-primary">Purchase Plan</button>
     `);
-    renderSmilePlans('data');
+    _loadSmilePlans();
 }
 
-function switchSmileTab(tab) {
-    smileTab = tab;
-    document.getElementById('smileTabData').style.cssText = tab === 'data'
-        ? 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:#1e3d5c;color:#fff;transition:all .2s;'
-        : 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:transparent;color:#64748b;transition:all .2s;';
-    document.getElementById('smileTabVoice').style.cssText = tab === 'voice'
-        ? 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:#1e3d5c;color:#fff;transition:all .2s;'
-        : 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:transparent;color:#64748b;transition:all .2s;';
-    renderSmilePlans(tab);
+async function _loadSmilePlans() {
+    try {
+        const res = await api.getSmilePackages();
+        smilePkgList = res.data?.plans || res.data?.packages || res.data || res.plans || res.packages || (Array.isArray(res) ? res : []);
+        const container = document.getElementById('smilePlans');
+        if (!container) return;
+        if (!smilePkgList.length) { container.innerHTML = '<div style="text-align:center;padding:16px;color:#94a3b8;font-size:13px;">No plans available.</div>'; return; }
+        container.innerHTML = smilePkgList.map((p, i) => {
+            const name     = p.name || p.planName || p.description || `Plan ${i + 1}`;
+            const price    = Number(p.price || p.amount || p.planPrice || 0);
+            const validity = p.validity || p.duration || p.period || '';
+            const planId   = p.id || p.planId || p._id || String(i);
+            return `<div onclick="selectSmilePkgItem('${planId}', ${i}, this)" data-smileidx="${i}"
+                style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;
+                       border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;background:#fff;transition:all .2s;">
+                <div>
+                    <div style="font-size:13px;font-weight:600;color:#0f172a;">${name}</div>
+                    ${validity ? `<div style="font-size:11px;color:#94a3b8;margin-top:2px;">Validity: ${validity}</div>` : ''}
+                </div>
+                <div style="font-size:14px;font-weight:700;color:#ca8a04;">₦${price.toLocaleString()}</div>
+            </div>`;
+        }).join('');
+    } catch (e) {
+        const container = document.getElementById('smilePlans');
+        if (container) container.innerHTML = `<div style="text-align:center;padding:16px;color:#dc2626;font-size:13px;">
+            Failed to load plans. <span style="cursor:pointer;color:#ca8a04;" onclick="_loadSmilePlans()">Retry</span>
+        </div>`;
+    }
 }
 
-let selectedSmilePlan = null;
-
-function renderSmilePlans(tab) {
-    selectedSmilePlan = null;
-    const plans = SMILE_PLANS[tab];
-    const container = document.getElementById('smilePlans');
-    container.innerHTML = plans.map(p => `
-        <div onclick="selectSmilePlan('${p.id}', this)" data-planid="${p.id}"
-            style="display:flex;justify-content:space-between;align-items:center;
-                   padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:10px;
-                   cursor:pointer;background:#fff;transition:all .2s;">
-            <div>
-                <div style="font-size:13px;font-weight:600;color:#0f172a;">${p.label}</div>
-                <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Validity: ${p.validity}</div>
-            </div>
-            <div style="font-size:14px;font-weight:700;color:#1e3d5c;">₦${p.price.toLocaleString()}</div>
-        </div>`).join('');
-}
-
-function selectSmilePlan(id, el) {
-    selectedSmilePlan = SMILE_PLANS[smileTab].find(p => p.id === id);
-    document.querySelectorAll('#smilePlans > div').forEach(d => {
-        d.style.borderColor = '#e2e8f0'; d.style.background = '#fff';
-    });
-    el.style.borderColor = '#1e3d5c'; el.style.background = '#eff6ff';
+function selectSmilePkgItem(planId, idx, el) {
+    selectedSmilePlanObj = { planId, ...smilePkgList[idx] };
+    document.querySelectorAll('[data-smileidx]').forEach(d => { d.style.borderColor = '#e2e8f0'; d.style.background = '#fff'; });
+    el.style.borderColor = '#ca8a04'; el.style.background = '#fef9c3';
 }
 
 async function submitSmile() {
-    const account = document.getElementById('smileAccount').value.trim();
-    if (!account) { showInlineError('Please enter your Smile account number'); return; }
-    if (!selectedSmilePlan) { showInlineError('Please select a plan'); return; }
-    setSubmitLoading(true, 'Processing...');
+    const accountId = document.getElementById('smileAccount')?.value.trim();
+    const pin       = document.getElementById('smilePin')?.value.trim();
+    if (!accountId)                   { showInlineError('Please enter your Smile Account ID'); return; }
+    if (!selectedSmilePlanObj)        { showInlineError('Please select a plan'); return; }
+    if (!pin || !/^\d{4}$/.test(pin)) { showInlineError('Please enter your 4-digit PIN'); return; }
+    setSubmitLoading(true, 'Processing…');
     try {
-        await new Promise(r => setTimeout(r, 1500));
+        await api.purchaseSmile(accountId, selectedSmilePlanObj.planId, pin);
         closeModal();
-        setTimeout(() => showSuccess(`${selectedSmilePlan.label} activated on ${account}!`), 300);
+        const name = selectedSmilePlanObj.name || selectedSmilePlanObj.planName || 'Plan';
+        setTimeout(() => showSuccess(`Smile ${name} activated on ${accountId}!`), 300);
     } catch (e) {
         setSubmitLoading(false, '', 'Purchase Plan');
         showInlineError(e.message || 'Transaction failed. Please try again.');
@@ -264,394 +547,87 @@ async function submitSmile() {
 
 
 // ============================================================
-// 3. ALPHA CALLER
+// 3. SPECTRANET
 // ============================================================
-
-const ALPHA_CREDIT_PACKS = [
-    { id: 'ac-500', label: '₦500 Credit', minutes: 60, price: 500 },
-    { id: 'ac-1000', label: '₦1,000 Credit', minutes: 130, price: 1000 },
-    { id: 'ac-2000', label: '₦2,000 Credit', minutes: 270, price: 2000 },
-    { id: 'ac-5000', label: '₦5,000 Credit', minutes: 700, price: 5000 },
-];
-
-let selectedAlphaPack = null;
-let alphaCallerTab = 'topup';
-
-function showAlphaCallerModal() {
-    alphaCallerTab = 'topup';
-    showModal('Alpha Caller', `
-        <div style="display:flex;gap:0;background:#f1f5f9;border-radius:10px;padding:4px;margin-bottom:18px;">
-            <button id="alphaTabTopup" onclick="switchAlphaTab('topup')"
-                style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer;
-                       background:#1e3d5c;color:#fff;transition:all .2s;">💳 Top-Up</button>
-            <button id="alphaTabMins" onclick="switchAlphaTab('minutes')"
-                style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer;
-                       background:transparent;color:#64748b;transition:all .2s;">⏱ Minutes</button>
-            <button id="alphaTabHistory" onclick="switchAlphaTab('history')"
-                style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer;
-                       background:transparent;color:#64748b;transition:all .2s;">📋 History</button>
-        </div>
-        <div id="alphaTabContent"></div>
-    `, `
-        <button onclick="closeModal()" class="btn-secondary">Cancel</button>
-        <button id="alphaSubmitBtn" onclick="submitAlpha()" class="btn-primary">Continue</button>
-    `);
-    renderAlphaTab('topup');
-}
-
-function switchAlphaTab(tab) {
-    alphaCallerTab = tab;
-    ['topup','minutes','history'].forEach(t => {
-        const btn = document.getElementById('alphaTab' + t.charAt(0).toUpperCase() + t.slice(1));
-        if (!btn) return;
-        btn.style.cssText = t === tab
-            ? 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer;background:#1e3d5c;color:#fff;transition:all .2s;'
-            : 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer;background:transparent;color:#64748b;transition:all .2s;';
-    });
-    renderAlphaTab(tab);
-    const submitBtn = document.getElementById('alphaSubmitBtn');
-    if (submitBtn) submitBtn.style.display = tab === 'history' ? 'none' : '';
-}
-
-function renderAlphaTab(tab) {
-    const content = document.getElementById('alphaTabContent');
-    if (tab === 'topup') {
-        content.innerHTML = `
-            <div class="form-group">
-                <label>Alpha Caller Username / ID</label>
-                <input type="text" id="alphaUserId" class="form-input" placeholder="Enter your Alpha Caller ID">
-            </div>
-            <div class="form-group">
-                <label>Select Credit Pack</label>
-                <div style="display:flex;flex-direction:column;gap:8px;">
-                    ${ALPHA_CREDIT_PACKS.map(p => `
-                        <div onclick="selectAlphaPack('${p.id}', this)" data-packid="${p.id}"
-                            style="display:flex;justify-content:space-between;align-items:center;
-                                   padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:10px;
-                                   cursor:pointer;background:#fff;transition:all .2s;">
-                            <div>
-                                <div style="font-size:13px;font-weight:600;color:#0f172a;">${p.label}</div>
-                                <div style="font-size:11px;color:#94a3b8;margin-top:2px;">~${p.minutes} minutes</div>
-                            </div>
-                            <div style="font-size:14px;font-weight:700;color:#1e3d5c;">₦${p.price.toLocaleString()}</div>
-                        </div>`).join('')}
-                </div>
-            </div>`;
-    } else if (tab === 'minutes') {
-        content.innerHTML = `
-            <div class="form-group">
-                <label>Alpha Caller Username / ID</label>
-                <input type="text" id="alphaUserIdMin" class="form-input" placeholder="Enter your Alpha Caller ID">
-            </div>
-            <div class="form-group">
-                <label>Minutes to Purchase</label>
-                <input type="number" id="alphaMinutes" class="form-input" placeholder="e.g. 100" min="10">
-                <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Rate: ₦7/minute</div>
-            </div>
-            <div id="alphaMinsCalc" style="display:none;padding:12px;background:#eff6ff;border-radius:8px;font-size:13px;">
-                <span style="color:#64748b;">Total Cost:</span>
-                <strong id="alphaMinsTotal" style="color:#1e3d5c;float:right;"></strong>
-            </div>`;
-        setTimeout(() => {
-            const inp = document.getElementById('alphaMinutes');
-            if (inp) inp.addEventListener('input', () => {
-                const mins = Number(inp.value) || 0;
-                const calc = document.getElementById('alphaMinsCalc');
-                const total = document.getElementById('alphaMinsTotal');
-                if (mins >= 10) {
-                    calc.style.display = 'block';
-                    total.textContent = `₦${(mins * 7).toLocaleString()}`;
-                } else calc.style.display = 'none';
-            });
-        }, 100);
-    } else {
-        content.innerHTML = `
-            <div style="text-align:center;padding:32px 0;">
-                <div style="width:48px;height:48px;background:#f1f5f9;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                </div>
-                <p style="color:#64748b;font-size:13px;font-weight:600;">No usage history yet</p>
-                <p style="color:#94a3b8;font-size:11px;margin-top:4px;">Your call logs will appear here</p>
-            </div>`;
-    }
-}
-
-function selectAlphaPack(id, el) {
-    selectedAlphaPack = ALPHA_CREDIT_PACKS.find(p => p.id === id);
-    document.querySelectorAll('#alphaTabContent > div:last-child > div').forEach(d => {
-        d.style.borderColor = '#e2e8f0'; d.style.background = '#fff';
-    });
-    el.style.borderColor = '#1e3d5c'; el.style.background = '#eff6ff';
-}
-
-async function submitAlpha() {
-    setSubmitLoading(true, 'Processing...');
-    try {
-        await new Promise(r => setTimeout(r, 1500));
-        closeModal();
-        setTimeout(() => showSuccess('Alpha Caller credit added successfully!'), 300);
-    } catch (e) {
-        setSubmitLoading(false, '', 'Continue');
-        showInlineError(e.message || 'Transaction failed. Please try again.');
-    }
-}
-
-
-// ============================================================
-// 4. GIFT CARDS
-// ============================================================
-
-const GIFT_CARD_BRANDS = [
-    { id: 'amazon', name: 'Amazon', emoji: '📦', color: '#FF9900', bg: '#fff8ee' },
-    { id: 'apple', name: 'Apple', emoji: '🍎', color: '#555', bg: '#f5f5f7' },
-    { id: 'google', name: 'Google Play', emoji: '🎮', color: '#0F9D58', bg: '#f0fdf4' },
-    { id: 'steam', name: 'Steam', emoji: '🎲', color: '#1b2838', bg: '#e8f0fe' },
-    { id: 'netflix', name: 'Netflix', emoji: '🎬', color: '#E50914', bg: '#fff0f0' },
-];
-
-const GIFT_CARD_DENOMINATIONS = [25, 50, 100, 200, 500];
-let gcMode = 'buy';
-let selectedGCBrand = null;
-
-function showGiftCardsModal() {
-    gcMode = 'buy';
-    selectedGCBrand = null;
-    showModal('Gift Cards', `
-        <div style="display:flex;gap:0;background:#f1f5f9;border-radius:10px;padding:4px;margin-bottom:18px;">
-            <button id="gcTabBuy" onclick="switchGCTab('buy')"
-                style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;
-                       background:#1e3d5c;color:#fff;transition:all .2s;">🛒 Buy</button>
-            <button id="gcTabSell" onclick="switchGCTab('sell')"
-                style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;
-                       background:transparent;color:#64748b;transition:all .2s;">💰 Sell</button>
-        </div>
-        <div class="form-group">
-            <label>Select Brand</label>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px;" id="gcBrands">
-                ${GIFT_CARD_BRANDS.map(b => `
-                    <div onclick="selectGCBrand('${b.id}', this)" data-brandid="${b.id}"
-                        style="text-align:center;padding:12px 6px;border:1.5px solid #e2e8f0;
-                               border-radius:10px;cursor:pointer;background:${b.bg};transition:all .2s;">
-                        <div style="font-size:22px;margin-bottom:4px;">${b.emoji}</div>
-                        <div style="font-size:10px;font-weight:600;color:#0f172a;">${b.name}</div>
-                    </div>`).join('')}
-            </div>
-        </div>
-        <div id="gcMainForm"></div>
-    `, `
-        <button onclick="closeModal()" class="btn-secondary">Cancel</button>
-        <button onclick="submitGiftCard()" class="btn-primary">Continue</button>
-    `);
-    renderGCForm();
-}
-
-function switchGCTab(mode) {
-    gcMode = mode;
-    document.getElementById('gcTabBuy').style.cssText = mode === 'buy'
-        ? 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:#1e3d5c;color:#fff;transition:all .2s;'
-        : 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:transparent;color:#64748b;transition:all .2s;';
-    document.getElementById('gcTabSell').style.cssText = mode === 'sell'
-        ? 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:#1e3d5c;color:#fff;transition:all .2s;'
-        : 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:transparent;color:#64748b;transition:all .2s;';
-    renderGCForm();
-}
-
-function selectGCBrand(id, el) {
-    selectedGCBrand = GIFT_CARD_BRANDS.find(b => b.id === id);
-    document.querySelectorAll('#gcBrands > div').forEach(d => {
-        d.style.borderColor = '#e2e8f0';
-    });
-    el.style.borderColor = '#1e3d5c';
-    renderGCForm();
-}
-
-function renderGCForm() {
-    const container = document.getElementById('gcMainForm');
-    if (!container) return;
-    if (gcMode === 'buy') {
-        container.innerHTML = `
-            <div class="form-group">
-                <label>Denomination (USD)</label>
-                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-                    ${GIFT_CARD_DENOMINATIONS.map(d => `
-                        <button type="button" onclick="selectGCDenom(${d}, this)"
-                            style="padding:8px 14px;border:1.5px solid #e2e8f0;border-radius:8px;
-                                   background:#fff;font-size:13px;font-weight:600;cursor:pointer;">
-                            $${d}
-                        </button>`).join('')}
-                </div>
-                <input type="number" id="gcCustomDenom" class="form-input" placeholder="Or enter custom ($)">
-            </div>
-            <div class="form-group">
-                <label>Delivery Email</label>
-                <input type="email" id="gcEmail" class="form-input" placeholder="Email to receive card">
-            </div>
-            <div id="gcRateBox" style="display:none;padding:12px;background:#eff6ff;border-radius:8px;font-size:13px;">
-                Rate: <strong id="gcRate" style="color:#1e3d5c;"></strong> &nbsp;|&nbsp; 
-                You pay: <strong id="gcTotal" style="color:#1e3d5c;"></strong>
-            </div>`;
-    } else {
-        container.innerHTML = `
-            <div class="form-group">
-                <label>Card Code</label>
-                <input type="text" id="gcCode" class="form-input" placeholder="Enter gift card code">
-            </div>
-            <div class="form-group">
-                <label>Card Value (USD)</label>
-                <input type="number" id="gcSellValue" class="form-input" placeholder="e.g. 100" oninput="calcGCSell()">
-            </div>
-            <div id="gcSellCalc" style="display:none;padding:12px;background:#f0fdf4;border-radius:8px;font-size:13px;">
-                You receive: <strong id="gcSellReceive" style="color:#16a34a;"></strong>
-                <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Subject to admin approval · Credited to wallet</div>
-            </div>`;
-    }
-}
-
-function selectGCDenom(d, btn) {
-    document.querySelectorAll('#gcMainForm button[onclick^="selectGCDenom"]').forEach(b => {
-        b.style.borderColor = '#e2e8f0'; b.style.background = '#fff';
-    });
-    btn.style.borderColor = '#1e3d5c'; btn.style.background = '#eff6ff';
-    document.getElementById('gcCustomDenom').value = d;
-    const rate = 1650;
-    document.getElementById('gcRateBox').style.display = 'block';
-    document.getElementById('gcRate').textContent = `₦${rate.toLocaleString()}/$`;
-    document.getElementById('gcTotal').textContent = `₦${(d * rate).toLocaleString()}`;
-}
-
-function calcGCSell() {
-    const val = Number(document.getElementById('gcSellValue').value) || 0;
-    const calc = document.getElementById('gcSellCalc');
-    if (val > 0) {
-        calc.style.display = 'block';
-        document.getElementById('gcSellReceive').textContent = `₦${(val * 1550).toLocaleString()}`;
-    } else calc.style.display = 'none';
-}
-
-async function submitGiftCard() {
-    setSubmitLoading(true, 'Processing...');
-    try {
-        await new Promise(r => setTimeout(r, 1500));
-        closeModal();
-        const msg = gcMode === 'buy' ? 'Gift card purchase submitted! Check your email shortly.' : 'Gift card submitted for review. Wallet will be credited after approval.';
-        setTimeout(() => showSuccess(msg), 300);
-    } catch (e) {
-        setSubmitLoading(false, '', 'Continue');
-        showInlineError(e.message || 'Transaction failed. Please try again.');
-    }
-}
-
-
-// ============================================================
-// 5. SPECTRANET
-// ============================================================
-
-const SPECTRANET_PLANS = {
-    home: [
-        { id: 'sp-5gb', label: '5GB', price: 2500, validity: '30 Days' },
-        { id: 'sp-10gb', label: '10GB', price: 4000, validity: '30 Days' },
-        { id: 'sp-20gb', label: '20GB', price: 7500, validity: '30 Days' },
-        { id: 'sp-unl', label: 'Unlimited', price: 15000, validity: '30 Days' },
-    ],
-    sme: [
-        { id: 'sp-sme-50gb', label: '50GB SME', price: 18000, validity: '30 Days' },
-        { id: 'sp-sme-100gb', label: '100GB SME', price: 30000, validity: '30 Days' },
-        { id: 'sp-sme-unl', label: 'Unlimited SME', price: 50000, validity: '30 Days' },
-    ]
-};
-
-let spectranetPlanType = 'home';
-let selectedSpectranetPlan = null;
+let spectranetPkgList        = [];
+let selectedSpectranetPkgObj = null;
 
 function showSpectranetModal() {
-    spectranetPlanType = 'home';
-    selectedSpectranetPlan = null;
+    spectranetPkgList        = [];
+    selectedSpectranetPkgObj = null;
     showModal('Spectranet', `
-        <div style="display:flex;gap:0;background:#f1f5f9;border-radius:10px;padding:4px;margin-bottom:18px;">
-            <button id="spTabHome" onclick="switchSpectranetTab('home')"
-                style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;
-                       background:#0d9488;color:#fff;transition:all .2s;">🏠 Home</button>
-            <button id="spTabSME" onclick="switchSpectranetTab('sme')"
-                style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;
-                       background:transparent;color:#64748b;transition:all .2s;">🏢 SME</button>
-        </div>
         <div class="form-group">
-            <label>Spectranet Account Number</label>
-            <div style="display:flex;gap:8px;">
-                <input type="text" id="spectranetAccount" class="form-input" placeholder="e.g. 07012345678" style="flex:1;">
-                <button onclick="validateSpectranetAccount()" 
-                    style="padding:0 16px;background:#0d9488;color:#fff;border:none;border-radius:8px;
-                           font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Validate</button>
-            </div>
-            <div id="spectranetValidation" style="display:none;margin-top:6px;padding:8px 12px;border-radius:8px;font-size:12px;"></div>
+            <label>Spectranet Device ID</label>
+            <input type="text" id="spectranetDevice" class="form-input" placeholder="e.g. 07012345678">
         </div>
         <div class="form-group">
             <label>Select Plan</label>
-            <div id="spectranetPlans" style="display:flex;flex-direction:column;gap:8px;"></div>
+            <div id="spectranetPlans" style="display:flex;flex-direction:column;gap:8px;">
+                <div style="text-align:center;padding:24px 0;color:#94a3b8;font-size:13px;">
+                    <div style="width:28px;height:28px;border:3px solid #e2e8f0;border-top-color:#0d9488;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 10px;"></div>
+                    Loading packages…
+                </div>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Transaction PIN</label>
+            <input type="password" id="spectranetPin" class="form-input" placeholder="Enter 4-digit PIN" maxlength="4" inputmode="numeric">
         </div>
     `, `
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
         <button onclick="submitSpectranet()" class="btn-primary">Subscribe</button>
     `);
-    renderSpectranetPlans('home');
+    _loadSpectranetPackages();
 }
 
-function switchSpectranetTab(type) {
-    spectranetPlanType = type;
-    document.getElementById('spTabHome').style.cssText = type === 'home'
-        ? 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:#0d9488;color:#fff;transition:all .2s;'
-        : 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:transparent;color:#64748b;transition:all .2s;';
-    document.getElementById('spTabSME').style.cssText = type === 'sme'
-        ? 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:#0d9488;color:#fff;transition:all .2s;'
-        : 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:transparent;color:#64748b;transition:all .2s;';
-    renderSpectranetPlans(type);
+async function _loadSpectranetPackages() {
+    try {
+        const res = await api.getSpectranetPackages();
+        spectranetPkgList = res.data?.plans || res.data?.packages || res.data || res.plans || res.packages || (Array.isArray(res) ? res : []);
+        const container = document.getElementById('spectranetPlans');
+        if (!container) return;
+        if (!spectranetPkgList.length) { container.innerHTML = '<div style="text-align:center;padding:16px;color:#94a3b8;font-size:13px;">No packages available.</div>'; return; }
+        container.innerHTML = spectranetPkgList.map((p, i) => {
+            const name     = p.name || p.planName || p.description || `Package ${i + 1}`;
+            const price    = Number(p.price || p.amount || p.planPrice || 0);
+            const validity = p.validity || p.duration || p.period || '';
+            const planId   = p.id || p.planId || p._id || String(i);
+            return `<div onclick="selectSpectranetPkgItem('${planId}', ${i}, this)" data-specidx="${i}"
+                style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;
+                       border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;background:#fff;transition:all .2s;">
+                <div>
+                    <div style="font-size:13px;font-weight:600;color:#0f172a;">${name}</div>
+                    ${validity ? `<div style="font-size:11px;color:#94a3b8;margin-top:2px;">Validity: ${validity}</div>` : ''}
+                </div>
+                <div style="font-size:14px;font-weight:700;color:#0d9488;">₦${price.toLocaleString()}</div>
+            </div>`;
+        }).join('');
+    } catch (e) {
+        const container = document.getElementById('spectranetPlans');
+        if (container) container.innerHTML = `<div style="text-align:center;padding:16px;color:#dc2626;font-size:13px;">
+            Failed to load packages. <span style="cursor:pointer;color:#0d9488;" onclick="_loadSpectranetPackages()">Retry</span>
+        </div>`;
+    }
 }
 
-function renderSpectranetPlans(type) {
-    selectedSpectranetPlan = null;
-    const plans = SPECTRANET_PLANS[type];
-    const container = document.getElementById('spectranetPlans');
-    container.innerHTML = plans.map(p => `
-        <div onclick="selectSpectranetPlan('${p.id}', this)" data-planid="${p.id}"
-            style="display:flex;justify-content:space-between;align-items:center;
-                   padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:10px;
-                   cursor:pointer;background:#fff;transition:all .2s;">
-            <div>
-                <div style="font-size:13px;font-weight:600;color:#0f172a;">${p.label}</div>
-                <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Validity: ${p.validity}</div>
-            </div>
-            <div style="font-size:14px;font-weight:700;color:#0d9488;">₦${p.price.toLocaleString()}</div>
-        </div>`).join('');
-}
-
-function selectSpectranetPlan(id, el) {
-    selectedSpectranetPlan = [...SPECTRANET_PLANS.home, ...SPECTRANET_PLANS.sme].find(p => p.id === id);
-    document.querySelectorAll('#spectranetPlans > div').forEach(d => {
-        d.style.borderColor = '#e2e8f0'; d.style.background = '#fff';
-    });
+function selectSpectranetPkgItem(planId, idx, el) {
+    selectedSpectranetPkgObj = { planId, ...spectranetPkgList[idx] };
+    document.querySelectorAll('[data-specidx]').forEach(d => { d.style.borderColor = '#e2e8f0'; d.style.background = '#fff'; });
     el.style.borderColor = '#0d9488'; el.style.background = '#f0fdfa';
 }
 
-function validateSpectranetAccount() {
-    const acc = document.getElementById('spectranetAccount').value.trim();
-    const div = document.getElementById('spectranetValidation');
-    if (!acc) { div.style.display = 'block'; div.style.background = '#fee2e2'; div.style.color = '#dc2626'; div.textContent = 'Please enter an account number'; return; }
-    div.style.display = 'block'; div.style.background = '#fef9c3'; div.style.color = '#92400e'; div.textContent = '🔄 Validating account...';
-    setTimeout(() => {
-        div.style.background = '#f0fdf4'; div.style.color = '#15803d';
-        div.textContent = '✅ Account validated – Name: Spectranet User';
-    }, 1200);
-}
-
 async function submitSpectranet() {
-    const account = document.getElementById('spectranetAccount').value.trim();
-    if (!account) { showInlineError('Please enter your Spectranet account number'); return; }
-    if (!selectedSpectranetPlan) { showInlineError('Please select a data plan'); return; }
-    setSubmitLoading(true, 'Processing...');
+    const deviceId = document.getElementById('spectranetDevice')?.value.trim();
+    const pin      = document.getElementById('spectranetPin')?.value.trim();
+    if (!deviceId)                    { showInlineError('Please enter your Spectranet Device ID'); return; }
+    if (!selectedSpectranetPkgObj)    { showInlineError('Please select a package'); return; }
+    if (!pin || !/^\d{4}$/.test(pin)) { showInlineError('Please enter your 4-digit PIN'); return; }
+    setSubmitLoading(true, 'Processing…');
     try {
-        await new Promise(r => setTimeout(r, 1500));
+        await api.purchaseSpectranet(deviceId, selectedSpectranetPkgObj.planId, pin);
         closeModal();
-        setTimeout(() => showSuccess(`Spectranet ${selectedSpectranetPlan.label} plan activated on ${account}!`), 300);
+        const name = selectedSpectranetPkgObj.name || selectedSpectranetPkgObj.planName || 'Package';
+        setTimeout(() => showSuccess(`Spectranet ${name} activated on ${deviceId}!`), 300);
     } catch (e) {
         setSubmitLoading(false, '', 'Subscribe');
         showInlineError(e.message || 'Transaction failed. Please try again.');
@@ -660,157 +636,904 @@ async function submitSpectranet() {
 
 
 // ============================================================
-// 6. FLIGHT TICKETS
+// 4. ALPHA CALLER
 // ============================================================
+let selectedAlphaPlan = null;
 
-const POPULAR_AIRPORTS = [
-    'Lagos (LOS)', 'Abuja (ABV)', 'Kano (KAN)', 'Port Harcourt (PHC)',
-    'Enugu (ENU)', 'Benin (BNI)', 'Calabar (CBQ)', 'Owerri (QOW)'
-];
-
-let flightType = 'oneway';
-let flightResults = [];
-
-function showFlightsModal() {
-    flightType = 'oneway';
-    flightResults = [];
-    showModal('Flight Tickets', `
-        <div style="display:flex;gap:0;background:#f1f5f9;border-radius:10px;padding:4px;margin-bottom:18px;">
-            <button id="fltTabOne" onclick="switchFlightType('oneway')"
-                style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;
-                       background:#0284c7;color:#fff;transition:all .2s;">✈️ One-Way</button>
-            <button id="fltTabReturn" onclick="switchFlightType('return')"
-                style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;
-                       background:transparent;color:#64748b;transition:all .2s;">🔄 Return</button>
+function showAlphaCallerModal() {
+    selectedAlphaPlan = null;
+    showModal('Alpha Caller', `
+        <div class="form-group">
+            <label>Phone Number</label>
+            <input type="tel" id="alphaPhone" class="form-input" placeholder="e.g. 08012345678" maxlength="11">
         </div>
         <div class="form-group">
-            <label>From</label>
-            <select id="fltFrom" class="form-input">
-                <option value="">-- Departure Airport --</option>
-                ${POPULAR_AIRPORTS.map(a => `<option value="${a}">${a}</option>`).join('')}
-            </select>
+            <label>Select Plan</label>
+            <div id="alphaPlans" style="display:flex;flex-direction:column;gap:8px;">
+                <div style="text-align:center;padding:24px 0;color:#94a3b8;font-size:13px;">
+                    <div style="width:28px;height:28px;border:3px solid #e2e8f0;border-top-color:#9333ea;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 10px;"></div>
+                    Loading plans…
+                </div>
+            </div>
         </div>
         <div class="form-group">
-            <label>To</label>
-            <select id="fltTo" class="form-input">
-                <option value="">-- Arrival Airport --</option>
-                ${POPULAR_AIRPORTS.map(a => `<option value="${a}">${a}</option>`).join('')}
-            </select>
+            <label>Transaction PIN</label>
+            <input type="password" id="alphaPin" class="form-input" placeholder="Enter 4-digit PIN" maxlength="4" inputmode="numeric">
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-            <div class="form-group" style="margin:0;">
-                <label>Departure Date</label>
-                <input type="date" id="fltDepart" class="form-input" min="${new Date().toISOString().split('T')[0]}">
-            </div>
-            <div class="form-group" id="fltReturnGroup" style="margin:0;display:none;">
-                <label>Return Date</label>
-                <input type="date" id="fltReturn" class="form-input">
-            </div>
-        </div>
-        <div class="form-group" style="margin-top:14px;">
-            <label>Passengers</label>
-            <select id="fltPassengers" class="form-input">
-                ${[1,2,3,4,5,6].map(n => `<option value="${n}">${n} Passenger${n>1?'s':''}</option>`).join('')}
-            </select>
-        </div>
-        <div id="fltResults" style="margin-top:4px;"></div>
     `, `
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
-        <button onclick="searchFlights()" class="btn-primary">Search Flights</button>
+        <button onclick="submitAlpha()" class="btn-primary">Purchase</button>
+    `);
+    loadAlphaPlans();
+}
+
+async function loadAlphaPlans() {
+    try {
+        const res   = await api.getAlphaPlans();
+        const plans = res.data?.plans || res.data || res.plans || [];
+        const container = document.getElementById('alphaPlans');
+        if (!container) return;
+        if (!plans.length) { container.innerHTML = '<div style="text-align:center;padding:16px;color:#94a3b8;font-size:13px;">No plans available</div>'; return; }
+        container.innerHTML = plans.map(p =>
+            `<div onclick="selectAlphaPlanItem('${p.id || p._id}', this)" data-planid="${p.id || p._id}"
+                style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;
+                       border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;background:#fff;transition:all .2s;">
+                <div>
+                    <div style="font-size:13px;font-weight:600;color:#0f172a;">${p.name || p.title || p.description || 'Plan ' + (p.id || p._id)}</div>
+                    <div style="font-size:11px;color:#94a3b8;margin-top:2px;">${p.validity || p.duration || '30 Days'}</div>
+                </div>
+                <div style="font-size:14px;font-weight:700;color:#9333ea;">₦${Number(p.price || p.amount || 0).toLocaleString()}</div>
+            </div>`
+        ).join('');
+    } catch (e) {
+        const container = document.getElementById('alphaPlans');
+        if (container) container.innerHTML = `<div style="text-align:center;padding:16px;color:#dc2626;font-size:13px;">Failed to load plans. Please try again.</div>`;
+    }
+}
+
+function selectAlphaPlanItem(id, el) {
+    selectedAlphaPlan = id;
+    document.querySelectorAll('#alphaPlans > div').forEach(d => { d.style.borderColor = '#e2e8f0'; d.style.background = '#fff'; });
+    el.style.borderColor = '#9333ea'; el.style.background = '#faf5ff';
+}
+
+async function submitAlpha() {
+    const phone = document.getElementById('alphaPhone')?.value.trim();
+    const pin   = document.getElementById('alphaPin')?.value.trim();
+    if (!phone || phone.length < 10)  { showInlineError('Please enter a valid phone number'); return; }
+    if (!selectedAlphaPlan)           { showInlineError('Please select a plan'); return; }
+    if (!pin || pin.length < 4)       { showInlineError('Please enter your 4-digit PIN'); return; }
+    setSubmitLoading(true, 'Processing…');
+    try {
+        await api.purchaseAlpha(phone, String(selectedAlphaPlan), pin);
+        closeModal();
+        setTimeout(() => showSuccess('Alpha Caller plan purchased successfully!'), 300);
+    } catch (e) {
+        setSubmitLoading(false, '', 'Purchase');
+        showInlineError(e.message || 'Transaction failed. Please try again.');
+    }
+}
+
+
+// ============================================================
+// 5. GIFT CARDS (Prestmit + Zendit, with Orders tab)
+// ============================================================
+let gcProducts      = [];
+let gcSelectedDenom = null;
+let gcActiveProvider = 'prestmit'; // 'prestmit' | 'zendit'
+let gcZenditProducts = [];
+let gcZenditSelectedDenom = null;
+let gcOrders        = [];
+
+async function showGiftCardsModal() {
+    gcProducts            = [];
+    gcSelectedDenom       = null;
+    gcZenditProducts      = [];
+    gcZenditSelectedDenom = null;
+    gcOrders              = [];
+    gcActiveProvider      = 'prestmit';
+
+    showModal('Gift Cards', `
+        <div style="display:flex;gap:0;background:#f1f5f9;border-radius:10px;padding:4px;margin-bottom:16px;">
+            <button type="button" id="gcTabBuy" onclick="gcSwitchTab('buy')"
+                style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:#ea580c;color:#fff;transition:all .2s;">🎁 Buy</button>
+            <button type="button" id="gcTabOrders" onclick="gcSwitchTab('orders')"
+                style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:transparent;color:#64748b;transition:all .2s;">📦 My Orders</button>
+        </div>
+
+        <!-- BUY TAB -->
+        <div id="gcBuyTab">
+            <!-- Provider toggle -->
+            <div style="display:flex;gap:8px;margin-bottom:14px;">
+                <button type="button" id="gcProvPrestmit" onclick="gcSwitchProvider('prestmit')"
+                    style="flex:1;padding:8px;border:1.5px solid #ea580c;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff7ed;color:#ea580c;">Prestmit</button>
+                <button type="button" id="gcProvZendit" onclick="gcSwitchProvider('zendit')"
+                    style="flex:1;padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#64748b;">Zendit (16k+ products)</button>
+            </div>
+
+            <!-- PRESTMIT -->
+            <div id="gcPrestmitSection">
+                <div class="form-group">
+                    <label>Select Gift Card</label>
+                    <select id="gcProductSelect" class="form-input" onchange="onGCProductChange()">
+                        <option value="">Loading gift cards…</option>
+                    </select>
+                </div>
+                <div id="gcDenomSection" style="display:none;">
+                    <div class="form-group">
+                        <label>Select Value</label>
+                        <div id="gcDenomGrid" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+                        <input type="number" id="gcRangeInput" class="form-input" placeholder="Enter value" style="margin-top:8px;display:none;" oninput="onGCRangeChange()">
+                    </div>
+                    <div id="gcCostRow" style="display:none;padding:10px 14px;background:#fff7ed;border-radius:8px;margin-bottom:4px;font-size:13px;">
+                        You pay: <strong id="gcCostAmt" style="color:#ea580c;float:right;"></strong>
+                    </div>
+                    <div class="form-group">
+                        <label>NGN Amount to Debit from Wallet</label>
+                        <input type="number" id="gcAmountNgn" class="form-input" placeholder="e.g. 16500">
+                    </div>
+                    <div class="form-group">
+                        <label>Recipient Email</label>
+                        <input type="email" id="gcEmail" class="form-input" placeholder="email@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Transaction PIN</label>
+                        <input type="password" id="gcPin" class="form-input" placeholder="Enter 4-digit PIN" maxlength="4" inputmode="numeric">
+                    </div>
+                </div>
+            </div>
+
+            <!-- ZENDIT -->
+            <div id="gcZenditSection" style="display:none;">
+                <div class="form-group">
+                    <label>Select Gift Card</label>
+                    <select id="gcZenditSelect" class="form-input" onchange="onZenditProductChange()">
+                        <option value="">Loading gift cards…</option>
+                    </select>
+                </div>
+                <div id="gcZenditDenomSection" style="display:none;">
+                    <div class="form-group">
+                        <label>Select Value</label>
+                        <div id="gcZenditDenomGrid" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+                        <input type="number" id="gcZenditRangeInput" class="form-input" placeholder="Enter value" style="margin-top:8px;display:none;">
+                    </div>
+                    <div class="form-group">
+                        <label>NGN Amount to Debit from Wallet</label>
+                        <input type="number" id="gcZenditAmountNgn" class="form-input" placeholder="e.g. 16500">
+                    </div>
+                    <div class="form-group">
+                        <label>Recipient Email</label>
+                        <input type="email" id="gcZenditEmail" class="form-input" placeholder="email@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Transaction PIN</label>
+                        <input type="password" id="gcZenditPin" class="form-input" placeholder="Enter 4-digit PIN" maxlength="4" inputmode="numeric">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ORDERS TAB -->
+        <div id="gcOrdersTab" style="display:none;">
+            <div id="gcOrdersList" style="display:flex;flex-direction:column;gap:8px;">
+                <div style="text-align:center;padding:24px 0;color:#94a3b8;font-size:13px;">
+                    <div style="width:28px;height:28px;border:3px solid #e2e8f0;border-top-color:#ea580c;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 10px;"></div>
+                    Loading orders…
+                </div>
+            </div>
+        </div>
+    `, `
+        <button onclick="closeModal()" class="btn-secondary">Cancel</button>
+        <button id="gcSubmitBtn" onclick="submitGiftCard()" class="btn-primary">Purchase</button>
+    `);
+    gcLoadProducts();
+}
+
+function gcSwitchTab(tab) {
+    const ACTIVE   = 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:#ea580c;color:#fff;transition:all .2s;';
+    const INACTIVE = 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:transparent;color:#64748b;transition:all .2s;';
+    document.getElementById('gcTabBuy').style.cssText    = tab === 'buy'    ? ACTIVE : INACTIVE;
+    document.getElementById('gcTabOrders').style.cssText = tab === 'orders' ? ACTIVE : INACTIVE;
+    document.getElementById('gcBuyTab').style.display    = tab === 'buy'    ? '' : 'none';
+    document.getElementById('gcOrdersTab').style.display = tab === 'orders' ? '' : 'none';
+    const btn = document.getElementById('gcSubmitBtn');
+    if (btn) btn.style.display = tab === 'buy' ? '' : 'none';
+    if (tab === 'orders') _loadGCOrders();
+}
+
+function gcSwitchProvider(provider) {
+    gcActiveProvider = provider;
+    document.getElementById('gcProvPrestmit').style.cssText = provider === 'prestmit'
+        ? 'flex:1;padding:8px;border:1.5px solid #ea580c;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff7ed;color:#ea580c;'
+        : 'flex:1;padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#64748b;';
+    document.getElementById('gcProvZendit').style.cssText = provider === 'zendit'
+        ? 'flex:1;padding:8px;border:1.5px solid #ea580c;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff7ed;color:#ea580c;'
+        : 'flex:1;padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#64748b;';
+    document.getElementById('gcPrestmitSection').style.display = provider === 'prestmit' ? '' : 'none';
+    document.getElementById('gcZenditSection').style.display   = provider === 'zendit'   ? '' : 'none';
+    if (provider === 'zendit' && !gcZenditProducts.length) gcLoadZenditProducts();
+}
+
+// Prestmit
+async function gcLoadProducts() {
+    const sel = document.getElementById('gcProductSelect');
+    if (!sel) return;
+    try {
+        const res = await api.getGiftCardProducts();
+        gcProducts = res.data?.products || res.data || res.products || res.items || [];
+        if (!Array.isArray(gcProducts)) gcProducts = [];
+        if (!gcProducts.length) { sel.innerHTML = '<option value="">No products available</option>'; return; }
+        sel.innerHTML = '<option value="">— Choose a gift card —</option>' +
+            gcProducts.map((p, i) => `<option value="${i}">${p.name || p.productName || p.title || 'Gift Card'}</option>`).join('');
+    } catch (e) {
+        sel.innerHTML = '<option value="">Failed to load — click to retry</option>';
+        sel.onclick = () => { sel.onclick = null; sel.innerHTML = '<option value="">Loading…</option>'; gcLoadProducts(); };
+    }
+}
+
+function onGCProductChange() {
+    const idx     = document.getElementById('gcProductSelect')?.value;
+    const section = document.getElementById('gcDenomSection');
+    const costRow = document.getElementById('gcCostRow');
+    const denomGrid  = document.getElementById('gcDenomGrid');
+    const rangeInput = document.getElementById('gcRangeInput');
+    gcSelectedDenom = null;
+    if (costRow) costRow.style.display = 'none';
+    if (!idx || idx === '') { if (section) section.style.display = 'none'; return; }
+    const product = gcProducts[parseInt(idx)];
+    if (!product) return;
+    if (section) section.style.display = 'block';
+    const denoms   = product.denominations || product.fixedValues || product.values || [];
+    const currency = product.currency || 'USD';
+    if (denoms.length) {
+        if (rangeInput) rangeInput.style.display = 'none';
+        if (denomGrid) denomGrid.innerHTML = denoms.map(d => {
+            const val = typeof d === 'object' ? (d.value || d.amount) : d;
+            const ngn = typeof d === 'object' ? (d.priceNgn || d.amountNgn || null) : null;
+            return `<button type="button" onclick="gcSelectDenom(${val}, ${ngn || 'null'}, this)"
+                style="padding:8px 16px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;">
+                ${currency} ${val}${ngn ? `<div style="font-size:10px;font-weight:400;color:#94a3b8;margin-top:1px;">≈ ₦${Number(ngn).toLocaleString()}</div>` : ''}
+            </button>`;
+        }).join('');
+    } else {
+        if (denomGrid) denomGrid.innerHTML = '';
+        if (rangeInput) {
+            rangeInput.style.display = '';
+            const min = product.minValue || 1, max = product.maxValue || 9999;
+            rangeInput.placeholder = `${currency} ${min} – ${max}`;
+            rangeInput.min = min; rangeInput.max = max;
+        }
+    }
+}
+
+function gcSelectDenom(val, priceNgn, btn) {
+    gcSelectedDenom = { val, priceNgn };
+    document.querySelectorAll('#gcDenomGrid button').forEach(b => { b.style.borderColor = '#e2e8f0'; b.style.background = '#fff'; });
+    btn.style.borderColor = '#ea580c'; btn.style.background = '#fff7ed';
+    const row = document.getElementById('gcCostRow');
+    const amt = document.getElementById('gcCostAmt');
+    if (row) row.style.display = 'block';
+    if (amt) amt.textContent = priceNgn ? `₦${Number(priceNgn).toLocaleString()}` : 'Enter NGN amount below';
+    if (priceNgn) {
+        const ngnInput = document.getElementById('gcAmountNgn');
+        if (ngnInput) ngnInput.value = priceNgn;
+    }
+}
+
+function onGCRangeChange() {
+    const v = parseFloat(document.getElementById('gcRangeInput')?.value) || 0;
+    gcSelectedDenom = v > 0 ? { val: v, priceNgn: null } : null;
+}
+
+async function submitGiftCard() {
+    if (gcActiveProvider === 'zendit') { submitZenditGiftCard(); return; }
+    const idx       = document.getElementById('gcProductSelect')?.value;
+    if (!idx || idx === '')            { showInlineError('Please select a gift card'); return; }
+    if (!gcSelectedDenom)              { showInlineError('Please select a value'); return; }
+    const amountNgn = parseFloat(document.getElementById('gcAmountNgn')?.value);
+    const email     = document.getElementById('gcEmail')?.value.trim();
+    const pin       = document.getElementById('gcPin')?.value.trim();
+    if (!amountNgn || amountNgn <= 0)      { showInlineError('Please enter the NGN amount to debit'); return; }
+    if (!email || !email.includes('@'))    { showInlineError('Please enter a valid recipient email'); return; }
+    if (!pin || !/^\d{4}$/.test(pin))      { showInlineError('Please enter your 4-digit transaction PIN'); return; }
+    setSubmitLoading(true, 'Processing…');
+    try {
+        const product   = gcProducts[parseInt(idx)];
+        const productId = product.id || product.productId || product._id;
+        await api.purchaseGiftCard({ productId, value: gcSelectedDenom.val, quantity: 1, amountNgn, recipientEmail: email, transactionPin: pin });
+        closeModal();
+        const name = product.name || product.productName || 'Gift card';
+        setTimeout(() => showSuccess(`${name} purchased! Your card will be sent to ${email}.`), 300);
+    } catch (e) {
+        setSubmitLoading(false, '', 'Purchase');
+        showInlineError(e.message || 'Purchase failed. Please try again.');
+    }
+}
+
+// Zendit
+async function gcLoadZenditProducts() {
+    const sel = document.getElementById('gcZenditSelect');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Loading…</option>';
+    try {
+        const res = await api.getZenditProducts(50, 0, 'NG');
+        gcZenditProducts = res.data?.products || res.data || res.products || (Array.isArray(res) ? res : []);
+        if (!gcZenditProducts.length) { sel.innerHTML = '<option value="">No products available</option>'; return; }
+        sel.innerHTML = '<option value="">— Choose a gift card —</option>' +
+            gcZenditProducts.map((p, i) => `<option value="${i}">${p.title || p.name || p.offerId || 'Gift Card'}</option>`).join('');
+    } catch (e) {
+        sel.innerHTML = '<option value="">Failed to load — click to retry</option>';
+        sel.onclick = () => { sel.onclick = null; gcLoadZenditProducts(); };
+    }
+}
+
+function onZenditProductChange() {
+    const idx     = document.getElementById('gcZenditSelect')?.value;
+    const section = document.getElementById('gcZenditDenomSection');
+    const denomGrid  = document.getElementById('gcZenditDenomGrid');
+    const rangeInput = document.getElementById('gcZenditRangeInput');
+    gcZenditSelectedDenom = null;
+    if (!idx || idx === '') { if (section) section.style.display = 'none'; return; }
+    const product = gcZenditProducts[parseInt(idx)];
+    if (!product) return;
+    if (section) section.style.display = 'block';
+
+    const pricingType = (product.pricingType || product.denominationType || '').toUpperCase();
+    const denoms = product.denominations || product.fixedValues || [];
+    const currency = product.currency || 'USD';
+
+    if (pricingType === 'FIXED' && denoms.length) {
+        if (rangeInput) rangeInput.style.display = 'none';
+        denomGrid.innerHTML = denoms.map(d => {
+            const val = typeof d === 'object' ? (d.value || d.price) : d;
+            return `<button type="button" onclick="selectZenditDenom(${val}, this)"
+                style="padding:8px 16px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;">
+                ${currency} ${val}
+            </button>`;
+        }).join('');
+    } else {
+        denomGrid.innerHTML = '';
+        if (rangeInput) {
+            rangeInput.style.display = '';
+            const min = product.minValue || product.minPrice || 1;
+            const max = product.maxValue || product.maxPrice || 9999;
+            rangeInput.placeholder = `${currency} ${min} – ${max}`;
+            rangeInput.min = min; rangeInput.max = max;
+            rangeInput.oninput = () => {
+                const v = parseFloat(rangeInput.value) || 0;
+                gcZenditSelectedDenom = v > 0 ? v : null;
+            };
+        }
+    }
+}
+
+function selectZenditDenom(val, btn) {
+    gcZenditSelectedDenom = val;
+    document.querySelectorAll('#gcZenditDenomGrid button').forEach(b => { b.style.borderColor = '#e2e8f0'; b.style.background = '#fff'; });
+    btn.style.borderColor = '#ea580c'; btn.style.background = '#fff7ed';
+}
+
+async function submitZenditGiftCard() {
+    const idx = document.getElementById('gcZenditSelect')?.value;
+    if (!idx || idx === '')              { showInlineError('Please select a gift card'); return; }
+    if (!gcZenditSelectedDenom)         { showInlineError('Please select a value'); return; }
+    const amountNgn = parseFloat(document.getElementById('gcZenditAmountNgn')?.value);
+    const email     = document.getElementById('gcZenditEmail')?.value.trim();
+    const pin       = document.getElementById('gcZenditPin')?.value.trim();
+    if (!amountNgn || amountNgn <= 0)   { showInlineError('Please enter the NGN amount to debit'); return; }
+    if (!email || !email.includes('@')) { showInlineError('Please enter a valid recipient email'); return; }
+    if (!pin || !/^\d{4}$/.test(pin))   { showInlineError('Please enter your 4-digit transaction PIN'); return; }
+    setSubmitLoading(true, 'Processing…');
+    try {
+        const product = gcZenditProducts[parseInt(idx)];
+        const offerId = product.offerId || product.id || product._id;
+        const pricingType = (product.pricingType || product.denominationType || '').toUpperCase();
+        const body = {
+            offerId,
+            quantity: 1,
+            amountNgn,
+            transactionPin: pin,
+            fields: [{ key: 'email address', value: email }]
+        };
+        // Only include value for RANGE type
+        if (pricingType !== 'FIXED') body.value = gcZenditSelectedDenom;
+        await api.purchaseZenditGiftCard(body);
+        closeModal();
+        const name = product.title || product.name || 'Gift card';
+        setTimeout(() => showSuccess(`${name} purchased! Your card will be sent to ${email}.`), 300);
+    } catch (e) {
+        setSubmitLoading(false, '', 'Purchase');
+        showInlineError(e.message || 'Purchase failed. Please try again.');
+    }
+}
+
+// Orders
+async function _loadGCOrders() {
+    const container = document.getElementById('gcOrdersList');
+    if (!container) return;
+    try {
+        const res  = await api.getGiftCardOrders(1, 20);
+        const orders = res.data?.orders || res.data || (Array.isArray(res) ? res : []);
+        if (!orders.length) { container.innerHTML = '<div style="text-align:center;padding:20px 0;color:#94a3b8;font-size:13px;">No orders found.</div>'; return; }
+        container.innerHTML = orders.map(o => {
+            const status      = (o.status || '').toLowerCase();
+            const statusColor = status === 'successful' || status === 'success' || status === 'completed' ? '#16a34a' : status === 'failed' ? '#dc2626' : '#f59e0b';
+            const date = o.createdAt || o.orderDate || '';
+            return `<div style="padding:12px 14px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <div style="font-size:13px;font-weight:600;color:#0f172a;">${o.productName || o.name || o.giftCardName || '—'}</div>
+                        <div style="font-size:11px;color:#94a3b8;margin-top:2px;">${o.recipientEmail || o.email || '—'} · ${date ? new Date(date).toLocaleDateString() : ''}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:13px;font-weight:700;color:#0f172a;">₦${Number(o.amountNgn || o.amount || 0).toLocaleString()}</div>
+                        <div style="font-size:11px;font-weight:600;color:${statusColor};margin-top:2px;">${status || 'pending'}</div>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    } catch (e) {
+        container.innerHTML = `<div style="text-align:center;padding:16px;color:#dc2626;font-size:13px;">${e.message || 'Failed to load orders.'}</div>`;
+    }
+}
+
+
+// ============================================================
+// 6. KIRANI
+// ============================================================
+let selectedKiraniPlan = null;
+
+function showKiraniModal() {
+    selectedKiraniPlan = null;
+    showModal('Kirani', `
+        <div class="form-group">
+            <label>Phone Number</label>
+            <input type="tel" id="kiraniPhone" class="form-input" placeholder="e.g. 08012345678" maxlength="11">
+        </div>
+        <div class="form-group">
+            <label>Select Plan</label>
+            <div id="kiraniPlans" style="display:flex;flex-direction:column;gap:8px;">
+                <div style="text-align:center;padding:24px 0;color:#94a3b8;font-size:13px;">
+                    <div style="width:28px;height:28px;border:3px solid #e2e8f0;border-top-color:#0891b2;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 10px;"></div>
+                    Loading plans…
+                </div>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Transaction PIN</label>
+            <input type="password" id="kiraniPin" class="form-input" placeholder="Enter 4-digit PIN" maxlength="4" inputmode="numeric">
+        </div>
+    `, `
+        <button onclick="closeModal()" class="btn-secondary">Cancel</button>
+        <button onclick="submitKirani()" class="btn-primary">Purchase</button>
+    `);
+    loadKiraniPlans();
+}
+
+async function loadKiraniPlans() {
+    try {
+        const res   = await api.getKiraniPlans();
+        const plans = res.data?.plans || res.data || res.plans || [];
+        const container = document.getElementById('kiraniPlans');
+        if (!container) return;
+        if (!plans.length) { container.innerHTML = '<div style="text-align:center;padding:16px;color:#94a3b8;font-size:13px;">No plans available</div>'; return; }
+        container.innerHTML = plans.map(p =>
+            `<div onclick="selectKiraniPlanItem('${p.id || p._id}', this)" data-planid="${p.id || p._id}"
+                style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;
+                       border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;background:#fff;transition:all .2s;">
+                <div>
+                    <div style="font-size:13px;font-weight:600;color:#0f172a;">${p.name || p.title || p.description || 'Plan ' + (p.id || p._id)}</div>
+                    <div style="font-size:11px;color:#94a3b8;margin-top:2px;">${p.validity || p.duration || '30 Days'}</div>
+                </div>
+                <div style="font-size:14px;font-weight:700;color:#0891b2;">₦${Number(p.price || p.amount || 0).toLocaleString()}</div>
+            </div>`
+        ).join('');
+    } catch (e) {
+        const container = document.getElementById('kiraniPlans');
+        if (container) container.innerHTML = `<div style="text-align:center;padding:16px;color:#dc2626;font-size:13px;">Failed to load plans. Please try again.</div>`;
+    }
+}
+
+function selectKiraniPlanItem(id, el) {
+    selectedKiraniPlan = id;
+    document.querySelectorAll('#kiraniPlans > div').forEach(d => { d.style.borderColor = '#e2e8f0'; d.style.background = '#fff'; });
+    el.style.borderColor = '#0891b2'; el.style.background = '#ecfeff';
+}
+
+async function submitKirani() {
+    const phone = document.getElementById('kiraniPhone')?.value.trim();
+    const pin   = document.getElementById('kiraniPin')?.value.trim();
+    if (!phone || phone.length < 10)  { showInlineError('Please enter a valid phone number'); return; }
+    if (!selectedKiraniPlan)          { showInlineError('Please select a plan'); return; }
+    if (!pin || pin.length < 4)       { showInlineError('Please enter your 4-digit PIN'); return; }
+    setSubmitLoading(true, 'Processing…');
+    try {
+        await api.purchaseKirani(phone, String(selectedKiraniPlan), pin);
+        closeModal();
+        setTimeout(() => showSuccess('Kirani plan purchased successfully!'), 300);
+    } catch (e) {
+        setSubmitLoading(false, '', 'Purchase');
+        showInlineError(e.message || 'Transaction failed. Please try again.');
+    }
+}
+
+
+// ============================================================
+// 7. FLIGHTS
+// ============================================================
+const FLT_DOM_AIRPORTS = [
+    { iata: 'LOS', name: 'Lagos (Murtala Muhammed)' },
+    { iata: 'ABV', name: 'Abuja (Nnamdi Azikiwe)' },
+    { iata: 'KAN', name: 'Kano (Mallam Aminu)' },
+    { iata: 'PHC', name: 'Port Harcourt' },
+    { iata: 'ENE', name: 'Enugu (Akanu Ibiam)' },
+    { iata: 'QOW', name: 'Owerri (Sam Mbakwe)' },
+    { iata: 'ILR', name: 'Ilorin' },
+    { iata: 'BNI', name: 'Benin City' },
+    { iata: 'YOL', name: 'Yola' },
+    { iata: 'SKO', name: 'Sokoto' },
+    { iata: 'MIU', name: 'Maiduguri' },
+];
+
+let fltMode          = 'domestic';
+let fltSearchResults = [];
+let fltSelectedOffer = null;
+let fltCurrentStep   = 1;
+
+function showFlightsModal() {
+    fltMode = 'domestic'; fltSearchResults = []; fltSelectedOffer = null; fltCurrentStep = 1;
+    const today   = new Date().toISOString().split('T')[0];
+    const domOpts = FLT_DOM_AIRPORTS.map(a => `<option value="${a.iata}">${a.iata} – ${a.name}</option>`).join('');
+    showModal('Flight Tickets', `
+        <div style="display:flex;gap:0;background:#f1f5f9;border-radius:10px;padding:4px;margin-bottom:12px;">
+            <button type="button" id="fltMainTabSearch" onclick="fltMainTab('search')"
+                style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:#0284c7;color:#fff;transition:all .2s;">✈️ Search</button>
+            <button type="button" id="fltMainTabBookings" onclick="fltMainTab('bookings')"
+                style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:transparent;color:#64748b;transition:all .2s;">📋 My Bookings</button>
+        </div>
+
+        <!-- SEARCH + BOOK FLOW -->
+        <div id="fltSearchSection">
+            <div id="fltStep1">
+                <div style="display:flex;gap:0;background:#f1f5f9;border-radius:10px;padding:4px;margin-bottom:16px;">
+                    <button type="button" id="fltTabDom" onclick="fltSwitchMode('domestic')"
+                        style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:#0284c7;color:#fff;transition:all .2s;">🇳🇬 Domestic</button>
+                    <button type="button" id="fltTabIntl" onclick="fltSwitchMode('international')"
+                        style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:transparent;color:#64748b;transition:all .2s;">🌍 International</button>
+                </div>
+                <div id="fltDomFields">
+                    <div class="form-group"><label>From</label>
+                        <select id="fltDomFrom" class="form-input"><option value="">— Select departure —</option>${domOpts}</select></div>
+                    <div class="form-group"><label>To</label>
+                        <select id="fltDomTo" class="form-input"><option value="">— Select destination —</option>${domOpts}</select></div>
+                </div>
+                <div id="fltIntlFields" style="display:none;">
+                    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:#1d4ed8;">
+                        Enter IATA airport codes (e.g. LOS, LHR, JFK, DXB)
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div class="form-group" style="margin:0;"><label>From (IATA)</label>
+                            <input type="text" id="fltIntlFrom" class="form-input" placeholder="e.g. LOS" maxlength="3" style="text-transform:uppercase;"></div>
+                        <div class="form-group" style="margin:0;"><label>To (IATA)</label>
+                            <input type="text" id="fltIntlTo" class="form-input" placeholder="e.g. LHR" maxlength="3" style="text-transform:uppercase;"></div>
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+                    <div class="form-group" style="margin:0;"><label>Departure Date</label>
+                        <input type="date" id="fltDate" class="form-input" min="${today}"></div>
+                    <div class="form-group" style="margin:0;"><label>Adults</label>
+                        <select id="fltAdults" class="form-input">
+                            ${[1,2,3,4,5,6].map(n=>`<option value="${n}">${n} Adult${n>1?'s':''}</option>`).join('')}
+                        </select></div>
+                </div>
+                <div class="form-group" style="margin-top:12px;"><label>Cabin Class</label>
+                    <select id="fltCabin" class="form-input">
+                        <option value="economy">Economy</option>
+                        <option value="premium_economy">Premium Economy</option>
+                        <option value="business">Business</option>
+                        <option value="first">First Class</option>
+                    </select></div>
+            </div>
+            <div id="fltStep2" style="display:none;">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;cursor:pointer;" onclick="fltBackToSearch()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+                    <span style="font-size:13px;color:#64748b;">New search</span>
+                </div>
+                <div id="fltResultsBox"></div>
+                <div id="fltPassengerSection" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid #f1f5f9;">
+                    <div id="fltBookingSummary" style="padding:10px 14px;background:#f0f9ff;border-radius:8px;margin-bottom:14px;font-size:13px;"></div>
+                    <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:10px;">Passenger Details</div>
+                    <div id="fltDomPax">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">First Name</label><input type="text" id="paxFirst" class="form-input" placeholder="First name"></div>
+                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Last Name</label><input type="text" id="paxLast" class="form-input" placeholder="Last name"></div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Date of Birth</label><input type="date" id="paxDob" class="form-input"></div>
+                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Gender</label><select id="paxGender" class="form-input"><option value="male">Male</option><option value="female">Female</option></select></div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Email</label><input type="email" id="paxEmail" class="form-input" placeholder="email@example.com"></div>
+                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Phone</label><input type="tel" id="paxPhone" class="form-input" placeholder="+2348012345678"></div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Document Type</label>
+                                <select id="paxDocType" class="form-input"><option value="passport">Passport</option><option value="nin">NIN</option><option value="drivers_license">Driver's License</option></select></div>
+                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Document No.</label><input type="text" id="paxDocNum" class="form-input" placeholder="Document number"></div>
+                        </div>
+                    </div>
+                    <div id="fltIntlPax" style="display:none;">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Given Name</label><input type="text" id="paxGiven" class="form-input" placeholder="Given name"></div>
+                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Family Name</label><input type="text" id="paxFamily" class="form-input" placeholder="Family name"></div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px;">
+                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Title</label>
+                                <select id="paxTitle" class="form-input"><option value="mr">Mr</option><option value="ms">Ms</option><option value="mrs">Mrs</option><option value="dr">Dr</option></select></div>
+                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Gender</label>
+                                <select id="paxGenderIntl" class="form-input"><option value="male">Male</option><option value="female">Female</option></select></div>
+                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Date of Birth</label><input type="date" id="paxDobIntl" class="form-input"></div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Email</label><input type="email" id="paxEmailIntl" class="form-input" placeholder="email@example.com"></div>
+                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Phone</label><input type="tel" id="paxPhoneIntl" class="form-input" placeholder="+2348012345678"></div>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top:12px;"><label>Transaction PIN</label>
+                        <input type="password" id="fltPin" class="form-input" placeholder="Enter 4-digit PIN" maxlength="4" inputmode="numeric"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MY BOOKINGS -->
+        <div id="fltBookingsSection" style="display:none;">
+            <div id="fltBookingsList" style="display:flex;flex-direction:column;gap:8px;">
+                <div style="text-align:center;padding:24px 0;color:#94a3b8;font-size:13px;">
+                    <div style="width:28px;height:28px;border:3px solid #e2e8f0;border-top-color:#0284c7;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 10px;"></div>
+                    Loading bookings…
+                </div>
+            </div>
+        </div>
+    `, `
+        <button onclick="closeModal()" class="btn-secondary">Cancel</button>
+        <button id="fltPrimaryBtn" onclick="fltHandlePrimary()" class="btn-primary">Search Flights</button>
     `);
 }
 
-function switchFlightType(type) {
-    flightType = type;
-    document.getElementById('fltTabOne').style.cssText = type === 'oneway'
-        ? 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:#0284c7;color:#fff;transition:all .2s;'
-        : 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:transparent;color:#64748b;transition:all .2s;';
-    document.getElementById('fltTabReturn').style.cssText = type === 'return'
-        ? 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:#0284c7;color:#fff;transition:all .2s;'
-        : 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:transparent;color:#64748b;transition:all .2s;';
-    document.getElementById('fltReturnGroup').style.display = type === 'return' ? 'block' : 'none';
+function fltMainTab(tab) {
+    const ACTIVE   = 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:#0284c7;color:#fff;transition:all .2s;';
+    const INACTIVE = 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:transparent;color:#64748b;transition:all .2s;';
+    document.getElementById('fltMainTabSearch').style.cssText   = tab === 'search'   ? ACTIVE : INACTIVE;
+    document.getElementById('fltMainTabBookings').style.cssText = tab === 'bookings' ? ACTIVE : INACTIVE;
+    document.getElementById('fltSearchSection').style.display   = tab === 'search'   ? '' : 'none';
+    document.getElementById('fltBookingsSection').style.display = tab === 'bookings' ? '' : 'none';
+    const btn = document.getElementById('fltPrimaryBtn');
+    if (btn) btn.style.display = tab === 'search' ? '' : 'none';
+    if (tab === 'bookings') _loadFltBookings();
 }
 
-async function searchFlights() {
-    const from = document.getElementById('fltFrom').value;
-    const to = document.getElementById('fltTo').value;
-    const depart = document.getElementById('fltDepart').value;
-    if (!from) { showInlineError('Please select departure airport'); return; }
-    if (!to) { showInlineError('Please select arrival airport'); return; }
-    if (from === to) { showInlineError('Departure and arrival cannot be the same'); return; }
-    if (!depart) { showInlineError('Please select a departure date'); return; }
-
-    const btn = document.querySelector('#modalFooter .btn-primary');
-    if (btn) { btn.disabled = true; btn.textContent = 'Searching...'; }
-
-    const resultsDiv = document.getElementById('fltResults');
-    resultsDiv.innerHTML = `<div style="text-align:center;padding:24px 0;">
-        <div style="width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:#0284c7;
-                    border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 10px;"></div>
-        <p style="color:#64748b;font-size:13px;">Searching available flights...</p>
-    </div>`;
-
-    await new Promise(r => setTimeout(r, 1800));
-
-    const mockFlights = [
-        { airline: 'Air Peace', code: 'P4 781', depart: '07:00', arrive: '08:15', price: 28500, seats: 4 },
-        { airline: 'Ibom Air', code: 'IB 205', depart: '10:30', arrive: '11:45', price: 32000, seats: 2 },
-        { airline: 'Dana Air', code: 'DA 414', depart: '14:00', arrive: '15:15', price: 25000, seats: 6 },
-    ];
-
-    resultsDiv.innerHTML = `
-        <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:10px;">
-            ${mockFlights.length} flights found · ${from.split(' ')[0]} → ${to.split(' ')[0]}
-        </div>
-        ${mockFlights.map((f, i) => `
-            <div onclick="selectFlight(${i}, this)" data-fi="${i}"
-                style="padding:14px;border:1.5px solid #e2e8f0;border-radius:12px;
-                       margin-bottom:8px;cursor:pointer;background:#fff;transition:all .2s;">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+async function _loadFltBookings() {
+    const container = document.getElementById('fltBookingsList');
+    if (!container) return;
+    try {
+        const [domRes, intlRes] = await Promise.allSettled([
+            api.getDomesticBookings(),
+            api.getIntlBookings(20, 0)
+        ]);
+        const domBookings  = domRes.status  === 'fulfilled' ? (domRes.value.data?.bookings  || domRes.value.data  || []) : [];
+        const intlBookings = intlRes.status === 'fulfilled' ? (intlRes.value.data?.bookings || intlRes.value.data || []) : [];
+        const all = [
+            ...domBookings.map(b => ({ ...b, _type: 'domestic' })),
+            ...intlBookings.map(b => ({ ...b, _type: 'international' }))
+        ];
+        if (!all.length) { container.innerHTML = '<div style="text-align:center;padding:20px 0;color:#94a3b8;font-size:13px;">No bookings found.</div>'; return; }
+        container.innerHTML = all.map(b => {
+            const status = (b.status || b.bookingStatus || '').toLowerCase();
+            const statusColor = status === 'confirmed' || status === 'success' ? '#16a34a' : status === 'cancelled' ? '#dc2626' : '#f59e0b';
+            const route = b.origin && b.destination ? `${b.origin} → ${b.destination}` : (b.flightNumber || b.orderId || '—');
+            const date  = b.departureDate || b.departing_at || b.createdAt || '';
+            return `<div style="padding:12px 14px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
                     <div>
-                        <div style="font-size:13px;font-weight:700;color:#0f172a;">${f.airline}</div>
-                        <div style="font-size:11px;color:#94a3b8;">${f.code}</div>
+                        <div style="font-size:13px;font-weight:600;color:#0f172a;">${route}</div>
+                        <div style="font-size:11px;color:#94a3b8;margin-top:2px;">${b._type} · ${date ? new Date(date).toLocaleDateString() : ''}</div>
                     </div>
-                    <div style="font-size:15px;font-weight:700;color:#0284c7;">₦${f.price.toLocaleString()}</div>
-                </div>
-                <div style="display:flex;align-items:center;gap:12px;margin-top:10px;">
-                    <div style="text-align:center;">
-                        <div style="font-size:15px;font-weight:700;">${f.depart}</div>
-                        <div style="font-size:10px;color:#94a3b8;">${from.split(' ')[0]}</div>
-                    </div>
-                    <div style="flex:1;text-align:center;">
-                        <div style="height:2px;background:#e2e8f0;position:relative;">
-                            <span style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);font-size:14px;">✈️</span>
-                        </div>
-                        <div style="font-size:10px;color:#94a3b8;margin-top:6px;">1h 15m</div>
-                    </div>
-                    <div style="text-align:center;">
-                        <div style="font-size:15px;font-weight:700;">${f.arrive}</div>
-                        <div style="font-size:10px;color:#94a3b8;">${to.split(' ')[0]}</div>
+                    <div style="text-align:right;">
+                        <div style="font-size:13px;font-weight:700;color:#0f172a;">₦${Number(b.amountNgn || b.totalAmount || b.amount || 0).toLocaleString()}</div>
+                        <div style="font-size:11px;font-weight:600;color:${statusColor};margin-top:2px;">${status || 'pending'}</div>
                     </div>
                 </div>
-                <div style="font-size:11px;color:#16a34a;margin-top:8px;">${f.seats} seats left</div>
-            </div>`).join('')}`;
-
-    window._mockFlights = mockFlights;
-    if (btn) { btn.disabled = false; btn.textContent = 'Book Selected'; btn.onclick = bookFlight; }
+            </div>`;
+        }).join('');
+    } catch (e) {
+        container.innerHTML = `<div style="text-align:center;padding:16px;color:#dc2626;font-size:13px;">${e.message || 'Failed to load bookings.'}</div>`;
+    }
 }
 
-let selectedFlightIndex = null;
+function fltSwitchMode(mode) {
+    fltMode = mode;
+    const ACTIVE   = 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:#0284c7;color:#fff;transition:all .2s;';
+    const INACTIVE = 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:transparent;color:#64748b;transition:all .2s;';
+    document.getElementById('fltTabDom').style.cssText  = mode === 'domestic'      ? ACTIVE : INACTIVE;
+    document.getElementById('fltTabIntl').style.cssText = mode === 'international' ? ACTIVE : INACTIVE;
+    document.getElementById('fltDomFields').style.display  = mode === 'domestic'      ? '' : 'none';
+    document.getElementById('fltIntlFields').style.display = mode === 'international' ? '' : 'none';
+}
 
-function selectFlight(i, el) {
-    selectedFlightIndex = i;
-    document.querySelectorAll('[data-fi]').forEach(d => {
-        d.style.borderColor = '#e2e8f0'; d.style.background = '#fff';
-    });
+function fltHandlePrimary() {
+    if (fltCurrentStep === 1) fltDoSearch(); else fltDoBook();
+}
+
+function fltBackToSearch() {
+    fltCurrentStep = 1; fltSelectedOffer = null;
+    document.getElementById('fltStep1').style.display = '';
+    document.getElementById('fltStep2').style.display = 'none';
+    document.getElementById('fltPassengerSection').style.display = 'none';
+    const btn = document.getElementById('fltPrimaryBtn');
+    if (btn) { btn.textContent = 'Search Flights'; btn.disabled = false; }
+}
+
+async function fltDoSearch() {
+    let origin, destination;
+    if (fltMode === 'domestic') {
+        origin      = document.getElementById('fltDomFrom')?.value;
+        destination = document.getElementById('fltDomTo')?.value;
+        if (!origin)      { showInlineError('Please select a departure airport'); return; }
+        if (!destination) { showInlineError('Please select a destination airport'); return; }
+    } else {
+        origin      = (document.getElementById('fltIntlFrom')?.value || '').trim().toUpperCase();
+        destination = (document.getElementById('fltIntlTo')?.value   || '').trim().toUpperCase();
+        if (!origin      || origin.length      !== 3) { showInlineError('Please enter a valid 3-letter departure code'); return; }
+        if (!destination || destination.length !== 3) { showInlineError('Please enter a valid 3-letter destination code'); return; }
+    }
+    if (origin === destination) { showInlineError('Departure and destination cannot be the same'); return; }
+    const departureDate = document.getElementById('fltDate')?.value;
+    if (!departureDate) { showInlineError('Please select a departure date'); return; }
+    const adults     = parseInt(document.getElementById('fltAdults')?.value) || 1;
+    const cabinClass = document.getElementById('fltCabin')?.value || 'economy';
+
+    document.getElementById('fltStep1').style.display = 'none';
+    document.getElementById('fltStep2').style.display = '';
+    document.getElementById('fltPassengerSection').style.display = 'none';
+    document.getElementById('fltResultsBox').innerHTML = `<div style="text-align:center;padding:32px 0;color:#94a3b8;font-size:13px;">
+        <div style="width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:#0284c7;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px;"></div>
+        Searching ${origin} → ${destination}…
+    </div>`;
+    const btn = document.getElementById('fltPrimaryBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Searching…'; }
+    try {
+        const payload = { origin, destination, departureDate, returnDate: null, adults, children: 0, infants: 0, cabinClass };
+        const res = fltMode === 'domestic'
+            ? await api.searchDomesticFlights(payload)
+            : await api.searchInternationalFlights(payload);
+        fltSearchResults = res.data?.offers || res.data?.flights || res.offers || res.flights || (Array.isArray(res.data) ? res.data : []);
+        if (!Array.isArray(fltSearchResults)) fltSearchResults = [];
+        fltCurrentStep = 2;
+        fltRenderResults(origin, destination);
+        if (btn) { btn.textContent = 'Confirm Booking'; btn.disabled = true; }
+    } catch (e) {
+        document.getElementById('fltResultsBox').innerHTML = `<div style="text-align:center;padding:24px 0;">
+            <p style="color:#dc2626;font-size:13px;margin-bottom:12px;">${e.message || 'Search failed. Please try again.'}</p>
+            <button onclick="fltBackToSearch()" style="padding:8px 20px;background:#0284c7;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;">← Back to Search</button>
+        </div>`;
+        if (btn) { btn.textContent = 'Confirm Booking'; btn.disabled = true; }
+    }
+}
+
+function fltRenderResults(origin, destination) {
+    const box = document.getElementById('fltResultsBox');
+    if (!box) return;
+    if (!fltSearchResults.length) {
+        box.innerHTML = `<div style="text-align:center;padding:32px 0;font-size:13px;color:#64748b;">
+            No flights found for ${origin} → ${destination}.<br>
+            <span style="cursor:pointer;color:#0284c7;" onclick="fltBackToSearch()">Try different dates.</span>
+        </div>`;
+        return;
+    }
+    box.innerHTML = `<div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:10px;">
+        ${fltSearchResults.length} flight${fltSearchResults.length !== 1 ? 's' : ''} · ${origin} → ${destination}
+    </div>` + fltSearchResults.slice(0, 10).map((f, i) => {
+        const airline  = f.owner?.name || f.airline || f.airlineName || 'Airline';
+        const price    = f.total_amount || f.priceNgn || f.price || f.amount || 0;
+        const segments = f.slices?.[0]?.segments || [];
+        const seg0 = segments[0], segN = segments[segments.length - 1];
+        const d0 = seg0?.departing_at || f.departureTime || '';
+        const dN = segN?.arriving_at  || f.arrivalTime   || '';
+        const dTime = d0 ? new Date(d0).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+        const aTime = dN ? new Date(dN).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+        const stops = Math.max(0, segments.length - 1);
+        return `<div onclick="fltSelectOffer(${i}, this)" data-fltidx="${i}"
+            style="padding:14px;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;background:#fff;margin-bottom:8px;transition:all .2s;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+                <span style="font-size:13px;font-weight:700;color:#0f172a;">${airline}</span>
+                <span style="font-size:15px;font-weight:700;color:#0284c7;">₦${Number(price).toLocaleString()}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <div style="text-align:center;min-width:48px;">
+                    <div style="font-size:14px;font-weight:700;">${dTime}</div>
+                    <div style="font-size:10px;color:#94a3b8;">${origin}</div>
+                </div>
+                <div style="flex:1;text-align:center;">
+                    <div style="border-top:1.5px solid #e2e8f0;position:relative;">
+                        <span style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-size:12px;">✈️</span>
+                    </div>
+                    ${stops > 0 ? `<div style="font-size:10px;color:#f59e0b;margin-top:4px;">${stops} stop${stops > 1 ? 's' : ''}</div>` : ''}
+                </div>
+                <div style="text-align:center;min-width:48px;">
+                    <div style="font-size:14px;font-weight:700;">${aTime}</div>
+                    <div style="font-size:10px;color:#94a3b8;">${destination}</div>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function fltSelectOffer(i, el) {
+    fltSelectedOffer = fltSearchResults[i];
+    document.querySelectorAll('[data-fltidx]').forEach(d => { d.style.borderColor = '#e2e8f0'; d.style.background = '#fff'; });
     el.style.borderColor = '#0284c7'; el.style.background = '#f0f9ff';
+    const price   = fltSelectedOffer.total_amount || fltSelectedOffer.priceNgn || fltSelectedOffer.price || 0;
+    const airline = fltSelectedOffer.owner?.name  || fltSelectedOffer.airline  || 'Selected Flight';
+    const summary = document.getElementById('fltBookingSummary');
+    if (summary) summary.innerHTML = `<strong>${airline}</strong><span style="float:right;font-weight:700;color:#0284c7;">₦${Number(price).toLocaleString()}</span>`;
+    document.getElementById('fltDomPax').style.display  = fltMode === 'domestic'      ? '' : 'none';
+    document.getElementById('fltIntlPax').style.display = fltMode === 'international' ? '' : 'none';
+    document.getElementById('fltPassengerSection').style.display = '';
+    const btn = document.getElementById('fltPrimaryBtn');
+    if (btn) { btn.disabled = false; btn.textContent = 'Confirm Booking'; }
 }
 
-async function bookFlight() {
-    if (selectedFlightIndex === null) { showInlineError('Please select a flight first'); return; }
-    const flight = window._mockFlights[selectedFlightIndex];
-    setSubmitLoading(true, 'Booking...');
-    await new Promise(r => setTimeout(r, 2000));
-    closeModal();
-    setTimeout(() => showSuccess(`${flight.airline} flight booked! Your e-ticket will be sent to your email.`), 300);
+async function fltDoBook() {
+    if (!fltSelectedOffer) { showInlineError('Please select a flight first'); return; }
+    const pin = document.getElementById('fltPin')?.value.trim();
+    if (!pin || !/^\d{4}$/.test(pin)) { showInlineError('Please enter your 4-digit transaction PIN'); return; }
+    const price   = fltSelectedOffer.total_amount || fltSelectedOffer.priceNgn || fltSelectedOffer.price || 0;
+    const offerId = fltSelectedOffer.id || fltSelectedOffer.offerId || fltSelectedOffer._id;
+    setSubmitLoading(true, 'Booking…');
+    try {
+        if (fltMode === 'domestic') {
+            const firstName = document.getElementById('paxFirst')?.value.trim();
+            const lastName  = document.getElementById('paxLast')?.value.trim();
+            const dob       = document.getElementById('paxDob')?.value;
+            const gender    = document.getElementById('paxGender')?.value;
+            const email     = document.getElementById('paxEmail')?.value.trim();
+            const phone     = document.getElementById('paxPhone')?.value.trim();
+            const docType   = document.getElementById('paxDocType')?.value;
+            const docNum    = document.getElementById('paxDocNum')?.value.trim();
+            if (!firstName || !lastName) { setSubmitLoading(false,'','Confirm Booking'); showInlineError('Please enter passenger name'); return; }
+            if (!dob)                    { setSubmitLoading(false,'','Confirm Booking'); showInlineError('Please enter date of birth'); return; }
+            if (!email || !email.includes('@')) { setSubmitLoading(false,'','Confirm Booking'); showInlineError('Please enter a valid email'); return; }
+            if (!phone)  { setSubmitLoading(false,'','Confirm Booking'); showInlineError('Please enter a phone number'); return; }
+            if (!docNum) { setSubmitLoading(false,'','Confirm Booking'); showInlineError('Please enter document number'); return; }
+            await api.bookDomesticFlight({
+                offerId, amountNgn: Number(price), contactEmail: email, contactPhone: phone, transactionPin: pin,
+                passengers: [{ firstName, lastName, dateOfBirth: dob, gender,
+                    title: gender === 'female' ? 'Ms' : 'Mr', email, phone, documentType: docType, documentNumber: docNum }]
+            });
+        } else {
+            const givenName  = document.getElementById('paxGiven')?.value.trim();
+            const familyName = document.getElementById('paxFamily')?.value.trim();
+            const title      = document.getElementById('paxTitle')?.value;
+            const gender     = document.getElementById('paxGenderIntl')?.value;
+            const dob        = document.getElementById('paxDobIntl')?.value;
+            const email      = document.getElementById('paxEmailIntl')?.value.trim();
+            const phone      = document.getElementById('paxPhoneIntl')?.value.trim();
+            const passengerId = fltSelectedOffer.passengers?.[0]?.id;
+            if (!givenName || !familyName) { setSubmitLoading(false,'','Confirm Booking'); showInlineError('Please enter passenger name'); return; }
+            if (!dob)  { setSubmitLoading(false,'','Confirm Booking'); showInlineError('Please enter date of birth'); return; }
+            if (!email || !email.includes('@')) { setSubmitLoading(false,'','Confirm Booking'); showInlineError('Please enter a valid email'); return; }
+            if (!phone) { setSubmitLoading(false,'','Confirm Booking'); showInlineError('Please enter phone number'); return; }
+            await api.bookInternationalFlight({
+                offerId, amountNgn: Number(price), transactionPin: pin,
+                passengers: [{ id: passengerId, given_name: givenName, family_name: familyName,
+                    born_on: dob, gender, title, email, phone_number: phone }],
+                services: []
+            });
+        }
+        closeModal();
+        setTimeout(() => showSuccess('Flight booked successfully! Your e-ticket will be sent to your email.'), 300);
+    } catch (e) {
+        setSubmitLoading(false, '', 'Confirm Booking');
+        showInlineError(e.message || 'Booking failed. Please try again.');
+    }
 }
