@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/style.css?v=20260604">
 </head>
 <body>
     <div id="sidebarOverlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -144,17 +144,38 @@
         </div>
     </div>
 
-    <script src="assets/js/config.js"></script>
-    <script src="assets/js/api.js"></script>
-    <script src="modals/native-modals.js"></script>
-    <script src="modals/extended-modals.js"></script>
+    <script src="assets/js/config.js?v=20260604"></script>
+    <script src="assets/js/api.js?v=20260604"></script>
+    <script src="modals/native-modals.js?v=20260604"></script>
+    <script src="modals/extended-modals.js?v=20260604"></script>
     <script>
         if (!api.getToken()) window.location.href = '../login.html';
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        if (user.firstName) {
-            document.getElementById('sidebarName').textContent = user.firstName;
-            document.getElementById('sidebarAvatar').textContent = (user.firstName[0] + (user.lastName?.[0] || '')).toUpperCase();
+
+        function getStoredUser() {
+            const raw = localStorage.getItem('user_data') ||
+                        sessionStorage.getItem('user_data') ||
+                        localStorage.getItem('user') ||
+                        '{}';
+            try {
+                return JSON.parse(raw) || {};
+            } catch (e) {
+                return {};
+            }
         }
+
+        function displaySidebarUser() {
+            const user = getStoredUser();
+            const fullName = user.fullName || user.name || '';
+            const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
+            const firstName = user.firstName || nameParts[0] || user.username || 'User';
+            const lastName = user.lastName || nameParts[1] || '';
+            const initials = (firstName[0] + (lastName[0] || '')).toUpperCase();
+
+            document.getElementById('sidebarName').textContent = firstName;
+            document.getElementById('sidebarAvatar').textContent = initials || 'U';
+        }
+
+        displaySidebarUser();
         lucide.createIcons();
         function toggleSidebar() {
             document.querySelector('.sidebar').classList.toggle('open');
@@ -167,6 +188,7 @@
         function logout() {
             localStorage.removeItem('user_token');
             localStorage.removeItem('user_data');
+            localStorage.removeItem('user');
             sessionStorage.removeItem('user_token');
             sessionStorage.removeItem('user_data');
             window.location.href = '../login.html';
