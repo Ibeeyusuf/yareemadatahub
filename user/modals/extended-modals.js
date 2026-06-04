@@ -743,15 +743,15 @@ async function showGiftCardsModal() {
 
         <!-- BUY TAB -->
         <div id="gcBuyTab">
-            <!-- Provider toggle -->
+            <!-- Catalog group toggle -->
             <div style="display:flex;gap:8px;margin-bottom:14px;">
                 <button type="button" id="gcProvPrestmit" onclick="gcSwitchProvider('prestmit')"
-                    style="flex:1;padding:8px;border:1.5px solid #ea580c;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff7ed;color:#ea580c;">Prestmit</button>
+                    style="flex:1;padding:8px;border:1.5px solid #ea580c;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff7ed;color:#ea580c;">Popular Cards</button>
                 <button type="button" id="gcProvZendit" onclick="gcSwitchProvider('zendit')"
-                    style="flex:1;padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#64748b;">Zendit (16k+ products)</button>
+                    style="flex:1;padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#64748b;">More Cards</button>
             </div>
 
-            <!-- PRESTMIT -->
+            <!-- POPULAR CARDS -->
             <div id="gcPrestmitSection">
                 <div class="form-group">
                     <label>Select Gift Card</label>
@@ -783,7 +783,7 @@ async function showGiftCardsModal() {
                 </div>
             </div>
 
-            <!-- ZENDIT -->
+            <!-- MORE CARDS -->
             <div id="gcZenditSection" style="display:none;">
                 <div class="form-group">
                     <label>Select Gift Card</label>
