@@ -165,10 +165,10 @@ class YareemaUserAPI {
         });
     }
 
-    async resetPassword(token, password) {
-        return await this.request(`/api/v1/auth/reset-password/${token}`, {
+    async resetPassword(email, otp, password) {
+        return await this.request('/api/v1/auth/reset-password', {
             method: 'POST',
-            body: { password },
+            body: { email, otp, password },
             skipAuth: true
         });
     }
