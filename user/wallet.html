@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wallet</title>
+    <link rel="icon" type="image/svg+xml" href="assets/images/logo.png">
+    <link rel="icon" type="image/png" href="assets/images/logo.png">
+    <link rel="apple-touch-icon" href="assets/images/logo.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/"></script>
@@ -56,6 +59,9 @@
             cursor: pointer;
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="assets/js/receipt-card.js"></script>
 </head>
 <body>
     
@@ -322,7 +328,7 @@
                                 <div class="activity-amount" style="color:${amtColor};${isFailed ? 'text-decoration:line-through;' : ''}">${prefix}₦${Math.abs(x.amount).toLocaleString('en-US', {minimumFractionDigits:2})}</div>
                                 <div style="display: flex; gap: 6px; justify-content: flex-end; margin-top: 4px;">
                                     ${statusDot ? statusDot : ''}
-                                    ${(transactionId && !isFailed && txStatus !== 'FAILED') ? `<button onclick="showReceipt('${transactionId}', event)" style="background:#eef2ff; border:none; border-radius:20px; padding:3px 8px; font-size:10px; font-weight:500; cursor:pointer; color:#1e3d5c; display:flex; align-items:center; gap:3px;"><i data-lucide="file-text" style="width:10px;height:10px;"></i> Receipt</button>` : ''}
+                                    ${(transactionId && !isFailed && txStatus !== 'FAILED') ? `<button onclick="openReceiptCard(${JSON.stringify(t).replace(/"/g,'&quot;')}, event)" style="background:#eef2ff; border:none; border-radius:20px; padding:3px 8px; font-size:10px; font-weight:500; cursor:pointer; color:#1e3d5c; display:flex; align-items:center; gap:3px;"><i data-lucide="file-text" style="width:10px;height:10px;"></i> Receipt</button>` : ''}
                                 </div>
                             </div>
                         </div>`;

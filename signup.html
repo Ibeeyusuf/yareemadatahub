@@ -341,7 +341,11 @@
                                 <i data-lucide="eye" class="w-5 h-5"></i>
                             </button>
                         </div>
-                        <p class="text-xs text-slate-500 mt-1">Minimum 8 characters</p>
+                        <ul id="password-rules" class="text-xs mt-2 space-y-1">
+                            <li data-rule="length" data-label="At least 8 characters" class="text-slate-400">• At least 8 characters</li>
+                            <li data-rule="upper" data-label="One uppercase letter (A–Z)" class="text-slate-400">• One uppercase letter (A–Z)</li>
+                            <li data-rule="number" data-label="One number (0–9)" class="text-slate-400">• One number (0–9)</li>
+                        </ul>
                         <div id="password-error" class="error-message"></div>
                     </div>
 
@@ -555,8 +559,8 @@
             if (!passwordValue) {
                 showError('password-error', 'Please create a password');
                 hasError = true;
-            } else if (passwordValue.length < 8) {
-                showError('password-error', 'Password must be at least 8 characters');
+            } else if (!yrIsStrongPassword(passwordValue)) {
+                showError('password-error', 'Password must be at least 8 characters and include an uppercase letter and a number');
                 hasError = true;
             }
             
@@ -630,6 +634,20 @@ const userData = {
 
         // Initialize button state
         updateSignupButton();
+    
+        // --- Password strength (8+ chars, 1 uppercase, 1 number) ---
+        function yrCheckPassword(v){return {length:(v||'').length>=8, upper:/[A-Z]/.test(v||''), number:/[0-9]/.test(v||'')};}
+        function yrIsStrongPassword(v){var r=yrCheckPassword(v);return r.length&&r.upper&&r.number;}
+        function yrUpdatePwRules(v){
+            var r=yrCheckPassword(v);
+            document.querySelectorAll('#password-rules li').forEach(function(li){
+                var ok=r[li.dataset.rule];
+                li.className='text-xs '+(ok?'text-green-600 font-medium':'text-slate-400');
+                li.textContent=(ok?'✓ ':'• ')+li.dataset.label;
+            });
+        }
+        (function(){var p=document.getElementById('password');if(p){p.addEventListener('input',function(){yrUpdatePwRules(p.value);});}})();
+
     </script>
 </body>
 </html>

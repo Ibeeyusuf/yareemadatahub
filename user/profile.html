@@ -316,7 +316,8 @@
                 if (u.isEmailVerified) {
                     badges.push(`<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 12px;background:#dcfce7;border-radius:16px;font-size:12px;font-weight:600;color:#16a34a;"><i data-lucide="check-circle" style="width:14px;height:14px;"></i>Email Verified</span>`);
                 } else {
-                    badges.push(`<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 12px;background:#fef3c7;border-radius:16px;font-size:12px;font-weight:600;color:#92400e;"><i data-lucide="alert-circle" style="width:14px;height:14px;"></i>Email Unverified</span>`);
+                    window._userEmail = u.email;
+                    badges.push(`<span onclick="verifyEmailNow()" title="Tap to verify your email" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:4px 12px;background:#fef3c7;border-radius:16px;font-size:12px;font-weight:600;color:#92400e;"><i data-lucide="alert-circle" style="width:14px;height:14px;"></i>Verify Email</span>`);
                 }
                 if (u.isPhoneVerified) {
                     badges.push(`<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 12px;background:#dcfce7;border-radius:16px;font-size:12px;font-weight:600;color:#16a34a;"><i data-lucide="check-circle" style="width:14px;height:14px;"></i>Phone Verified</span>`);
@@ -517,9 +518,18 @@
                 html: `
                     <input type="password" id="cp_current" class="swal2-input" placeholder="Current Password">
                     <input type="password" id="cp_new" class="swal2-input" placeholder="New Password">
+                    <ul id="cp_rules" style="list-style:none;padding:0;margin:6px 4px 0;text-align:left;font-size:12px;">
+                        <li data-rule="length" data-label="At least 8 characters" style="color:#94a3b8;">• At least 8 characters</li>
+                        <li data-rule="upper" data-label="One uppercase letter (A–Z)" style="color:#94a3b8;">• One uppercase letter (A–Z)</li>
+                        <li data-rule="number" data-label="One number (0–9)" style="color:#94a3b8;">• One number (0–9)</li>
+                    </ul>
                     <input type="password" id="cp_confirm" class="swal2-input" placeholder="Confirm New Password">
                 `,
                 confirmButtonText: 'Change Password',
+                didOpen: () => {
+                    const p = document.getElementById('cp_new');
+                    if (p) p.addEventListener('input', () => yrUpdatePwRules(p.value, 'cp_rules'));
+                },
                 confirmButtonColor: '#1e3d5c',
                 showCancelButton: true,
                 cancelButtonText: 'Cancel',
@@ -536,8 +546,8 @@
                         Swal.showValidationMessage('Passwords do not match');
                         return false;
                     }
-                    if (newPwd.length < 6) {
-                        Swal.showValidationMessage('Password must be at least 6 characters');
+                    if (!yrIsStrongPassword(newPwd)) {
+                        Swal.showValidationMessage('Password must be at least 8 characters and include an uppercase letter and a number');
                         return false;
                     }
                     
@@ -609,6 +619,42 @@
             });
         }
 
+        // Email verification — sends the OTP then opens the verify page
+        async function verifyEmailNow() {
+            const email = window._userEmail
+                || (JSON.parse(localStorage.getItem('user_data') || '{}').email);
+            if (!email) {
+                Swal.fire({ icon: 'error', title: 'No email found', text: 'Please refresh the page and try again.' });
+                return;
+            }
+            const confirmed = await Swal.fire({
+                title: 'Verify your email?',
+                text: `We'll send a 6-digit code to ${email}.`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Send code',
+                confirmButtonColor: '#1e3d5c'
+            });
+            if (!confirmed.isConfirmed) return;
+
+            Swal.fire({ title: 'Sending code...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            try {
+                await api.resendOTP(email, 'email');
+                // verify-otp.html reads the address from this key
+                sessionStorage.setItem('pending_verification_email', email);
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Code sent!',
+                    text: 'Check your email for the verification code.',
+                    timer: 1500,
+                    showConfirmButton: false,
+                    didClose: () => { window.location.href = '../verify-otp.html'; }
+                });
+            } catch (err) {
+                Swal.fire({ icon: 'error', title: 'Could not send code', text: (err && err.message) || 'Please try again in a moment.' });
+            }
+        }
+
         // Logout
         function logout() {
             Swal.fire({
@@ -647,6 +693,20 @@
             sessionStorage.removeItem('user_data');
             window.location.href = '../login.html';
         }
+    
+        // --- Password strength (8+ chars, 1 uppercase, 1 number) ---
+        function yrCheckPassword(v){return {length:(v||'').length>=8, upper:/[A-Z]/.test(v||''), number:/[0-9]/.test(v||'')};}
+        function yrIsStrongPassword(v){var r=yrCheckPassword(v);return r.length&&r.upper&&r.number;}
+        function yrUpdatePwRules(v, containerId){
+            var r=yrCheckPassword(v);
+            document.querySelectorAll('#'+(containerId||'password-rules')+' li').forEach(function(li){
+                var ok=r[li.dataset.rule];
+                li.style.color = ok ? '#16a34a' : '#94a3b8';
+                li.style.fontWeight = ok ? '600' : '400';
+                li.textContent=(ok?'✓ ':'• ')+li.dataset.label;
+            });
+        }
+
     </script>
 </body>
 </html>
