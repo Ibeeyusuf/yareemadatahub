@@ -79,24 +79,35 @@ if (!response.ok) {
     // 401 Unauthorized
     if (response.status === 401) {
         console.error('401 Unauthorized:', data);
-        
-        // Check if this is a login/authentication request (skipAuth = true)
+
+        // Login attempt (skipAuth) -> surface the real credential error
         if (options.skipAuth) {
-            // This is a login attempt - return the actual error message
             const errorMessage = data.message || data.error || 'Invalid email or password';
             console.error('Login failed:', errorMessage);
             throw new Error(errorMessage);
         }
-        
-        // For non-login endpoints, handle session expiration
+
+        const rawMsg = ((data && (data.message || data.error)) || '').toString();
+        const msg = rawMsg.toLowerCase();
+
+        // A 401 means one of two very different things:
+        //   (a) the token is genuinely expired/invalid -> the session is over, log out
+        //   (b) a VALID token that just lacks permission for this endpoint/role
+        //       (e.g. a newly-assigned staff hitting an admin-only route) -> do NOT log out
+        // Only auto-logout when the message clearly points to an expired/invalid token.
+        const isTokenExpiry = /expire|jwt|malformed|invalid token|invalid or expired|signature|token (is )?(missing|invalid|expired)|no token|missing token|not authenticated|please log ?in again/.test(msg);
+
+        // Non-critical calls (e.g. sidebar profile refresh) opt out of any logout.
+        if (options.skipAuthRedirect || !isTokenExpiry) {
+            throw new Error(rawMsg || 'You do not have permission to perform this action.');
+        }
+
+        // Genuine session expiry -> clear stored auth and redirect to login
         console.error('Session expired - Logging out');
         this.clearToken();
-        
-        // Clear stored user data
         localStorage.removeItem('admin_user');
         localStorage.removeItem('admin_refresh_token');
-        
-        // Prevent redirect loop - only redirect if not already on login page
+
         const currentPage = window.location.pathname.split('/').pop();
         if (currentPage !== 'login.html' && currentPage !== 'index.html') {
             if (typeof Swal !== 'undefined') {
@@ -106,9 +117,7 @@ if (!response.ok) {
                     text: 'Your session has expired. Please login again.',
                     confirmButtonText: 'Go to Login',
                     allowOutsideClick: false
-                }).then(() => {
-                    window.location.href = 'login.html';
-                });
+                }).then(() => { window.location.href = 'login.html'; });
             } else {
                 alert('Session expired. Please login again.');
                 window.location.href = 'login.html';
@@ -167,8 +176,8 @@ if (!response.ok) {
 
     // ==================== PROFILE & ACCOUNT ====================
 
-    async getProfile() {
-        return await this.request('/api/v1/admin/profile');
+    async getProfile(options = {}) {
+        return await this.request('/api/v1/admin/profile', options);
     }
 
     async updateProfile(data) {

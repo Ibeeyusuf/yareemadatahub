@@ -2,9 +2,6 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" type="image/svg+xml" href="assets/images/logo.png">
-    <link rel="icon" type="image/png" href="assets/images/logo.png">
-    <link rel="apple-touch-icon" href="assets/images/logo.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Yareema Data Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -319,7 +316,11 @@
                         const type = (announcement.type || 'info').toLowerCase();
                         const typeIcon = { info:'ℹ️', alert:'🚨', update:'🔄', promo:'📢', warning:'⚠️' }[type] || '📣';
                         const msg = announcement.message || announcement.body || announcement.content || '';
-                        const bannerImageUrl = announcement.bannerImageUrl || announcement.bannerImage || announcement.imageUrl || announcement.image || '';
+                        const bannerImageUrl = announcement.bannerImageUrl || announcement.bannerImage || announcement.imageUrl || announcement.image
+                            || announcement.bannerUrl || announcement.banner || announcement.picture || announcement.photo || announcement.media || announcement.mediaUrl
+                            || announcement.attachmentUrl || announcement.attachment || announcement.fileUrl || announcement.thumbnail
+                            || (announcement.data && (announcement.data.imageUrl || announcement.data.image || announcement.data.bannerImageUrl || announcement.data.banner))
+                            || (announcement.meta && (announcement.meta.imageUrl || announcement.meta.image)) || '';
 
                         setTimeout(() => {
                             showModal(
