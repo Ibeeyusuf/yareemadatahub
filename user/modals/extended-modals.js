@@ -744,7 +744,7 @@ async function showGiftCardsModal() {
         <!-- BUY TAB -->
         <div id="gcBuyTab">
             <!-- Catalog group toggle -->
-            <div style="display:flex;gap:8px;margin-bottom:14px;">
+            <div style="display:none;gap:8px;margin-bottom:14px;">
                 <button type="button" id="gcProvPrestmit" onclick="gcSwitchProvider('prestmit')"
                     style="flex:1;padding:8px;border:1.5px solid #ea580c;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff7ed;color:#ea580c;">Popular Cards</button>
                 <button type="button" id="gcProvZendit" onclick="gcSwitchProvider('zendit')"
@@ -860,7 +860,10 @@ async function gcLoadProducts() {
     if (!sel) return;
     try {
         const res = await api.getGiftCardProducts();
-        gcProducts = res.data?.products || res.data || res.products || res.items || [];
+        gcProducts = res.data?.content || res.data?.products || res.data?.items
+                   || (Array.isArray(res.data) ? res.data : null)
+                   || res.content || res.products || res.items
+                   || (Array.isArray(res) ? res : []);
         if (!Array.isArray(gcProducts)) gcProducts = [];
         if (!gcProducts.length) { sel.innerHTML = '<option value="">No products available</option>'; return; }
         sel.innerHTML = '<option value="">— Choose a gift card —</option>' +
@@ -883,23 +886,30 @@ function onGCProductChange() {
     const product = gcProducts[parseInt(idx)];
     if (!product) return;
     if (section) section.style.display = 'block';
-    const denoms   = product.denominations || product.fixedValues || product.values || [];
-    const currency = product.currency || 'USD';
+    const denomType = (product.denominationType || '').toUpperCase();
+    const currency  = product.recipientCurrencyCode || product.currency || 'USD';
+    const senderMap = product.fixedRecipientToSenderDenominationsMap || {};
+    const senderCur = product.senderCurrencyCode || 'USD';
+    let denoms = product.fixedRecipientDenominations || product.denominations || product.fixedValues || product.values || [];
+    if (denomType === 'RANGE') denoms = [];
     if (denoms.length) {
         if (rangeInput) rangeInput.style.display = 'none';
         if (denomGrid) denomGrid.innerHTML = denoms.map(d => {
             const val = typeof d === 'object' ? (d.value || d.amount) : d;
             const ngn = typeof d === 'object' ? (d.priceNgn || d.amountNgn || null) : null;
+            const usd = senderMap[String(val)] != null ? senderMap[String(val)]
+                       : (senderMap[Number(val).toFixed(1)] != null ? senderMap[Number(val).toFixed(1)] : null);
+            const hint = ngn ? `≈ ₦${Number(ngn).toLocaleString()}` : (usd != null ? `≈ ${senderCur} ${usd}` : '');
             return `<button type="button" onclick="gcSelectDenom(${val}, ${ngn || 'null'}, this)"
                 style="padding:8px 16px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;">
-                ${currency} ${val}${ngn ? `<div style="font-size:10px;font-weight:400;color:#94a3b8;margin-top:1px;">≈ ₦${Number(ngn).toLocaleString()}</div>` : ''}
+                ${currency} ${val}${hint ? `<div style="font-size:10px;font-weight:400;color:#94a3b8;margin-top:1px;">${hint}</div>` : ''}
             </button>`;
         }).join('');
     } else {
         if (denomGrid) denomGrid.innerHTML = '';
         if (rangeInput) {
             rangeInput.style.display = '';
-            const min = product.minValue || 1, max = product.maxValue || 9999;
+            const min = product.minRecipientDenomination || product.minValue || 1, max = product.maxRecipientDenomination || product.maxValue || 9999;
             rangeInput.placeholder = `${currency} ${min} – ${max}`;
             rangeInput.min = min; rangeInput.max = max;
         }

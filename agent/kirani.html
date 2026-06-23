@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kirani Data - Yareema Agent Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{yareema:{primary:'#1E3D5C',secondary:'#16304a',dark:'#0f1f2e',success:'#10b981',warning:'#f59e0b',danger:'#ef4444'}}}}}</script>
+</head>
+<body class="text-slate-800 antialiased">
+<div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+<div class="w-full min-h-screen">
+    <div id="sidebarContainer"></div>
+    <main class="lg:ml-64 flex flex-col min-h-screen bg-slate-50">
+        <div id="headerContainer"></div>
+        <div class="p-4 lg:p-8 flex-1 overflow-y-auto space-y-6 max-w-2xl mx-auto w-full">
+
+            <div id="pageMsg" class="hidden p-4 rounded-xl text-sm font-medium"></div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div class="flex items-center gap-3 mb-1">
+                    <span class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:#ecfeff">
+                        <i data-lucide="wifi" class="w-5 h-5" style="color:#0891b2"></i>
+                    </span>
+                    <div>
+                        <h3 class="font-bold text-slate-900">Kirani Data</h3>
+                        <p class="text-sm text-slate-500">Buy Kirani data plans</p>
+                    </div>
+                </div>
+
+                <form onsubmit="submitOrder(event)" class="space-y-5 mt-5">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Phone Number</label>
+                        <input id="idField" type="tel" maxlength="11" placeholder="08012345678"
+                            class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Select Plan</label>
+                        <select id="planSel" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" disabled required>
+                            <option value="">Loading plans...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Transaction PIN</label>
+                        <input id="pinField" type="password" maxlength="4" placeholder="Enter 4-digit PIN"
+                            class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
+                    </div>
+                    <button type="submit" id="submitBtn"
+                        class="w-full py-4 text-white font-bold rounded-xl hover:opacity-90 transition-all text-base flex items-center justify-center gap-2"
+                        style="background:linear-gradient(135deg,#1E3D5C,#16304a)">
+                        <i data-lucide="wifi" class="w-5 h-5"></i>
+                        Buy Kirani Data
+                    </button>
+                </form>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+Auth.protectPage();
+fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();initSidebar();});
+fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('kirani');if(typeof initHeader==='function')initHeader();lucide.createIcons();});
+
+let _plans = [];
+
+function planLbl(p){ return p.planName || p.name || p.title || p.description || p.dataAmount || p.plan || 'Plan'; }
+function planAmt(p){ return p.sellingPrice || p.price || p.amount || p.planPrice || 0; }
+function planVal(p){ return p.validity || p.duration || p.period || ''; }
+function planIdOf(p){ return p._id || p.planCode || p.planId || p.id || p.code || ''; }
+
+async function loadPlans() {
+    const sel = document.getElementById('planSel');
+    try {
+        const res = await API.get('/telecom/kirani/plans');
+        _plans = res?.data?.content || res?.data?.plans || res?.data?.packages || res?.data || res?.plans || res?.packages || (Array.isArray(res) ? res : []);
+        if (!Array.isArray(_plans)) _plans = [];
+        if (!_plans.length) { sel.innerHTML = '<option value="">No plans available</option>'; sel.disabled = true; return; }
+        sel.disabled = false;
+        sel.innerHTML = '<option value="">Choose a plan</option>' + _plans.map((p, i) => {
+            const label = planLbl(p), price = planAmt(p), val = planVal(p);
+            return `<option value="${i}">${label}${val ? ' (' + val + ')' : ''} — ₦${Number(price).toLocaleString()}</option>`;
+        }).join('');
+    } catch (e) {
+        sel.innerHTML = '<option value="">Failed to load plans</option>'; sel.disabled = true;
+        showMsg('Failed to load plans. Please try again.', 'error');
+    }
+}
+
+async function submitOrder(e) {
+    e.preventDefault();
+    const idVal = document.getElementById('idField').value.trim();
+    const pi    = document.getElementById('planSel').value;
+    const pin   = document.getElementById('pinField').value.trim();
+    if (!idVal || !/^\d{11}$/.test(idVal)) { showMsg('Enter a valid 11-digit phone number','error'); return; }
+    if (pi === '' || !_plans.length) { showMsg('Please select a plan', 'error'); return; }
+    const plan  = _plans[+pi];
+    const rawId = String(planIdOf(plan)).replace(/\.0$/, '');
+    if (!rawId) { showMsg('Could not identify plan. Please try again.', 'error'); return; }
+    if (!pin || !/^\d{4}$/.test(pin)) { showMsg('Enter your 4-digit transaction PIN', 'error'); return; }
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></span>Processing...';
+    try {
+        await API.post('/telecom/kirani/purchase', { phone: idVal, planid: rawId, transactionPin: pin });
+        showMsg('Kirani data plan purchased successfully!', 'success');
+        document.getElementById('planSel').selectedIndex = 0;
+        document.getElementById('idField').value = '';
+        document.getElementById('pinField').value = '';
+    } catch (err) {
+        showMsg(err.message || 'Purchase failed. Please try again.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="wifi" class="w-5 h-5"></i> Buy Kirani Data';
+        lucide.createIcons();
+    }
+}
+
+function showMsg(msg, type) {
+    const el = document.getElementById('pageMsg');
+    el.className = 'p-4 rounded-xl text-sm font-medium ' + (type==='success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200');
+    el.textContent = msg; el.classList.remove('hidden');
+    if (type === 'success') setTimeout(() => el.classList.add('hidden'), 5000);
+    el.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+loadPlans();
+lucide.createIcons();
+</script>
+</body>
+</html>
