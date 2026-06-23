@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" type="image/svg+xml" href="assets/images/logo.png">
-    <link rel="apple-touch-icon" href="assets/images/logo.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wallet Management - Yareema Data Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body class="bg-gray-50">
@@ -99,7 +99,7 @@
                         </button>
                         <button id="export-wallets-btn" onclick="exportWallets()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-2">
                             <i data-lucide="download" class="w-4 h-4"></i>
-                            Export CSV
+                            Export
                         </button>
                     </div>
                 </div>
@@ -143,18 +143,52 @@
     <script src="assets/js/main.js"></script>
 
     <script>
+
+        // ---- PDF export helpers (client-side via jsPDF) ----
+        function pdfPrettify(k){ return String(k).replace(/[_-]/g,' ').replace(/([a-z])([A-Z])/g,'$1 $2').replace(/\b\w/g, function(c){ return c.toUpperCase(); }); }
+        function pdfCell(v){
+            if (v === null || v === undefined) return '';
+            if (typeof v === 'object') {
+                return (v.email || v.name || v.reference || v.phoneNumber ||
+                        (v.firstName ? (v.firstName + ' ' + (v.lastName||'')).trim() : '') ||
+                        JSON.stringify(v)).toString().slice(0, 40);
+            }
+            var s = String(v);
+            if (/^\d{4}-\d{2}-\d{2}T/.test(s)) { try { return new Date(s).toLocaleString(); } catch(e){} }
+            return s;
+        }
+        function pdfExtractRows(json){
+            var d = json;
+            if (d && !Array.isArray(d)) d = d.data || d.transactions || d.wallets || d.results || d.items || d.records || d.docs || [];
+            if (d && !Array.isArray(d) && typeof d === 'object') d = d.data || d.items || d.docs || [];
+            return Array.isArray(d) ? d : [];
+        }
+        function exportRowsToPdf(rows, title, filename, preferred){
+            if (!window.jspdf || !window.jspdf.jsPDF) { AdminUtils.showToast('PDF library failed to load. Check your connection.', 'error'); return; }
+            var jsPDF = window.jspdf.jsPDF;
+            var doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+            doc.setFontSize(16); doc.text(title, 40, 40);
+            doc.setFontSize(9); doc.setTextColor(120);
+            doc.text('Generated ' + new Date().toLocaleString() + '   |   ' + rows.length + ' record(s)', 40, 56);
+            doc.setTextColor(0);
+            if (!rows.length) { doc.setFontSize(11); doc.text('No records found for the selected filters.', 40, 90); doc.save(filename); return; }
+            var cols = (preferred || []).filter(function(c){ return rows.some(function(r){ return c in r; }); });
+            if (!cols.length) cols = Object.keys(rows[0]).slice(0, 8);
+            var head = [ cols.map(pdfPrettify) ];
+            var body = rows.map(function(r){ return cols.map(function(c){ return pdfCell(r[c]); }); });
+            doc.autoTable({ head: head, body: body, startY: 70,
+                styles: { fontSize: 8, cellPadding: 4, overflow: 'linebreak' },
+                headStyles: { fillColor: [5,150,105], textColor: 255 },
+                alternateRowStyles: { fillColor: [245,247,250] },
+                margin: { left: 40, right: 40 } });
+            doc.save(filename);
+        }
+
         async function exportWallets() {
             const { value: formValues } = await Swal.fire({
                 title: '<i data-lucide="download"></i> Export Wallets',
                 html: `
                     <div class="text-left space-y-4 mt-2">
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Format</label>
-                            <select id="exp-format" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                                <option value="csv">CSV</option>
-                                <option value="json">JSON</option>
-                            </select>
-                        </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Wallet Status</label>
                             <select id="exp-locked" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
@@ -176,14 +210,14 @@
                     </div>
                 `,
                 showCancelButton: true,
-                confirmButtonText: 'Download Export',
+                confirmButtonText: 'Export PDF',
                 confirmButtonColor: '#059669',
                 cancelButtonColor: '#6b7280',
                 focusConfirm: false,
                 customClass: { popup: 'rounded-xl' },
                 preConfirm: () => {
                     return {
-                        format: document.getElementById('exp-format').value,
+                        format: 'pdf',
                         locked: document.getElementById('exp-locked').value,
                         minBalance: document.getElementById('exp-min').value,
                         maxBalance: document.getElementById('exp-max').value,
@@ -207,7 +241,8 @@
 
                 // Build query params exactly like: /api/v1/admin/wallets/export?format=csv&minBalance=0&maxBalance=1000000&locked=false
                 const params = new URLSearchParams();
-                params.append('format', formValues.format);
+                const wantPdf = formValues.format === 'pdf';
+                params.append('format', wantPdf ? 'json' : formValues.format);
                 if (formValues.minBalance !== '') params.append('minBalance', formValues.minBalance);
                 if (formValues.maxBalance !== '')  params.append('maxBalance', formValues.maxBalance);
                 if (formValues.locked !== '')       params.append('locked', formValues.locked);
@@ -228,17 +263,23 @@
                     throw new Error(errText || `Export failed (${response.status})`);
                 }
 
-                const blob = await response.blob();
-                const objectUrl = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = objectUrl;
-                a.download = `wallets_export_${new Date().toISOString().split('T')[0]}.${formValues.format}`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(objectUrl);
-
-                AdminUtils.showToast('Wallets exported successfully!', 'success');
+                if (wantPdf) {
+                    const json = await response.json();
+                    const rows = pdfExtractRows(json);
+                    exportRowsToPdf(rows, 'Wallets Report', `wallets_export_${new Date().toISOString().split('T')[0]}.pdf`, ['user','email','phoneNumber','balance','locked','createdAt','reference']);
+                    AdminUtils.showToast('Wallets exported as PDF!', 'success');
+                } else {
+                    const blob = await response.blob();
+                    const objectUrl = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = objectUrl;
+                    a.download = `wallets_export_${new Date().toISOString().split('T')[0]}.${formValues.format}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(objectUrl);
+                    AdminUtils.showToast('Wallets exported successfully!', 'success');
+                }
             } catch (error) {
                 console.error('Export error:', error);
                 AdminUtils.showToast(error.message || 'Export failed. Please try again.', 'error');

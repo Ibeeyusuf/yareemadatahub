@@ -90,16 +90,26 @@ if (!response.ok) {
         const rawMsg = ((data && (data.message || data.error)) || '').toString();
         const msg = rawMsg.toLowerCase();
 
-        // A 401 means one of two very different things:
-        //   (a) the token is genuinely expired/invalid -> the session is over, log out
-        //   (b) a VALID token that just lacks permission for this endpoint/role
-        //       (e.g. a newly-assigned staff hitting an admin-only route) -> do NOT log out
-        // Only auto-logout when the message clearly points to an expired/invalid token.
-        const isTokenExpiry = /expire|jwt|malformed|invalid token|invalid or expired|signature|token (is )?(missing|invalid|expired)|no token|missing token|not authenticated|please log ?in again/.test(msg);
+        // A 401 is ambiguous: it can mean an expired/invalid token (session over)
+        // OR a perfectly valid token that just lacks permission for this endpoint/role
+        // (e.g. a newly-assigned staff hitting an admin-only route). We must NOT log a
+        // staff member out in the second case.
+        //
+        // Key insight: a token CANNOT genuinely expire a few seconds after login. So if
+        // the 401 happens while the token is still fresh, it is a permission problem, not
+        // an expired session -> do not log out.
+        var issuedAt = parseInt(localStorage.getItem('admin_token_issued_at') || '0', 10);
+        var tokenAgeMs = issuedAt ? (Date.now() - issuedAt) : Infinity;
+        var FRESH_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+        var tokenIsFresh = tokenAgeMs < FRESH_WINDOW_MS;
+        var looksLikeExpiry = /expire|jwt|malformed|invalid token|invalid or expired|signature|token (is )?(missing|invalid|expired)|no token|missing token/.test(msg);
 
-        // Non-critical calls (e.g. sidebar profile refresh) opt out of any logout.
-        if (options.skipAuthRedirect || !isTokenExpiry) {
-            throw new Error(rawMsg || 'You do not have permission to perform this action.');
+        // Do NOT log out when: caller opted out (non-critical call), OR token is fresh
+        // (so this is a permission/role issue), OR the message does not clearly indicate
+        // an expired/invalid token. In those cases just throw so the page can show a
+        // normal error instead of bouncing the user to login.
+        if (options.skipAuthRedirect || tokenIsFresh || !looksLikeExpiry) {
+            throw new Error(rawMsg || 'You do not have permission to access this resource.');
         }
 
         // Genuine session expiry -> clear stored auth and redirect to login
@@ -107,6 +117,7 @@ if (!response.ok) {
         this.clearToken();
         localStorage.removeItem('admin_user');
         localStorage.removeItem('admin_refresh_token');
+        localStorage.removeItem('admin_token_issued_at');
 
         const currentPage = window.location.pathname.split('/').pop();
         if (currentPage !== 'login.html' && currentPage !== 'index.html') {
@@ -227,6 +238,7 @@ if (!response.ok) {
             if (token) {
                 localStorage.setItem('admin_token', token);
                 sessionStorage.setItem('admin_token', token);
+                localStorage.setItem('admin_token_issued_at', String(Date.now()));
                 this.token = token;
                 
                 if (refreshToken) {
@@ -278,6 +290,7 @@ if (!response.ok) {
         if (token) {
             localStorage.setItem('admin_token', token);
             sessionStorage.setItem('admin_token', token);
+            localStorage.setItem('admin_token_issued_at', String(Date.now()));
             this.token = token;
             if (refreshToken) localStorage.setItem('admin_refresh_token', refreshToken);
             if (user && Object.keys(user).length > 0) localStorage.setItem('admin_user', JSON.stringify(user));
