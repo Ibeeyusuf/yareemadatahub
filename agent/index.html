@@ -2,9 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" type="image/svg+xml" href="assets/images/logo.png">
-    <link rel="icon" type="image/png" href="assets/images/logo.png">
-    <link rel="apple-touch-icon" href="assets/images/logo.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yareema Data Hub - Agent Login</title>
     <link href="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.css" rel="stylesheet">
@@ -310,41 +307,34 @@
 
         // Forgot password
         document.getElementById('forgot-password').addEventListener('click', async () => {
-            const email = prompt('Enter your email address:');
-            if (email && email.trim()) {
-                const trimmedEmail = email.trim();
-                
-                // Validate email
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!emailRegex.test(trimmedEmail)) {
-                    if (typeof UI !== 'undefined' && UI.showToast) {
-                        UI.showToast('Please enter a valid email address', 'error');
-                    } else {
-                        alert('Please enter a valid email address');
-                    }
-                    return;
+            if (typeof Swal === 'undefined') {
+                const fb = prompt('Enter your email address:');
+                if (fb && fb.trim()) { const r = await Auth.forgotPassword(fb.trim()); if (r.success) window.location.href = 'forgot-password.html?email=' + encodeURIComponent(fb.trim()); }
+                return;
+            }
+            const { value: email } = await Swal.fire({
+                title: 'Forgot Password',
+                text: 'Enter your account email and we will send you a reset OTP.',
+                input: 'email',
+                inputPlaceholder: 'you@example.com',
+                showCancelButton: true,
+                confirmButtonText: 'Send OTP',
+                confirmButtonColor: '#1e3d5c',
+                cancelButtonText: 'Cancel',
+                cancelButtonColor: '#64748b',
+                inputValidator: (v) => {
+                    if (!v || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())) return 'Please enter a valid email address';
                 }
-                
-                // Show loading toast
-                if (typeof UI !== 'undefined' && UI.showToast) {
-                    UI.showToast('Sending OTP...', 'info');
-                }
-                
-                const result = await Auth.forgotPassword(trimmedEmail);
-                
-                if (result.success) {
-                    if (typeof UI !== 'undefined' && UI.showToast) {
-                        UI.showToast(result.message, 'success');
-                    }
-                    // Redirect to forgot password page
-                    window.location.href = 'forgot-password.html?email=' + encodeURIComponent(trimmedEmail);
-                } else {
-                    if (typeof UI !== 'undefined' && UI.showToast) {
-                        UI.showToast(result.message, 'error');
-                    } else {
-                        alert(result.message);
-                    }
-                }
+            });
+            if (!email) return;
+            const trimmedEmail = email.trim();
+            Swal.fire({ title: 'Sending OTP…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            const result = await Auth.forgotPassword(trimmedEmail);
+            if (result.success) {
+                await Swal.fire({ icon: 'success', title: 'OTP Sent', text: result.message || 'Check your email for the reset code.', confirmButtonColor: '#1e3d5c' });
+                window.location.href = 'forgot-password.html?email=' + encodeURIComponent(trimmedEmail);
+            } else {
+                Swal.fire({ icon: 'error', title: 'Failed', text: result.message || 'Could not send OTP. Please try again.', confirmButtonColor: '#1e3d5c' });
             }
         });
     </script>

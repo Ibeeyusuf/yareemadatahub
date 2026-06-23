@@ -1,3 +1,13 @@
+/* Ensure SweetAlert2 is available across all agent pages */
+(function () {
+    if (typeof Swal === 'undefined' && !document.getElementById('swal-cdn')) {
+        var s = document.createElement('script');
+        s.id = 'swal-cdn';
+        s.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
+        (document.head || document.documentElement).appendChild(s);
+    }
+})();
+
 const Auth = {
     
     isLoggedIn() {
@@ -133,7 +143,8 @@ const Auth = {
                 return {
                     success: true,
                     message: response.message || 'OTP verified successfully',
-                    data: response.data
+                    data: response.data,
+                    token: response.token || (response.data && response.data.token) || response.resetToken
                 };
             }
             
@@ -149,7 +160,7 @@ const Auth = {
     
     async resetPassword(token, newPassword) {
         try {
-            const response = await API.post(API_CONFIG.ENDPOINTS.AUTH_RESET_PASSWORD.replace(':token', token), {
+            const response = await API.post(API_CONFIG.ENDPOINTS.AUTH_RESET_PASSWORD + '/' + encodeURIComponent(token), {
                 password: newPassword
             });
             
@@ -535,7 +546,18 @@ const AgentProfile = {
 };
 
 function handleLogout() {
-    if (confirm('Are you sure you want to logout?')) {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Logout?',
+            text: 'Are you sure you want to logout?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Logout',
+            confirmButtonColor: '#1e3d5c',
+            cancelButtonText: 'Cancel',
+            cancelButtonColor: '#64748b'
+        }).then(function (r) { if (r.isConfirmed) Auth.logout(); });
+    } else if (confirm('Are you sure you want to logout?')) {
         Auth.logout();
     }
 }

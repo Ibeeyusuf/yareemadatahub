@@ -79,46 +79,24 @@ if (!response.ok) {
     // 401 Unauthorized
     if (response.status === 401) {
         console.error('401 Unauthorized:', data);
-
-        // Login attempt (skipAuth) -> surface the real credential error
+        
+        // Check if this is a login/authentication request (skipAuth = true)
         if (options.skipAuth) {
+            // This is a login attempt - return the actual error message
             const errorMessage = data.message || data.error || 'Invalid email or password';
             console.error('Login failed:', errorMessage);
             throw new Error(errorMessage);
         }
-
-        const rawMsg = ((data && (data.message || data.error)) || '').toString();
-        const msg = rawMsg.toLowerCase();
-
-        // A 401 is ambiguous: it can mean an expired/invalid token (session over)
-        // OR a perfectly valid token that just lacks permission for this endpoint/role
-        // (e.g. a newly-assigned staff hitting an admin-only route). We must NOT log a
-        // staff member out in the second case.
-        //
-        // Key insight: a token CANNOT genuinely expire a few seconds after login. So if
-        // the 401 happens while the token is still fresh, it is a permission problem, not
-        // an expired session -> do not log out.
-        var issuedAt = parseInt(localStorage.getItem('admin_token_issued_at') || '0', 10);
-        var tokenAgeMs = issuedAt ? (Date.now() - issuedAt) : Infinity;
-        var FRESH_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
-        var tokenIsFresh = tokenAgeMs < FRESH_WINDOW_MS;
-        var looksLikeExpiry = /expire|jwt|malformed|invalid token|invalid or expired|signature|token (is )?(missing|invalid|expired)|no token|missing token/.test(msg);
-
-        // Do NOT log out when: caller opted out (non-critical call), OR token is fresh
-        // (so this is a permission/role issue), OR the message does not clearly indicate
-        // an expired/invalid token. In those cases just throw so the page can show a
-        // normal error instead of bouncing the user to login.
-        if (options.skipAuthRedirect || tokenIsFresh || !looksLikeExpiry) {
-            throw new Error(rawMsg || 'You do not have permission to access this resource.');
-        }
-
-        // Genuine session expiry -> clear stored auth and redirect to login
+        
+        // For non-login endpoints, handle session expiration
         console.error('Session expired - Logging out');
         this.clearToken();
+        
+        // Clear stored user data
         localStorage.removeItem('admin_user');
         localStorage.removeItem('admin_refresh_token');
-        localStorage.removeItem('admin_token_issued_at');
-
+        
+        // Prevent redirect loop - only redirect if not already on login page
         const currentPage = window.location.pathname.split('/').pop();
         if (currentPage !== 'login.html' && currentPage !== 'index.html') {
             if (typeof Swal !== 'undefined') {
@@ -128,7 +106,9 @@ if (!response.ok) {
                     text: 'Your session has expired. Please login again.',
                     confirmButtonText: 'Go to Login',
                     allowOutsideClick: false
-                }).then(() => { window.location.href = 'login.html'; });
+                }).then(() => {
+                    window.location.href = 'login.html';
+                });
             } else {
                 alert('Session expired. Please login again.');
                 window.location.href = 'login.html';
@@ -187,8 +167,8 @@ if (!response.ok) {
 
     // ==================== PROFILE & ACCOUNT ====================
 
-    async getProfile(options = {}) {
-        return await this.request('/api/v1/admin/profile', options);
+    async getProfile() {
+        return await this.request('/api/v1/admin/profile');
     }
 
     async updateProfile(data) {
@@ -238,7 +218,6 @@ if (!response.ok) {
             if (token) {
                 localStorage.setItem('admin_token', token);
                 sessionStorage.setItem('admin_token', token);
-                localStorage.setItem('admin_token_issued_at', String(Date.now()));
                 this.token = token;
                 
                 if (refreshToken) {
@@ -290,7 +269,6 @@ if (!response.ok) {
         if (token) {
             localStorage.setItem('admin_token', token);
             sessionStorage.setItem('admin_token', token);
-            localStorage.setItem('admin_token_issued_at', String(Date.now()));
             this.token = token;
             if (refreshToken) localStorage.setItem('admin_refresh_token', refreshToken);
             if (user && Object.keys(user).length > 0) localStorage.setItem('admin_user', JSON.stringify(user));
@@ -308,6 +286,32 @@ if (!response.ok) {
         localStorage.removeItem('admin_refresh_token');
         localStorage.removeItem('admin_user');
         window.location.href = 'login.html';
+    }
+
+    // ==================== PASSWORD RESET (shared auth) ====================
+
+    async forgotPassword(email) {
+        return await this.request('/api/v1/auth/forgot-password', {
+            method: 'POST',
+            body: { email },
+            skipAuth: true
+        });
+    }
+
+    async verifyResetOtp(email, otp) {
+        return await this.request('/api/v1/auth/verify-otp', {
+            method: 'POST',
+            body: { email, otp, verificationType: 'email' },
+            skipAuth: true
+        });
+    }
+
+    async resetPassword(token, password) {
+        return await this.request('/api/v1/auth/reset-password/' + encodeURIComponent(token), {
+            method: 'POST',
+            body: { password },
+            skipAuth: true
+        });
     }
 
     // ==================== DASHBOARD ====================

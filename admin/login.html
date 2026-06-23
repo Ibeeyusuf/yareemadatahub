@@ -2,9 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" type="image/svg+xml" href="assets/images/logo.png">
-    <link rel="icon" type="image/png" href="assets/images/logo.png">
-    <link rel="apple-touch-icon" href="assets/images/logo.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yareema Data Hub - Admin Login</title>
     <link href="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.css" rel="stylesheet">
@@ -451,11 +448,78 @@
         // keep old name as alias for safety
         function resetButton() { setLoading(false); }
 
-        // Forgot password
-        document.getElementById('forgot-password').addEventListener('click', () => {
-            const email = prompt('Enter your email to reset password:');
-            if (email) {
-                showSuccess(`Password reset link has been sent to ${email}`);
+        // Forgot password — full reset flow (shared auth endpoints)
+        document.getElementById('forgot-password').addEventListener('click', async () => {
+            const { value: email } = await Swal.fire({
+                title: 'Forgot Password',
+                text: 'Enter your admin email to receive a reset code.',
+                input: 'email',
+                inputPlaceholder: 'admin@example.com',
+                showCancelButton: true,
+                confirmButtonText: 'Send Code',
+                confirmButtonColor: '#1e3d5c',
+                cancelButtonText: 'Cancel',
+                cancelButtonColor: '#64748b',
+                inputValidator: (v) => { if (!v || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())) return 'Please enter a valid email address'; }
+            });
+            if (!email) return;
+            const trimmedEmail = email.trim();
+
+            Swal.fire({ title: 'Sending code…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            const sent = await api.forgotPassword(trimmedEmail);
+            if (!(sent && (sent.success || sent.status === 'success'))) {
+                return Swal.fire({ icon: 'error', title: 'Failed', text: (sent && sent.message) || 'Could not send reset code. Please try again.', confirmButtonColor: '#1e3d5c' });
+            }
+
+            const { value: otp } = await Swal.fire({
+                title: 'Enter Reset Code',
+                text: `We sent a 6-digit code to ${trimmedEmail}.`,
+                input: 'text',
+                inputPlaceholder: '6-digit code',
+                inputAttributes: { maxlength: 6, inputmode: 'numeric' },
+                showCancelButton: true,
+                confirmButtonText: 'Verify',
+                confirmButtonColor: '#1e3d5c',
+                cancelButtonText: 'Cancel',
+                cancelButtonColor: '#64748b',
+                inputValidator: (v) => { if (!v || v.trim().length !== 6) return 'Enter the 6-digit code'; }
+            });
+            if (!otp) return;
+
+            Swal.fire({ title: 'Verifying…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            const verified = await api.verifyResetOtp(trimmedEmail, otp.trim());
+            if (!(verified && (verified.success || verified.status === 'success'))) {
+                return Swal.fire({ icon: 'error', title: 'Invalid Code', text: (verified && verified.message) || 'The code is incorrect or has expired.', confirmButtonColor: '#1e3d5c' });
+            }
+            const resetToken = verified.token || (verified.data && verified.data.token) || verified.resetToken || otp.trim();
+
+            const { value: newPw } = await Swal.fire({
+                title: 'Set New Password',
+                html:
+                    '<input id="swal-pw1" type="password" class="swal2-input" placeholder="New password">' +
+                    '<input id="swal-pw2" type="password" class="swal2-input" placeholder="Confirm password">',
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Reset Password',
+                confirmButtonColor: '#1e3d5c',
+                cancelButtonText: 'Cancel',
+                cancelButtonColor: '#64748b',
+                preConfirm: () => {
+                    const p1 = document.getElementById('swal-pw1').value;
+                    const p2 = document.getElementById('swal-pw2').value;
+                    if (!p1 || p1.length < 8) { Swal.showValidationMessage('Password must be at least 8 characters'); return false; }
+                    if (p1 !== p2) { Swal.showValidationMessage('Passwords do not match'); return false; }
+                    return p1;
+                }
+            });
+            if (!newPw) return;
+
+            Swal.fire({ title: 'Resetting…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            const done = await api.resetPassword(resetToken, newPw);
+            if (done && (done.success || done.status === 'success')) {
+                await Swal.fire({ icon: 'success', title: 'Password Reset', text: 'Your password has been reset. Please log in with your new password.', confirmButtonColor: '#1e3d5c' });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Reset Failed', text: (done && done.message) || 'Could not reset password. Please try again.', confirmButtonColor: '#1e3d5c' });
             }
         });
 

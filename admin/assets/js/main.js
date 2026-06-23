@@ -64,7 +64,7 @@ async function loadPartials() {
     // Also try a fresh API call to keep sidebar name up to date
     try {
         if (typeof api !== 'undefined' && typeof api.getProfile === 'function') {
-            api.getProfile({ skipAuthRedirect: true }).then(function(res) {
+            api.getProfile().then(function(res) {
                 var user = (res && res.data && res.data.admin) ? res.data.admin : null;
                 if (!user) return;
                 localStorage.setItem('admin_user', JSON.stringify(user));
@@ -704,9 +704,25 @@ if (document.readyState === 'loading') {
 // ==================== ADMIN LOGOUT ====================
 // Defined here (not in sidebar partial) because innerHTML won't execute <script> tags.
 window.adminLogout = function () {
-    ['admin_token', 'admin_refresh_token', 'admin_user'].forEach(function (key) {
-        localStorage.removeItem(key);
-        sessionStorage.removeItem(key);
-    });
-    window.location.href = 'login.html';
+    var doLogout = function () {
+        ['admin_token', 'admin_refresh_token', 'admin_user', 'admin_token_issued_at'].forEach(function (key) {
+            localStorage.removeItem(key);
+            sessionStorage.removeItem(key);
+        });
+        window.location.href = 'login.html';
+    };
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Logout?',
+            text: 'Are you sure you want to logout?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Logout',
+            confirmButtonColor: '#1e3d5c',
+            cancelButtonText: 'Cancel',
+            cancelButtonColor: '#64748b'
+        }).then(function (r) { if (r.isConfirmed) doLogout(); });
+    } else if (confirm('Are you sure you want to logout?')) {
+        doLogout();
+    }
 };
