@@ -481,13 +481,77 @@ const WalletAPI = {
                 message: error.message || 'Withdrawal failed'
             };
         }
+    },
+
+    // Provision wallet / virtual account (same flow as user module: POST /wallet/create)
+    async createWalletAccount(payload = {}) {
+        try {
+            const response = await API.post('/wallet/create', payload);
+            if (response.success || response.status === 'success') {
+                return { success: true, data: response.data };
+            }
+            throw new Error(response.message || 'Failed to create wallet');
+        } catch (error) {
+            console.error('[Wallet] createWalletAccount error:', error);
+            return { success: false, message: error.message || 'Failed to create wallet account' };
+        }
+    },
+
+    // Available commission balance (GET /agent/commission/balance; falls back to dashboard stats)
+    async getCommissionBalance() {
+        try {
+            const response = await API.get('/agent/commission/balance');
+            if (response.success || response.status === 'success') {
+                const d = response.data || {};
+                const bal = d.balance ?? d.availableCommission ?? d.available ?? d.commission ?? 0;
+                return { success: true, balance: Number(bal) || 0, data: d };
+            }
+            throw new Error(response.message || 'Failed to load commission balance');
+        } catch (error) {
+            // Fallback so the card still shows something using existing dashboard data
+            try {
+                const dash = await API.get(API_CONFIG.ENDPOINTS.AGENT_DASHBOARD);
+                const sObj = (dash && (dash.data || dash)) || {};
+                const bal = sObj.availableCommission ?? sObj.available_commission ?? (sObj.commission && sObj.commission.available) ?? 0;
+                return { success: true, balance: Number(bal) || 0, data: sObj, fallback: true };
+            } catch (e2) {
+                return { success: false, balance: 0, message: error.message || 'Failed to load commission balance' };
+            }
+        }
+    },
+
+    // Withdraw commission into wallet (POST /agent/commission/withdraw { amount })
+    async withdrawCommission(amount) {
+        try {
+            const response = await API.post('/agent/commission/withdraw', { amount });
+            if (response.success || response.status === 'success') {
+                return { success: true, message: response.message || 'Commission moved to your wallet', data: response.data };
+            }
+            throw new Error(response.message || 'Commission withdrawal failed');
+        } catch (error) {
+            console.error('[Wallet] withdrawCommission error:', error);
+            return { success: false, message: error.message || 'Commission withdrawal failed' };
+        }
     }
 };
 
 // Update wallet balance on page
 async function updateWalletBalance() {
     try {
-        const result = await WalletAPI.getBalance();
+        let result = await WalletAPI.getBalance();
+
+        // Auto-provision the wallet if a new agent has none yet (same flow as user module)
+        const hasWallet = result.success && result.data && (
+            result.data.balance != null || result.data.availableBalance != null ||
+            result.data.walletBalance != null ||
+            (result.data.wallet || result.data.accounts || result.data.virtualAccount)
+        );
+        if (!hasWallet) {
+            const created = await WalletAPI.createWalletAccount({});
+            if (created.success) {
+                result = await WalletAPI.getBalance();
+            }
+        }
 
         if (result.success && result.data) {
             const balance = parseFloat(
@@ -507,6 +571,21 @@ async function updateWalletBalance() {
             // Update sidebar balance span directly
             const sidebarBal = document.getElementById('walletBalance');
             if (sidebarBal) sidebarBal.textContent = rawFormatted;
+
+            // Show account number on the dashboard wallet card (#agentWalletAccount)
+            const acctEl = document.getElementById('agentWalletAccount');
+            if (acctEl) {
+                const w = (result.data && (result.data.wallet || result.data)) || {};
+                let acc = null;
+                if (Array.isArray(w.accounts) && w.accounts.length) acc = w.accounts[0];
+                else if (w.virtualAccount && w.virtualAccount.accountNumber) acc = w.virtualAccount;
+                else if (result.data && result.data.virtualAccount && result.data.virtualAccount.accountNumber) acc = result.data.virtualAccount;
+                if (acc && acc.accountNumber) {
+                    acctEl.textContent = (acc.bankName || acc.bank || 'Acct') + ' • ' + acc.accountNumber;
+                } else {
+                    acctEl.textContent = 'No account yet';
+                }
+            }
 
             return balance;
         }

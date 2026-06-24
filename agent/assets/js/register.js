@@ -56,14 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
-        if (step === 2) {
-            const accountNumber = document.getElementById('account-number').value.trim();
-            if (accountNumber.length !== 10 || isNaN(accountNumber)) {
-                UI.showError('registration-error', 'Account number must be exactly 10 digits');
-                return false;
-            }
-        }
-
         UI.hideMessage('registration-error');
         return true;
     }
@@ -107,9 +99,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             UI.hideMessage('registration-error');
             
-            const bankSelect = document.getElementById('bank-name');
-            const bankName = bankSelect.options[bankSelect.selectedIndex].text;
-            
             const formData = {
                 firstName: document.getElementById('first-name').value.trim(),
                 lastName: document.getElementById('last-name').value.trim(),
@@ -117,10 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 phoneNumber: document.getElementById('phone').value.trim(),
                 password: password,
                 businessName: document.getElementById('business-name').value.trim(),
-                businessAddress: document.getElementById('business-address').value.trim(),
-                bankName: bankName,
-                accountNumber: document.getElementById('account-number').value.trim(),
-                accountName: document.getElementById('account-name').value.trim()
+                businessAddress: document.getElementById('business-address').value.trim()
             };
             
             UI.showLoading('submit-btn', 'submit-spinner');

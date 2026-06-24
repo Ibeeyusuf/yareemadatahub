@@ -2,9 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" type="image/svg+xml" href="assets/images/logo.png">
-    <link rel="icon" type="image/png" href="assets/images/logo.png">
-    <link rel="apple-touch-icon" href="assets/images/logo.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wallet - Yareema Agent Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -32,6 +29,16 @@
                             <i data-lucide="wallet" class="w-8 h-8"></i>
                         </div>
                     </div>
+                    <div id="card-account" class="hidden bg-white/10 rounded-xl px-4 py-3 mb-4">
+                        <p class="text-blue-200 text-xs mb-1" id="card-account-bank">Bank</p>
+                        <div class="flex items-center justify-between">
+                            <span id="card-account-number" class="text-lg font-bold tracking-wide">—</span>
+                            <button type="button" onclick="copyText(document.getElementById('card-account-number').textContent, this)" class="text-xs bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg flex items-center gap-1">
+                                <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy
+                            </button>
+                        </div>
+                        <p id="card-account-name" class="text-blue-200 text-xs mt-1"></p>
+                    </div>
                     <button onclick="refreshBalance()" class="text-sm bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors">
                         <i data-lucide="refresh-cw" class="w-4 h-4 inline mr-1"></i>
                         Refresh Balance
@@ -41,41 +48,39 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Fund Wallet -->
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                        <h3 class="font-bold text-slate-900 mb-6 flex items-center gap-2">
+                        <h3 class="font-bold text-slate-900 mb-2 flex items-center gap-2">
                             <i data-lucide="plus-circle" class="w-5 h-5 text-green-600"></i>
                             <span>Fund Wallet</span>
                         </h3>
-                        <form id="fund-form" class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-semibold text-slate-700 mb-2">Amount</label>
-                                <input id="fund-amount" type="number" placeholder="Enter amount" min="100" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
-                                <p class="text-xs text-slate-500 mt-1">Minimum: ₦100</p>
+                        <p class="text-sm text-slate-500 mb-4">Transfer to your dedicated account below. Your wallet is credited automatically.</p>
+                        <div id="fund-accounts" class="space-y-3">
+                            <div class="text-center py-6 text-slate-400">
+                                <i data-lucide="loader" class="w-6 h-6 mx-auto mb-2 animate-spin"></i>
+                                <p class="text-sm">Loading your account details...</p>
                             </div>
-                            <div id="fund-error" class="error-message"></div>
-                            <button type="submit" id="fund-btn" class="w-full py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 flex items-center justify-center">
-                                <span>Fund Wallet</span>
-                                <div id="fund-spinner" class="hidden ml-2">
-                                    <i data-lucide="loader" class="w-5 h-5 animate-spin"></i>
-                                </div>
-                            </button>
-                        </form>
+                        </div>
                     </div>
 
                     <!-- Withdraw -->
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                        <h3 class="font-bold text-slate-900 mb-6 flex items-center gap-2">
+                        <h3 class="font-bold text-slate-900 mb-2 flex items-center gap-2">
                             <i data-lucide="download" class="w-5 h-5 text-blue-600"></i>
-                            <span>Withdraw to Bank</span>
+                            <span>Withdraw</span>
                         </h3>
+                        <p class="text-sm text-slate-500 mb-4">Move your commission earnings into your wallet balance.</p>
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4 flex items-center justify-between">
+                            <span class="text-sm text-slate-500">Available Commission</span>
+                            <span id="commission-balance" class="text-lg font-bold text-yareema-primary">₦0.00</span>
+                        </div>
                         <form id="withdraw-form" class="space-y-4">
                             <div>
                                 <label class="block text-sm font-semibold text-slate-700 mb-2">Amount</label>
-                                <input id="withdraw-amount" type="number" placeholder="Enter amount" min="1000" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
-                                <p class="text-xs text-slate-500 mt-1">Minimum: ₦1,000</p>
+                                <input id="withdraw-amount" type="number" placeholder="Enter amount" min="1" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
+                                <p class="text-xs text-slate-500 mt-1">Moves commission into your wallet</p>
                             </div>
                             <div id="withdraw-error" class="error-message"></div>
                             <button type="submit" id="withdraw-btn" class="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 flex items-center justify-center">
-                                <span>Withdraw</span>
+                                <span>Withdraw to Wallet</span>
                                 <div id="withdraw-spinner" class="hidden ml-2">
                                     <i data-lucide="loader" class="w-5 h-5 animate-spin"></i>
                                 </div>
@@ -128,15 +133,91 @@
         
         async function loadWalletData() {
             await refreshBalance();
+            await loadCommission();
             await loadTransactions();
         }
-        
+
+        function extractAccounts(data) {
+            const wallet = (data && (data.wallet || data)) || {};
+            if (Array.isArray(wallet.accounts) && wallet.accounts.length) return wallet.accounts;
+            if (wallet.virtualAccount && wallet.virtualAccount.accountNumber) return [{ ...wallet.virtualAccount, isDefault: true }];
+            if (data && Array.isArray(data.accounts) && data.accounts.length) return data.accounts;
+            if (data && data.virtualAccount && data.virtualAccount.accountNumber) return [{ ...data.virtualAccount }];
+            return [];
+        }
+
         async function refreshBalance() {
-            const result = await WalletAPI.getBalance();
+            let result = await WalletAPI.getBalance();
+            let accounts = result.success ? extractAccounts(result.data) : [];
+
+            // No wallet/accounts yet -> provision it (same flow as the user module)
+            if (!result.success || accounts.length === 0) {
+                const created = await WalletAPI.createWalletAccount({});
+                if (created.success) {
+                    accounts = extractAccounts(created.data);
+                    result = await WalletAPI.getBalance();
+                }
+            }
+
             if (result.success && result.data) {
-                const balance = result.data.balance || result.data.availableBalance || 0;
+                const balance = result.data.balance || result.data.availableBalance || result.data.walletBalance || 0;
                 document.getElementById('wallet-balance').textContent = UI.formatCurrency(balance);
             }
+            renderFundAccounts(accounts);
+            renderCardAccount(accounts);
+        }
+
+        function renderCardAccount(accounts) {
+            const box = document.getElementById('card-account');
+            if (!box) return;
+            const acc = (accounts && accounts.length) ? accounts[0] : null;
+            if (!acc || !acc.accountNumber) { box.classList.add('hidden'); return; }
+            document.getElementById('card-account-bank').textContent = acc.bankName || acc.bank || 'Bank';
+            document.getElementById('card-account-number').textContent = acc.accountNumber;
+            document.getElementById('card-account-name').textContent = acc.accountName || acc.name || '';
+            box.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function renderFundAccounts(accounts) {
+            const c = document.getElementById('fund-accounts');
+            if (!c) return;
+            if (!accounts || !accounts.length) {
+                c.innerHTML = '<div class="text-center py-6 text-slate-500"><p class="text-sm">Your funding account is being set up. Please refresh in a few minutes.</p></div>';
+                lucide.createIcons();
+                return;
+            }
+            c.innerHTML = accounts.map(acc => `
+                <div class="border border-slate-200 rounded-xl p-4">
+                    <p class="text-xs text-slate-500 mb-1">${acc.bankName || acc.bank || 'Bank'}</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-lg font-bold text-slate-900 tracking-wide">${acc.accountNumber || ''}</span>
+                        <button type="button" onclick="copyText('${acc.accountNumber || ''}', this)" class="text-xs font-semibold text-yareema-primary hover:underline flex items-center gap-1">
+                            <i data-lucide="copy" class="w-4 h-4"></i> Copy
+                        </button>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">${acc.accountName || acc.name || ''}</p>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function copyText(text, btn) {
+            if (!text) return;
+            navigator.clipboard && navigator.clipboard.writeText(text).then(() => {
+                const orig = btn.innerHTML;
+                btn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Copied';
+                lucide.createIcons();
+                setTimeout(() => { btn.innerHTML = orig; lucide.createIcons(); }, 1500);
+            });
+        }
+
+        let _availableCommission = 0;
+        async function loadCommission() {
+            const r = await WalletAPI.getCommissionBalance();
+            _availableCommission = r.balance || 0;
+            const el = document.getElementById('commission-balance');
+            if (el) el.textContent = UI.formatCurrency(_availableCommission);
         }
         
         async function loadTransactions() {
@@ -184,63 +265,34 @@
             return classes[status?.toLowerCase()] || 'bg-slate-100 text-slate-700';
         }
         
-        // Fund wallet form
-        document.getElementById('fund-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const amount = parseFloat(document.getElementById('fund-amount').value);
-            
-            if (amount < 100) {
-                UI.showError('fund-error', 'Minimum funding amount is ₦100');
-                return;
-            }
-            
-            UI.hideMessage('fund-error');
-            UI.showLoading('fund-btn', 'fund-spinner');
-            
-            try {
-                // Use Remita payment for wallet funding
-                const result = await RemitaPayment.fundWallet(amount);
-                
-                UI.hideLoading('fund-btn', 'fund-spinner');
-                
-                if (result.success) {
-                    UI.showToast('Wallet funded successfully!', 'success');
-                    document.getElementById('fund-form').reset();
-                    await refreshBalance();
-                    await loadTransactions();
-                } else {
-                    UI.showError('fund-error', result.message);
-                }
-            } catch (error) {
-                console.error('Fund wallet error:', error);
-                UI.hideLoading('fund-btn', 'fund-spinner');
-                UI.showError('fund-error', error.message || 'Payment failed');
-            }
-        });
         
-        // Withdraw form
+        // Withdraw commission into wallet
         document.getElementById('withdraw-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const amount = parseFloat(document.getElementById('withdraw-amount').value);
-            
-            if (amount < 1000) {
-                UI.showError('withdraw-error', 'Minimum withdrawal amount is ₦1,000');
+
+            if (!amount || amount <= 0) {
+                UI.showError('withdraw-error', 'Please enter a valid amount');
                 return;
             }
-            
+            if (_availableCommission && amount > _availableCommission) {
+                UI.showError('withdraw-error', `You only have ${UI.formatCurrency(_availableCommission)} commission available`);
+                return;
+            }
+
             UI.hideMessage('withdraw-error');
             UI.showLoading('withdraw-btn', 'withdraw-spinner');
-            
-            const result = await WalletAPI.withdraw({ amount });
-            
+
+            const result = await WalletAPI.withdrawCommission(amount);
+
             UI.hideLoading('withdraw-btn', 'withdraw-spinner');
-            
+
             if (result.success) {
-                UI.showToast(result.message || 'Withdrawal request submitted', 'success');
+                UI.showToast(result.message || 'Commission moved to your wallet', 'success');
                 document.getElementById('withdraw-form').reset();
                 await refreshBalance();
+                await loadCommission();
                 await loadTransactions();
             } else {
                 UI.showError('withdraw-error', result.message);

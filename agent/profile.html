@@ -2,8 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" type="image/svg+xml" href="assets/images/logo.png">
-    <link rel="apple-touch-icon" href="assets/images/logo.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profile - Yareema Agent Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -66,8 +64,8 @@
                     </div>
                 </div>
 
-                <!-- Bank Details -->
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <!-- Bank Details (only shown if the agent has bank details on file) -->
+                <div id="bank-details-card" class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hidden">
                     <h3 class="font-bold text-slate-900 mb-6 text-lg">Bank Details</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>

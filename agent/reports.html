@@ -2,8 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" type="image/svg+xml" href="assets/images/logo.png">
-    <link rel="apple-touch-icon" href="assets/images/logo.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reports - Yareema Agent Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -65,6 +63,9 @@
                         <canvas id="performanceChart"></canvas>
                     </div>
                 </div>
+
+                <!-- Report output renders here -->
+                <div id="report-results" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hidden"></div>
             </div>
         </main>
     </div>
@@ -87,28 +88,60 @@
             monthly: { startDate: (() => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d.toISOString(); })(), label: "This month" }
         };
 
+        function pickTxnArray(d) {
+            if (!d) return [];
+            if (Array.isArray(d)) return d;
+            return d.transactions || d.data || d.results || d.items || d.records || d.docs || [];
+        }
+
+        function filterByPeriod(txns, startISO) {
+            const start = new Date(startISO).getTime();
+            return txns.filter(t => {
+                const ts = new Date(t.createdAt || t.date || t.timestamp || 0).getTime();
+                return isNaN(ts) ? true : ts >= start;
+            });
+        }
+
         async function generateReport(period, btn) {
             const arrow = btn ? btn.querySelector('.report-arrow') : null;
             if (arrow) arrow.textContent = '⏳';
 
+            const filters = reportPeriods[period];
+            let txns = null;
+
+            // 1) Try the wallet transactions endpoint (date as plain YYYY-MM-DD)
             try {
-                const filters = reportPeriods[period];
                 const result = await WalletAPI.getTransactions({
-                    startDate: filters.startDate,
+                    startDate: filters.startDate.slice(0, 10),
                     limit: 100
                 });
-
                 if (result.success && result.data) {
-                    const txns = result.data.transactions || result.data || [];
-                    renderReportTable(txns, filters.label);
-                } else {
-                    UI.showToast(result.message || 'Failed to generate report', 'error');
+                    txns = pickTxnArray(result.data);
                 }
-            } catch (err) {
-                UI.showToast('Could not load report: ' + err.message, 'error');
-            } finally {
-                if (arrow) arrow.textContent = '→';
+            } catch (e) {
+                console.warn('[Reports] wallet transactions failed, will fall back:', e.message);
             }
+
+            // 2) Fallback: use the transactions the dashboard endpoint already returns
+            if (txns === null) {
+                try {
+                    const dash = await AgentDashboard.getDashboardData();
+                    if (dash.success && dash.data) {
+                        const all = pickTxnArray(dash.data.recentTransactions || dash.data.transactions || dash.data);
+                        txns = filterByPeriod(all, filters.startDate);
+                    }
+                } catch (e) {
+                    console.warn('[Reports] dashboard fallback failed:', e.message);
+                }
+            }
+
+            if (arrow) arrow.textContent = '→';
+
+            if (txns === null) {
+                UI.showToast('Could not load report. Please try again shortly.', 'error');
+                return;
+            }
+            renderReportTable(txns, filters.label);
         }
 
         function renderReportTable(txns, label) {
@@ -117,8 +150,10 @@
                 container = document.createElement('div');
                 container.id = 'report-results';
                 container.className = 'bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden';
-                document.querySelector('.p-4.lg\:p-8').appendChild(container);
+                const wrap = document.querySelector('main > div:last-child') || document.body;
+                wrap.appendChild(container);
             }
+            container.classList.remove('hidden');
 
             if (!txns.length) {
                 container.innerHTML = '<div class="p-8 text-center text-slate-400"><p>No transactions found for ' + label + '</p></div>';

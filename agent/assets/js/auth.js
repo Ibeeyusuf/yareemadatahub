@@ -517,7 +517,9 @@ const AgentProfile = {
                 this.updateElement('profile-city', agentInfo.assignedArea.city);
             }
             
-            if (agentInfo.bankDetails) {
+            if (agentInfo.bankDetails && (agentInfo.bankDetails.bankName || agentInfo.bankDetails.accountNumber)) {
+                const _bankCard = document.getElementById('bank-details-card');
+                if (_bankCard) _bankCard.classList.remove('hidden');
                 this.updateElement('profile-bank-name', agentInfo.bankDetails.bankName);
                 this.updateElement('profile-account-number', agentInfo.bankDetails.accountNumber);
                 this.updateElement('profile-account-name', agentInfo.bankDetails.accountName);
