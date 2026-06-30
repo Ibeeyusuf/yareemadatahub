@@ -1050,7 +1050,7 @@ const AgentAuthExtended = {
 
     async setTransactionPIN(transactionPin, confirmPin) {
         try {
-            const response = await API.post('/api/v1/agents/wallet/set-pin', { transactionPin, confirmPin });
+            const response = await API.post('/api/v1/agent/wallet/set-pin', { transactionPin, confirmPin });
             if (response.success || response.status === 'success') {
                 return { success: true, message: response.message || 'Transaction PIN set successfully' };
             }
