@@ -67,51 +67,7 @@
                     </form>
                 </div>
 
-                <!-- Bank Details -->
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                    <h3 class="font-bold text-slate-900 mb-1">Bank Details</h3>
-                    <p class="text-sm text-slate-500 mb-6">Used for commission withdrawals</p>
-                    <div id="bankFormMessage" class="hidden mb-4 p-3 rounded-lg text-sm"></div>
-                    <form onsubmit="handleBankUpdate(event)" class="space-y-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label class="block text-sm font-semibold text-slate-700 mb-2">Bank Name</label>
-                                <select id="settingsBankName" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
-                                    <option value="">Select Bank...</option>
-                                    <option value="access">Access Bank</option>
-                                    <option value="fidelity">Fidelity Bank</option>
-                                    <option value="firstbank">First Bank</option>
-                                    <option value="gtbank">GTBank</option>
-                                    <option value="keystone">Keystone Bank</option>
-                                    <option value="opay">OPay</option>
-                                    <option value="palmpay">PalmPay</option>
-                                    <option value="polaris">Polaris Bank</option>
-                                    <option value="stanbic">Stanbic IBTC</option>
-                                    <option value="sterling">Sterling Bank</option>
-                                    <option value="uba">UBA</option>
-                                    <option value="union">Union Bank</option>
-                                    <option value="unity">Unity Bank</option>
-                                    <option value="wema">Wema Bank</option>
-                                    <option value="zenith">Zenith Bank</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-semibold text-slate-700 mb-2">Account Number</label>
-                                <input id="settingsAccountNumber" type="text" maxlength="10" placeholder="10-digit account number"
-                                    class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
-                            </div>
-                            <div class="md:col-span-2">
-                                <label class="block text-sm font-semibold text-slate-700 mb-2">Account Name</label>
-                                <input id="settingsAccountName" type="text" placeholder="Will auto-fill after verification" readonly
-                                    class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm bg-slate-50 w-full cursor-not-allowed">
-                            </div>
-                        </div>
-                        <button type="submit" class="px-6 py-3 text-white font-bold rounded-xl transition-colors flex items-center gap-2" style="background:#1E3D5C">
-                            <i data-lucide="save" class="w-4 h-4"></i>
-                            Update Bank Details
-                        </button>
-                    </form>
-                </div>
+               
 
                 <!-- Security -->
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">

@@ -8,7 +8,8 @@
             'alpha-caller':  showAlphaCallerModal,
             'kirani':        showKiraniModal,
             'giftcards':     showGiftCardsModal,
-            'spectranet':    showSpectranetModal,
+            'spectranet':       showDataRechargePinModal,
+            'data-recharge-pin': showDataRechargePinModal,
             'flights':       showFlightsModal,
         };
         if (extMap[type]) extMap[type]();
@@ -48,10 +49,15 @@ Object.assign(api.__proto__, {
         return await this.request('/api/v1/telecom/international/countries');
     },
     async getIntlOperators(countryCode) {
-        return await this.request(`/api/v1/telecom/international/operators/${countryCode}?page=1&size=100`);
+        return await this.request(`/api/v1/telecom/international/operators/${countryCode}?page=1&size=100&includeBundles=true`);
     },
     async sendIntlTopup(payload) {
         return await this.request('/api/v1/telecom/international/topup', {
+            method: 'POST', body: payload
+        });
+    },
+    async quoteIntlTopup(payload) {
+        return await this.request('/api/v1/telecom/international/quote', {
             method: 'POST', body: payload
         });
     },
@@ -71,6 +77,26 @@ Object.assign(api.__proto__, {
     },
     async getGiftCardOrderById(orderId) {
         return await this.request(`/api/v1/giftcards/orders/${orderId}`);
+    },
+
+    // Gift Cards — Reloadly catalog/quote/buy
+    async getGiftCardCatalog(countryCode) {
+        const q = countryCode ? `?countryCode=${countryCode}` : '';
+        return await this.request(`/api/v1/giftcards/catalog${q}`);
+    },
+    async quoteGiftCard(payload) {
+        return await this.request('/api/v1/giftcards/quote', { method: 'POST', body: payload });
+    },
+    async buyGiftCard(payload) {
+        return await this.request('/api/v1/giftcards/buy', { method: 'POST', body: payload });
+    },
+
+    // Data Recharge PIN (EPIN)
+    async getEpinPlans() {
+        return await this.request('/api/v1/telecom/epin/plans');
+    },
+    async purchaseEpin(payload) {
+        return await this.request('/api/v1/telecom/epin/purchase', { method: 'POST', body: payload });
     },
 
     // Gift Cards — Zendit
@@ -152,9 +178,9 @@ function showIntlAirtimeModal() {
                 <input type="number" id="intlAmount" class="form-input" placeholder="Enter amount" oninput="updateIntlReceipt()">
                 <div id="intlAmountHint" style="font-size:11px;color:#94a3b8;margin-top:4px;"></div>
             </div>
-            <div class="form-group" id="intlNgnGroup" style="display:none;">
-                <label id="intlNgnLabel">NGN Amount to Debit from Wallet</label>
-                <input type="number" id="intlAmountNgn" class="form-input" placeholder="e.g. 8500" oninput="updateIntlReceipt()">
+            <div class="form-group" id="intlSenderGroup" style="display:none;">
+                <label>Your Phone Number <span style="font-size:11px;color:#94a3b8;">(sender)</span></label>
+                <input type="tel" id="intlSenderNumber" class="form-input" placeholder="e.g. 08012345678">
             </div>
             <div id="intlReceipt" style="display:none;background:#f8fafc;border-radius:10px;padding:14px;margin-bottom:8px;">
                 <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;">
@@ -167,7 +193,7 @@ function showIntlAirtimeModal() {
                     <span style="color:#64748b;">Amount</span><span id="intlReceiptAmt" style="font-weight:600;color:#0f172a;"></span>
                 </div>
                 <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;">
-                    <span style="color:#64748b;">NGN Debit</span><span id="intlReceiptNgn" style="font-weight:600;color:#16a34a;"></span>
+                    <span style="color:#64748b;">You pay</span><span id="intlReceiptNgn" style="font-weight:600;color:#16a34a;"></span>
                 </div>
             </div>
             <div class="form-group" id="intlPinGroup" style="display:none;">
@@ -226,12 +252,15 @@ async function _loadIntlCountries() {
         const sel = document.getElementById('intlCountry');
         if (!sel) return;
         if (!intlCountriesList.length) { sel.innerHTML = '<option value="">No countries available</option>'; return; }
+        const seen = new Set();
         sel.innerHTML = '<option value="">— Choose Country —</option>' +
             intlCountriesList.map(c => {
-                const code = c.isoCode || c.countryCode || c.iso2 || c.code || '';
-                const name = c.name || c.isoName || c.countryName || code;
-                const dial = (c.callingCodes || c.callingCode || ['+?'])[0] || '+?';
-                return `<option value="${code}" data-dial="${dial}">${name} (${dial})</option>`;
+                const code = String(c.isoName || c.isoCode || c.countryCode || c.iso2 || c.code || '').toUpperCase();
+                if (!code || seen.has(code)) return '';
+                seen.add(code);
+                const name = c.name || c.countryName || c.isoName || code;
+                const dial = (c.callingCodes || c.callingCode || [''])[0] || '';
+                return `<option value="${code}" data-dial="${dial}">${name}${dial ? ' (' + dial + ')' : ''}</option>`;
             }).join('');
     } catch (e) {
         const sel = document.getElementById('intlCountry');
@@ -249,7 +278,7 @@ async function onIntlCountryChange() {
     document.getElementById('intlOperatorGroup').style.display = 'none';
     document.getElementById('intlPhoneGroup').style.display    = 'none';
     document.getElementById('intlAmountGroup').style.display   = 'none';
-    document.getElementById('intlNgnGroup').style.display      = 'none';
+    document.getElementById('intlSenderGroup').style.display   = 'none';
     document.getElementById('intlPinGroup').style.display      = 'none';
     document.getElementById('intlReceipt').style.display       = 'none';
     if (!code) return;
@@ -296,23 +325,18 @@ function selectIntlOperator(idx, el) {
 
     document.getElementById('intlPhoneGroup').style.display = '';
     document.getElementById('intlAmountGroup').style.display = '';
-    document.getElementById('intlNgnGroup').style.display = '';
+    document.getElementById('intlSenderGroup').style.display = '';
     document.getElementById('intlPinGroup').style.display = '';
 
     const op = intlSelectedOp;
-    const useLocal = !!op.localAmountsSupported;
-    const currency = useLocal ? (op.destinationCurrencyCode || 'Local') : 'USD';
+    const useLocal = intlOpLocal(op);
+    const currency = intlOpCurrency(op);
     document.getElementById('intlAmountLabel').textContent = `Amount (${currency})`;
 
     const hint = [];
     if (op.minAmount != null) hint.push(`Min: ${op.minAmount} ${currency}`);
     if (op.maxAmount != null) hint.push(`Max: ${op.maxAmount} ${currency}`);
     document.getElementById('intlAmountHint').textContent = hint.join('  ·  ');
-
-    const ngnLabel = document.getElementById('intlNgnLabel');
-    if (ngnLabel && op.fxRate) {
-        ngnLabel.innerHTML = `NGN Amount to Debit from Wallet <span style="font-size:11px;color:#94a3b8;">(FX: 1 USD ≈ ₦${Number(op.fxRate).toLocaleString(undefined, {maximumFractionDigits:2})})</span>`;
-    }
 
     const denoms = op.denominationType === 'FIXED' ? (op.fixedAmounts || op.fixedAmountsList || []) : [];
     const denomContainer = document.getElementById('intlFixedDenoms');
@@ -338,45 +362,97 @@ function selectIntlFixedDenom(val, btn) {
     updateIntlReceipt();
 }
 
+const SENDER_COUNTRY_CODE = 'NG';
+let intlQuoteNgn = null, intlQuoteTimer = null;
+
+function intlOpId(op){ return op && (op.operatorId ?? op.id); }
+function intlOpCurrency(op){ return (op && (op.senderCurrencyCode || op.currency)) || 'USD'; }
+function intlOpLocal(op){ return !!(op && (op.supportsLocalAmounts || op.localAmountsSupported)); }
+
+function intlPickNgn(res){
+    const d = (res && res.data) ? res.data : (res || {});
+    const named = [d.nairaPrice, d.nairaAmount, d.amountNgn, d.priceNgn, d.totalNgn, d.amountInNgn, d.ngnAmount, d.ngn, d.naira];
+    for (const v of named){ const x = Number(v); if (!isNaN(x) && x > 0) return Math.ceil(x); }
+    const cur = String(d.currency || d.currencyCode || '').toUpperCase();
+    if (cur === 'NGN'){ for (const v of [d.total, d.amount, d.price, d.amountCharged]){ const x = Number(v); if (!isNaN(x) && x > 0) return Math.ceil(x); } }
+    return null;
+}
+
 function updateIntlReceipt() {
     if (!intlSelectedOp) return;
-    const phone     = document.getElementById('intlPhone')?.value || '';
-    const amount    = parseFloat(document.getElementById('intlAmount')?.value) || 0;
-    const amountNgn = parseFloat(document.getElementById('intlAmountNgn')?.value) || 0;
-    const receipt   = document.getElementById('intlReceipt');
-    if (!phone || !amount || !amountNgn) { receipt.style.display = 'none'; return; }
-    const op       = intlSelectedOp;
-    const useLocal = !!op.localAmountsSupported;
-    const currency = useLocal ? (op.destinationCurrencyCode || '') : 'USD';
+    const phone   = document.getElementById('intlPhone')?.value.trim() || '';
+    const amount  = parseFloat(document.getElementById('intlAmount')?.value) || 0;
+    const receipt = document.getElementById('intlReceipt');
+    if (!phone || !amount) { receipt.style.display = 'none'; return; }
+    const op = intlSelectedOp;
+    const currency = intlOpCurrency(op);
     receipt.style.display = '';
     document.getElementById('intlReceiptOp').textContent  = op.name || op.operatorName || '—';
     document.getElementById('intlReceiptNum').textContent = phone;
     document.getElementById('intlReceiptAmt').textContent = `${amount} ${currency}`;
-    document.getElementById('intlReceiptNgn').textContent = `₦${Number(amountNgn).toLocaleString()}`;
+    document.getElementById('intlReceiptNgn').textContent = intlQuoteNgn ? `₦${Number(intlQuoteNgn).toLocaleString()}` : 'Enter recipient number to price';
+    runIntlQuote();
+}
+
+// Quote needs recipientCountryCode + recipientNumber; runs once those + amount are set.
+function runIntlQuote() {
+    intlQuoteNgn = null;
+    const code   = document.getElementById('intlCountry')?.value || '';
+    const phone  = document.getElementById('intlPhone')?.value.trim() || '';
+    const amount = parseFloat(document.getElementById('intlAmount')?.value) || 0;
+    if (!intlSelectedOp || !amount || !code || phone.length < 4) return;
+    const ngnEl = document.getElementById('intlReceiptNgn');
+    if (ngnEl) ngnEl.textContent = 'Calculating…';
+    clearTimeout(intlQuoteTimer);
+    const sender = document.getElementById('intlSenderNumber')?.value.trim() || '';
+    intlQuoteTimer = setTimeout(async () => {
+        try {
+            const res = await api.quoteIntlTopup({
+                operatorId:           intlOpId(intlSelectedOp),
+                amount,
+                useLocalAmount:       intlOpLocal(intlSelectedOp),
+                recipientCountryCode: code,
+                recipientNumber:      phone,
+                senderCountryCode:    SENDER_COUNTRY_CODE,
+                senderNumber:         sender,
+                amountNgn:            amount
+            });
+            if (parseFloat(document.getElementById('intlAmount')?.value) !== amount) return;
+            intlQuoteNgn = intlPickNgn(res);
+            const el = document.getElementById('intlReceiptNgn');
+            if (el) el.textContent = intlQuoteNgn ? `₦${Number(intlQuoteNgn).toLocaleString()}` : 'Charged at checkout';
+        } catch (e) {
+            intlQuoteNgn = null;
+            const el = document.getElementById('intlReceiptNgn');
+            if (el) el.textContent = 'Charged at checkout';
+        }
+    }, 400);
 }
 
 async function submitIntlAirtime() {
-    const sel       = document.getElementById('intlCountry');
-    const code      = sel?.value;
-    const phone     = document.getElementById('intlPhone')?.value.trim();
-    const amount    = parseFloat(document.getElementById('intlAmount')?.value);
-    const amountNgn = parseFloat(document.getElementById('intlAmountNgn')?.value);
-    const pin       = document.getElementById('intlPin')?.value.trim();
+    const sel    = document.getElementById('intlCountry');
+    const code   = sel?.value;
+    const phone  = document.getElementById('intlPhone')?.value.trim();
+    const amount = parseFloat(document.getElementById('intlAmount')?.value);
+    const sender = document.getElementById('intlSenderNumber')?.value.trim();
+    const pin    = document.getElementById('intlPin')?.value.trim();
     if (!code)                        { showInlineError('Please select a country'); return; }
     if (!intlSelectedOp)              { showInlineError('Please select an operator'); return; }
     if (!phone || phone.length < 4)   { showInlineError('Please enter a valid recipient phone number'); return; }
     if (!amount || amount <= 0)       { showInlineError('Please enter a valid amount'); return; }
-    if (!amountNgn || amountNgn <= 0) { showInlineError('Please enter the NGN amount to debit from your wallet'); return; }
+    if (!sender || sender.length < 7) { showInlineError('Please enter your (sender) phone number'); return; }
     if (!pin || !/^\d{4}$/.test(pin)) { showInlineError('Please enter your 4-digit transaction PIN'); return; }
     setSubmitLoading(true, 'Processing…');
     try {
         await api.sendIntlTopup({
-            operatorId:           intlSelectedOp.id || intlSelectedOp.operatorId,
+            operatorId:           intlOpId(intlSelectedOp),
             amount,
-            useLocalAmount:       !!intlSelectedOp.localAmountsSupported,
+            useLocalAmount:       intlOpLocal(intlSelectedOp),
             recipientCountryCode: code,
             recipientNumber:      phone,
-            amountNgn,
+            senderCountryCode:    SENDER_COUNTRY_CODE,
+            senderNumber:         sender,
+            amountNgn:            intlQuoteNgn || amount,
             transactionPin:       pin
         });
         closeModal();
@@ -552,88 +628,116 @@ async function submitSmile() {
 let spectranetPkgList        = [];
 let selectedSpectranetPkgObj = null;
 
-function showSpectranetModal() {
-    spectranetPkgList        = [];
-    selectedSpectranetPkgObj = null;
-    showModal('Spectranet', `
+let epinAllPlans = {}, epinPlans = [], epinNetwork = '', epinSelectedPlan = null;
+
+function epinExtract(networkData){
+    if (!Array.isArray(networkData)) return [];
+    for (const entry of networkData){
+        const prods = entry?.raw?.PRODUCT || entry?.raw?.product;
+        if (Array.isArray(prods) && prods.length){
+            return prods.map(p => ({
+                id:    String(p.PRODUCT_ID ?? p.productId ?? p.id ?? ''),
+                label: p.PRODUCT_NAME ?? p.productName ?? p.name ?? 'Plan',
+                price: Number(p.PRODUCT_AMOUNT ?? p.amount ?? p.price ?? 0)
+            })).filter(p => p.id);
+        }
+    }
+    return networkData.map(p => ({
+        id:    String(p.planId ?? p.dataPlan ?? p.id ?? p.PRODUCT_ID ?? ''),
+        label: p.name ?? p.planName ?? p.PRODUCT_NAME ?? 'Plan',
+        price: Number(p.price ?? p.amount ?? p.PRODUCT_AMOUNT ?? 0)
+    })).filter(p => p.id && p.price > 0);
+}
+
+function showDataRechargePinModal() {
+    epinAllPlans = {}; epinPlans = []; epinNetwork = ''; epinSelectedPlan = null;
+    showModal('Data Recharge PIN', `
         <div class="form-group">
-            <label>Spectranet Device ID</label>
-            <input type="text" id="spectranetDevice" class="form-input" placeholder="e.g. 07012345678">
-        </div>
-        <div class="form-group">
-            <label>Select Plan</label>
-            <div id="spectranetPlans" style="display:flex;flex-direction:column;gap:8px;">
-                <div style="text-align:center;padding:24px 0;color:#94a3b8;font-size:13px;">
-                    <div style="width:28px;height:28px;border:3px solid #e2e8f0;border-top-color:#0d9488;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 10px;"></div>
-                    Loading packages…
-                </div>
+            <label>Network</label>
+            <div id="epinNetworks" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+                ${['mtn','glo','airtel','9mobile'].map(n =>
+                    `<button type="button" data-net="${n}" onclick="epinPickNetwork('${n}', this)"
+                        style="padding:10px 4px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;font-size:12px;font-weight:700;cursor:pointer;text-transform:uppercase;">${n}</button>`
+                ).join('')}
             </div>
         </div>
         <div class="form-group">
+            <label>Data Plan</label>
+            <select id="epinPlan" class="form-input" onchange="epinOnPlan()" disabled>
+                <option value="">Select a network first</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Quantity</label>
+            <input type="number" id="epinQty" class="form-input" min="1" value="1" oninput="epinUpdTotal()">
+        </div>
+        <div id="epinTotalRow" style="display:none;padding:10px 14px;background:#f5f3ff;border-radius:8px;margin-bottom:10px;font-size:13px;">
+            Total to pay: <strong id="epinTotalAmt" style="color:#7c3aed;float:right;"></strong>
+        </div>
+        <div class="form-group">
             <label>Transaction PIN</label>
-            <input type="password" id="spectranetPin" class="form-input" placeholder="Enter 4-digit PIN" maxlength="4" inputmode="numeric">
+            <input type="password" id="epinPin" class="form-input" placeholder="Enter 4-digit PIN" maxlength="4" inputmode="numeric">
         </div>
     `, `
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
-        <button onclick="submitSpectranet()" class="btn-primary">Subscribe</button>
+        <button onclick="submitEpin()" class="btn-primary">Generate PIN</button>
     `);
-    _loadSpectranetPackages();
+    _loadEpinPlans();
 }
 
-async function _loadSpectranetPackages() {
+async function _loadEpinPlans() {
     try {
-        const res = await api.getSpectranetPackages();
-        spectranetPkgList = res.data?.plans || res.data?.packages || res.data || res.plans || res.packages || (Array.isArray(res) ? res : []);
-        const container = document.getElementById('spectranetPlans');
-        if (!container) return;
-        if (!spectranetPkgList.length) { container.innerHTML = '<div style="text-align:center;padding:16px;color:#94a3b8;font-size:13px;">No packages available.</div>'; return; }
-        container.innerHTML = spectranetPkgList.map((p, i) => {
-            const name     = p.name || p.planName || p.description || `Package ${i + 1}`;
-            const price    = Number(p.price || p.amount || p.planPrice || 0);
-            const validity = p.validity || p.duration || p.period || '';
-            const planId   = p.id || p.planId || p._id || String(i);
-            return `<div onclick="selectSpectranetPkgItem('${planId}', ${i}, this)" data-specidx="${i}"
-                style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;
-                       border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;background:#fff;transition:all .2s;">
-                <div>
-                    <div style="font-size:13px;font-weight:600;color:#0f172a;">${name}</div>
-                    ${validity ? `<div style="font-size:11px;color:#94a3b8;margin-top:2px;">Validity: ${validity}</div>` : ''}
-                </div>
-                <div style="font-size:14px;font-weight:700;color:#0d9488;">₦${price.toLocaleString()}</div>
-            </div>`;
-        }).join('');
+        const res = await api.getEpinPlans();
+        epinAllPlans = res.data || res || {};
     } catch (e) {
-        const container = document.getElementById('spectranetPlans');
-        if (container) container.innerHTML = `<div style="text-align:center;padding:16px;color:#dc2626;font-size:13px;">
-            Failed to load packages. <span style="cursor:pointer;color:#0d9488;" onclick="_loadSpectranetPackages()">Retry</span>
-        </div>`;
+        showInlineError('Failed to load plans. Please try again.');
     }
 }
 
-function selectSpectranetPkgItem(planId, idx, el) {
-    selectedSpectranetPkgObj = { planId, ...spectranetPkgList[idx] };
-    document.querySelectorAll('[data-specidx]').forEach(d => { d.style.borderColor = '#e2e8f0'; d.style.background = '#fff'; });
-    el.style.borderColor = '#0d9488'; el.style.background = '#f0fdfa';
+function epinPickNetwork(net, btn) {
+    epinNetwork = net; epinSelectedPlan = null;
+    document.querySelectorAll('#epinNetworks button').forEach(b => { b.style.borderColor = '#e2e8f0'; b.style.background = '#fff'; b.style.color = '#0f172a'; });
+    btn.style.borderColor = '#7c3aed'; btn.style.background = '#f5f3ff'; btn.style.color = '#7c3aed';
+    epinPlans = epinExtract(epinAllPlans[net] || epinAllPlans[net.toLowerCase()] || []);
+    const sel = document.getElementById('epinPlan');
+    document.getElementById('epinTotalRow').style.display = 'none';
+    if (!epinPlans.length) { sel.innerHTML = '<option value="">No plans available</option>'; sel.disabled = true; return; }
+    sel.disabled = false;
+    sel.innerHTML = '<option value="">Choose a data plan</option>' +
+        epinPlans.map((p, i) => `<option value="${i}">${p.label} — ₦${Number(p.price).toLocaleString()}</option>`).join('');
 }
 
-async function submitSpectranet() {
-    const deviceId = document.getElementById('spectranetDevice')?.value.trim();
-    const pin      = document.getElementById('spectranetPin')?.value.trim();
-    if (!deviceId)                    { showInlineError('Please enter your Spectranet Device ID'); return; }
-    if (!selectedSpectranetPkgObj)    { showInlineError('Please select a package'); return; }
-    if (!pin || !/^\d{4}$/.test(pin)) { showInlineError('Please enter your 4-digit PIN'); return; }
+function epinOnPlan() {
+    const pi = document.getElementById('epinPlan')?.value;
+    epinSelectedPlan = (pi === '' || pi == null) ? null : epinPlans[+pi];
+    epinUpdTotal();
+}
+
+function epinUpdTotal() {
+    const row = document.getElementById('epinTotalRow');
+    const qty = parseInt(document.getElementById('epinQty')?.value) || 0;
+    if (!epinSelectedPlan || qty < 1) { row.style.display = 'none'; return; }
+    row.style.display = 'block';
+    document.getElementById('epinTotalAmt').textContent = `₦${Number(epinSelectedPlan.price * qty).toLocaleString()}`;
+}
+
+async function submitEpin() {
+    const qty = parseInt(document.getElementById('epinQty')?.value) || 0;
+    const pin = document.getElementById('epinPin')?.value.trim();
+    if (!epinNetwork)      { showInlineError('Please select a network'); return; }
+    if (!epinSelectedPlan) { showInlineError('Please select a data plan'); return; }
+    if (qty < 1)           { showInlineError('Please enter a valid quantity'); return; }
+    if (!pin || !/^\d{4}$/.test(pin)) { showInlineError('Please enter your 4-digit transaction PIN'); return; }
     setSubmitLoading(true, 'Processing…');
     try {
-        await api.purchaseSpectranet(deviceId, selectedSpectranetPkgObj.planId, pin);
+        await api.purchaseEpin({ network: epinNetwork, dataPlan: epinSelectedPlan.id, quantity: qty, transactionPin: pin });
         closeModal();
-        const name = selectedSpectranetPkgObj.name || selectedSpectranetPkgObj.planName || 'Package';
-        setTimeout(() => showSuccess(`Spectranet ${name} activated on ${deviceId}!`), 300);
+        setTimeout(() => showSuccess(`${qty} × ${epinSelectedPlan.label} ${epinNetwork.toUpperCase()} recharge PIN${qty > 1 ? 's' : ''} generated! Check your email.`), 300);
     } catch (e) {
-        setSubmitLoading(false, '', 'Subscribe');
-        showInlineError(e.message || 'Transaction failed. Please try again.');
+        setSubmitLoading(false, '', 'Generate PIN');
+        showInlineError(e.message || 'Purchase failed. Please try again.');
     }
 }
-
 
 // ============================================================
 // 4. ALPHA CALLER
@@ -725,14 +829,26 @@ let gcZenditProducts = [];
 let gcZenditSelectedDenom = null;
 let gcOrders        = [];
 
-async function showGiftCardsModal() {
-    gcProducts            = [];
-    gcSelectedDenom       = null;
-    gcZenditProducts      = [];
-    gcZenditSelectedDenom = null;
-    gcOrders              = [];
-    gcActiveProvider      = 'prestmit';
+let gcCatalog = [], gcSelected = null, gcChosenValue = 0, gcQuoteNgn = null, gcQuoteTimer = null;
 
+function gcName(p){ return p.name || p.productName || p.brand || 'Gift Card'; }
+function gcId(p){ return String(p.id ?? p.productId ?? p._id ?? p.code ?? ''); }
+function gcCur(p){ return p.currency || p.recipientCurrencyCode || 'USD'; }
+function gcFixed(p){ return p.fixed === true || (Array.isArray(p.fixedAmounts) && p.fixedAmounts.length > 0); }
+function gcAmounts(p){ const l = p.fixedAmounts || p.fixedRecipientDenominations || p.denominations || []; return Array.isArray(l) ? l.map(Number).filter(v => v > 0) : []; }
+function gcMin(p){ return Number(p.minAmount ?? p.minRecipientDenomination ?? p.minValue ?? 1); }
+function gcMax(p){ return Number(p.maxAmount ?? p.maxRecipientDenomination ?? p.maxValue ?? 9999); }
+function gcPickNgn(res){
+    const d = (res && res.data) ? res.data : (res || {});
+    const named = [d.nairaAmount, d.nairaPrice, d.amountNgn, d.priceNgn, d.totalNgn, d.amountInNgn, d.ngnAmount, d.ngn, d.naira];
+    for (const v of named){ const x = Number(v); if (!isNaN(x) && x > 0) return Math.ceil(x); }
+    const cur = String(d.currency || d.currencyCode || '').toUpperCase();
+    if (cur === 'NGN'){ for (const v of [d.total, d.amount, d.price, d.amountCharged]){ const x = Number(v); if (!isNaN(x) && x > 0) return Math.ceil(x); } }
+    return null;
+}
+
+async function showGiftCardsModal() {
+    gcCatalog = []; gcSelected = null; gcChosenValue = 0; gcQuoteNgn = null;
     showModal('Gift Cards', `
         <div style="display:flex;gap:0;background:#f1f5f9;border-radius:10px;padding:4px;margin-bottom:16px;">
             <button type="button" id="gcTabBuy" onclick="gcSwitchTab('buy')"
@@ -741,79 +857,46 @@ async function showGiftCardsModal() {
                 style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:transparent;color:#64748b;transition:all .2s;">📦 My Orders</button>
         </div>
 
-        <!-- BUY TAB -->
         <div id="gcBuyTab">
-            <!-- Catalog group toggle -->
-            <div style="display:none;gap:8px;margin-bottom:14px;">
-                <button type="button" id="gcProvPrestmit" onclick="gcSwitchProvider('prestmit')"
-                    style="flex:1;padding:8px;border:1.5px solid #ea580c;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff7ed;color:#ea580c;">Popular Cards</button>
-                <button type="button" id="gcProvZendit" onclick="gcSwitchProvider('zendit')"
-                    style="flex:1;padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#64748b;">More Cards</button>
+            <div class="form-group">
+                <label>Select Gift Card</label>
+                <select id="gcProductSelect" class="form-input" onchange="onGCProductChange()">
+                    <option value="">Loading gift cards…</option>
+                </select>
             </div>
-
-            <!-- POPULAR CARDS -->
-            <div id="gcPrestmitSection">
+            <div id="gcDenomSection" style="display:none;">
                 <div class="form-group">
-                    <label>Select Gift Card</label>
-                    <select id="gcProductSelect" class="form-input" onchange="onGCProductChange()">
-                        <option value="">Loading gift cards…</option>
-                    </select>
+                    <label id="gcValLabel">Select Value</label>
+                    <div id="gcDenomGrid" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+                    <input type="number" id="gcRangeInput" class="form-input" placeholder="Enter value" style="margin-top:8px;display:none;" oninput="onGCRangeChange()">
+                    <div id="gcValHint" style="font-size:11px;color:#94a3b8;margin-top:4px;"></div>
                 </div>
-                <div id="gcDenomSection" style="display:none;">
-                    <div class="form-group">
-                        <label>Select Value</label>
-                        <div id="gcDenomGrid" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
-                        <input type="number" id="gcRangeInput" class="form-input" placeholder="Enter value" style="margin-top:8px;display:none;" oninput="onGCRangeChange()">
-                    </div>
-                    <div id="gcCostRow" style="display:none;padding:10px 14px;background:#fff7ed;border-radius:8px;margin-bottom:4px;font-size:13px;">
-                        You pay: <strong id="gcCostAmt" style="color:#ea580c;float:right;"></strong>
-                    </div>
-                    <div class="form-group">
-                        <label>NGN Amount to Debit from Wallet</label>
-                        <input type="number" id="gcAmountNgn" class="form-input" placeholder="e.g. 16500">
-                    </div>
-                    <div class="form-group">
-                        <label>Recipient Email</label>
-                        <input type="email" id="gcEmail" class="form-input" placeholder="email@example.com">
-                    </div>
-                    <div class="form-group">
-                        <label>Transaction PIN</label>
-                        <input type="password" id="gcPin" class="form-input" placeholder="Enter 4-digit PIN" maxlength="4" inputmode="numeric">
-                    </div>
+                <div id="gcCostRow" style="display:none;padding:10px 14px;background:#fff7ed;border-radius:8px;margin-bottom:10px;font-size:13px;">
+                    You pay: <strong id="gcCostAmt" style="color:#ea580c;float:right;"></strong>
                 </div>
-            </div>
-
-            <!-- MORE CARDS -->
-            <div id="gcZenditSection" style="display:none;">
                 <div class="form-group">
-                    <label>Select Gift Card</label>
-                    <select id="gcZenditSelect" class="form-input" onchange="onZenditProductChange()">
-                        <option value="">Loading gift cards…</option>
-                    </select>
+                    <label>Recipient Email</label>
+                    <input type="email" id="gcEmail" class="form-input" placeholder="email@example.com">
                 </div>
-                <div id="gcZenditDenomSection" style="display:none;">
-                    <div class="form-group">
-                        <label>Select Value</label>
-                        <div id="gcZenditDenomGrid" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
-                        <input type="number" id="gcZenditRangeInput" class="form-input" placeholder="Enter value" style="margin-top:8px;display:none;">
-                    </div>
-                    <div class="form-group">
-                        <label>NGN Amount to Debit from Wallet</label>
-                        <input type="number" id="gcZenditAmountNgn" class="form-input" placeholder="e.g. 16500">
-                    </div>
-                    <div class="form-group">
-                        <label>Recipient Email</label>
-                        <input type="email" id="gcZenditEmail" class="form-input" placeholder="email@example.com">
-                    </div>
-                    <div class="form-group">
-                        <label>Transaction PIN</label>
-                        <input type="password" id="gcZenditPin" class="form-input" placeholder="Enter 4-digit PIN" maxlength="4" inputmode="numeric">
-                    </div>
+                <div class="form-group">
+                    <label>Recipient Name</label>
+                    <input type="text" id="gcRecipientName" class="form-input" placeholder="Recipient full name">
+                </div>
+                <div class="form-group">
+                    <label>Sender Name</label>
+                    <input type="text" id="gcSenderName" class="form-input" placeholder="Your name">
+                </div>
+                <div class="form-group">
+                    <label>Message <span style="font-size:11px;color:#94a3b8;">(optional)</span></label>
+                    <input type="text" id="gcMessage" class="form-input" placeholder="Happy gifting!">
+                </div>
+                <div class="form-group">
+                    <label>Transaction PIN</label>
+                    <input type="password" id="gcPin" class="form-input" placeholder="Enter 4-digit PIN" maxlength="4" inputmode="numeric">
                 </div>
             </div>
         </div>
 
-        <!-- ORDERS TAB -->
         <div id="gcOrdersTab" style="display:none;">
             <div id="gcOrdersList" style="display:flex;flex-direction:column;gap:8px;">
                 <div style="text-align:center;padding:24px 0;color:#94a3b8;font-size:13px;">
@@ -826,7 +909,7 @@ async function showGiftCardsModal() {
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
         <button id="gcSubmitBtn" onclick="submitGiftCard()" class="btn-primary">Purchase</button>
     `);
-    gcLoadProducts();
+    gcLoadCatalog();
 }
 
 function gcSwitchTab(tab) {
@@ -841,216 +924,112 @@ function gcSwitchTab(tab) {
     if (tab === 'orders') _loadGCOrders();
 }
 
-function gcSwitchProvider(provider) {
-    gcActiveProvider = provider;
-    document.getElementById('gcProvPrestmit').style.cssText = provider === 'prestmit'
-        ? 'flex:1;padding:8px;border:1.5px solid #ea580c;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff7ed;color:#ea580c;'
-        : 'flex:1;padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#64748b;';
-    document.getElementById('gcProvZendit').style.cssText = provider === 'zendit'
-        ? 'flex:1;padding:8px;border:1.5px solid #ea580c;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff7ed;color:#ea580c;'
-        : 'flex:1;padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#64748b;';
-    document.getElementById('gcPrestmitSection').style.display = provider === 'prestmit' ? '' : 'none';
-    document.getElementById('gcZenditSection').style.display   = provider === 'zendit'   ? '' : 'none';
-    if (provider === 'zendit' && !gcZenditProducts.length) gcLoadZenditProducts();
-}
-
-// Prestmit
-async function gcLoadProducts() {
+async function gcLoadCatalog() {
     const sel = document.getElementById('gcProductSelect');
     if (!sel) return;
     try {
-        const res = await api.getGiftCardProducts();
-        gcProducts = res.data?.content || res.data?.products || res.data?.items
-                   || (Array.isArray(res.data) ? res.data : null)
-                   || res.content || res.products || res.items
-                   || (Array.isArray(res) ? res : []);
-        if (!Array.isArray(gcProducts)) gcProducts = [];
-        if (!gcProducts.length) { sel.innerHTML = '<option value="">No products available</option>'; return; }
+        const res = await api.getGiftCardCatalog();
+        gcCatalog = res.data?.content || res.data?.products || res.data?.items
+                  || (Array.isArray(res.data) ? res.data : null)
+                  || res.content || res.products || (Array.isArray(res) ? res : []);
+        if (!Array.isArray(gcCatalog)) gcCatalog = [];
+        if (!gcCatalog.length) { sel.innerHTML = '<option value="">No gift cards available</option>'; return; }
         sel.innerHTML = '<option value="">— Choose a gift card —</option>' +
-            gcProducts.map((p, i) => `<option value="${i}">${p.name || p.productName || p.title || 'Gift Card'}</option>`).join('');
+            gcCatalog.map((p, i) => `<option value="${i}">${gcName(p)}</option>`).join('');
     } catch (e) {
         sel.innerHTML = '<option value="">Failed to load — click to retry</option>';
-        sel.onclick = () => { sel.onclick = null; sel.innerHTML = '<option value="">Loading…</option>'; gcLoadProducts(); };
+        sel.onclick = () => { sel.onclick = null; sel.innerHTML = '<option value="">Loading…</option>'; gcLoadCatalog(); };
     }
 }
 
 function onGCProductChange() {
-    const idx     = document.getElementById('gcProductSelect')?.value;
+    const idx = document.getElementById('gcProductSelect')?.value;
     const section = document.getElementById('gcDenomSection');
-    const costRow = document.getElementById('gcCostRow');
-    const denomGrid  = document.getElementById('gcDenomGrid');
-    const rangeInput = document.getElementById('gcRangeInput');
-    gcSelectedDenom = null;
-    if (costRow) costRow.style.display = 'none';
-    if (!idx || idx === '') { if (section) section.style.display = 'none'; return; }
-    const product = gcProducts[parseInt(idx)];
-    if (!product) return;
-    if (section) section.style.display = 'block';
-    const denomType = (product.denominationType || '').toUpperCase();
-    const currency  = product.recipientCurrencyCode || product.currency || 'USD';
-    const senderMap = product.fixedRecipientToSenderDenominationsMap || {};
-    const senderCur = product.senderCurrencyCode || 'USD';
-    let denoms = product.fixedRecipientDenominations || product.denominations || product.fixedValues || product.values || [];
-    if (denomType === 'RANGE') denoms = [];
-    if (denoms.length) {
-        if (rangeInput) rangeInput.style.display = 'none';
-        if (denomGrid) denomGrid.innerHTML = denoms.map(d => {
-            const val = typeof d === 'object' ? (d.value || d.amount) : d;
-            const ngn = typeof d === 'object' ? (d.priceNgn || d.amountNgn || null) : null;
-            const usd = senderMap[String(val)] != null ? senderMap[String(val)]
-                       : (senderMap[Number(val).toFixed(1)] != null ? senderMap[Number(val).toFixed(1)] : null);
-            const hint = ngn ? `≈ ₦${Number(ngn).toLocaleString()}` : (usd != null ? `≈ ${senderCur} ${usd}` : '');
-            return `<button type="button" onclick="gcSelectDenom(${val}, ${ngn || 'null'}, this)"
-                style="padding:8px 16px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;">
-                ${currency} ${val}${hint ? `<div style="font-size:10px;font-weight:400;color:#94a3b8;margin-top:1px;">${hint}</div>` : ''}
-            </button>`;
-        }).join('');
+    const grid = document.getElementById('gcDenomGrid');
+    const range = document.getElementById('gcRangeInput');
+    gcSelected = (idx === '' || idx == null) ? null : gcCatalog[+idx];
+    gcChosenValue = 0; gcQuoteNgn = null;
+    document.getElementById('gcCostRow').style.display = 'none';
+    if (!gcSelected) { if (section) section.style.display = 'none'; return; }
+    section.style.display = 'block';
+    const cur = gcCur(gcSelected);
+    document.getElementById('gcValLabel').textContent = `Select Value (${cur})`;
+    const amounts = gcAmounts(gcSelected);
+    if (gcFixed(gcSelected) && amounts.length) {
+        range.style.display = 'none'; range.value = '';
+        grid.innerHTML = amounts.map(v =>
+            `<button type="button" onclick="gcSelectDenom(${v}, this)"
+                style="padding:8px 16px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;">${cur} ${v}</button>`
+        ).join('');
+        document.getElementById('gcValHint').textContent = '';
     } else {
-        if (denomGrid) denomGrid.innerHTML = '';
-        if (rangeInput) {
-            rangeInput.style.display = '';
-            const min = product.minRecipientDenomination || product.minValue || 1, max = product.maxRecipientDenomination || product.maxValue || 9999;
-            rangeInput.placeholder = `${currency} ${min} – ${max}`;
-            rangeInput.min = min; rangeInput.max = max;
-        }
+        grid.innerHTML = '';
+        range.style.display = '';
+        const min = gcMin(gcSelected), max = gcMax(gcSelected);
+        range.placeholder = `${cur} ${min} – ${max}`; range.min = min; range.max = max;
+        document.getElementById('gcValHint').textContent = `Allowed range: ${cur} ${min} – ${max}`;
     }
 }
 
-function gcSelectDenom(val, priceNgn, btn) {
-    gcSelectedDenom = { val, priceNgn };
+function gcSelectDenom(val, btn) {
+    gcChosenValue = val;
     document.querySelectorAll('#gcDenomGrid button').forEach(b => { b.style.borderColor = '#e2e8f0'; b.style.background = '#fff'; });
     btn.style.borderColor = '#ea580c'; btn.style.background = '#fff7ed';
-    const row = document.getElementById('gcCostRow');
-    const amt = document.getElementById('gcCostAmt');
-    if (row) row.style.display = 'block';
-    if (amt) amt.textContent = priceNgn ? `₦${Number(priceNgn).toLocaleString()}` : 'Enter NGN amount below';
-    if (priceNgn) {
-        const ngnInput = document.getElementById('gcAmountNgn');
-        if (ngnInput) ngnInput.value = priceNgn;
-    }
+    gcRunQuote();
 }
 
 function onGCRangeChange() {
-    const v = parseFloat(document.getElementById('gcRangeInput')?.value) || 0;
-    gcSelectedDenom = v > 0 ? { val: v, priceNgn: null } : null;
+    gcChosenValue = parseFloat(document.getElementById('gcRangeInput')?.value) || 0;
+    gcRunQuote();
+}
+
+function gcRunQuote() {
+    gcQuoteNgn = null;
+    const row = document.getElementById('gcCostRow');
+    const amt = document.getElementById('gcCostAmt');
+    if (!gcSelected || !gcChosenValue || gcChosenValue <= 0) { if (row) row.style.display = 'none'; return; }
+    row.style.display = 'block';
+    amt.textContent = 'Calculating…';
+    clearTimeout(gcQuoteTimer);
+    const productId = gcId(gcSelected), amount = gcChosenValue;
+    gcQuoteTimer = setTimeout(async () => {
+        try {
+            const res = await api.quoteGiftCard({ productId, amount });
+            if (gcChosenValue !== amount) return;
+            gcQuoteNgn = gcPickNgn(res);
+            amt.textContent = gcQuoteNgn ? `₦${Number(gcQuoteNgn).toLocaleString()}` : 'Charged at checkout';
+        } catch (e) {
+            gcQuoteNgn = null;
+            amt.textContent = 'Charged at checkout';
+        }
+    }, 350);
 }
 
 async function submitGiftCard() {
-    if (gcActiveProvider === 'zendit') { submitZenditGiftCard(); return; }
-    const idx       = document.getElementById('gcProductSelect')?.value;
-    if (!idx || idx === '')            { showInlineError('Please select a gift card'); return; }
-    if (!gcSelectedDenom)              { showInlineError('Please select a value'); return; }
-    const amountNgn = parseFloat(document.getElementById('gcAmountNgn')?.value);
+    if (!gcSelected)                  { showInlineError('Please select a gift card'); return; }
+    if (!gcChosenValue || gcChosenValue <= 0) { showInlineError('Please select a value'); return; }
     const email     = document.getElementById('gcEmail')?.value.trim();
+    const recipient = document.getElementById('gcRecipientName')?.value.trim();
+    const sender    = document.getElementById('gcSenderName')?.value.trim();
+    const message   = document.getElementById('gcMessage')?.value.trim();
     const pin       = document.getElementById('gcPin')?.value.trim();
-    if (!amountNgn || amountNgn <= 0)      { showInlineError('Please enter the NGN amount to debit'); return; }
-    if (!email || !email.includes('@'))    { showInlineError('Please enter a valid recipient email'); return; }
-    if (!pin || !/^\d{4}$/.test(pin))      { showInlineError('Please enter your 4-digit transaction PIN'); return; }
-    setSubmitLoading(true, 'Processing…');
-    try {
-        const product   = gcProducts[parseInt(idx)];
-        const productId = product.id || product.productId || product._id;
-        await api.purchaseGiftCard({ productId, value: gcSelectedDenom.val, quantity: 1, amountNgn, recipientEmail: email, transactionPin: pin });
-        closeModal();
-        const name = product.name || product.productName || 'Gift card';
-        setTimeout(() => showSuccess(`${name} purchased! Your card will be sent to ${email}.`), 300);
-    } catch (e) {
-        setSubmitLoading(false, '', 'Purchase');
-        showInlineError(e.message || 'Purchase failed. Please try again.');
-    }
-}
-
-// Zendit
-async function gcLoadZenditProducts() {
-    const sel = document.getElementById('gcZenditSelect');
-    if (!sel) return;
-    sel.innerHTML = '<option value="">Loading…</option>';
-    try {
-        const res = await api.getZenditProducts(50, 0, 'NG');
-        gcZenditProducts = res.data?.products || res.data || res.products || (Array.isArray(res) ? res : []);
-        if (!gcZenditProducts.length) { sel.innerHTML = '<option value="">No products available</option>'; return; }
-        sel.innerHTML = '<option value="">— Choose a gift card —</option>' +
-            gcZenditProducts.map((p, i) => `<option value="${i}">${p.title || p.name || p.offerId || 'Gift Card'}</option>`).join('');
-    } catch (e) {
-        sel.innerHTML = '<option value="">Failed to load — click to retry</option>';
-        sel.onclick = () => { sel.onclick = null; gcLoadZenditProducts(); };
-    }
-}
-
-function onZenditProductChange() {
-    const idx     = document.getElementById('gcZenditSelect')?.value;
-    const section = document.getElementById('gcZenditDenomSection');
-    const denomGrid  = document.getElementById('gcZenditDenomGrid');
-    const rangeInput = document.getElementById('gcZenditRangeInput');
-    gcZenditSelectedDenom = null;
-    if (!idx || idx === '') { if (section) section.style.display = 'none'; return; }
-    const product = gcZenditProducts[parseInt(idx)];
-    if (!product) return;
-    if (section) section.style.display = 'block';
-
-    const pricingType = (product.pricingType || product.denominationType || '').toUpperCase();
-    const denoms = product.denominations || product.fixedValues || [];
-    const currency = product.currency || 'USD';
-
-    if (pricingType === 'FIXED' && denoms.length) {
-        if (rangeInput) rangeInput.style.display = 'none';
-        denomGrid.innerHTML = denoms.map(d => {
-            const val = typeof d === 'object' ? (d.value || d.price) : d;
-            return `<button type="button" onclick="selectZenditDenom(${val}, this)"
-                style="padding:8px 16px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;">
-                ${currency} ${val}
-            </button>`;
-        }).join('');
-    } else {
-        denomGrid.innerHTML = '';
-        if (rangeInput) {
-            rangeInput.style.display = '';
-            const min = product.minValue || product.minPrice || 1;
-            const max = product.maxValue || product.maxPrice || 9999;
-            rangeInput.placeholder = `${currency} ${min} – ${max}`;
-            rangeInput.min = min; rangeInput.max = max;
-            rangeInput.oninput = () => {
-                const v = parseFloat(rangeInput.value) || 0;
-                gcZenditSelectedDenom = v > 0 ? v : null;
-            };
-        }
-    }
-}
-
-function selectZenditDenom(val, btn) {
-    gcZenditSelectedDenom = val;
-    document.querySelectorAll('#gcZenditDenomGrid button').forEach(b => { b.style.borderColor = '#e2e8f0'; b.style.background = '#fff'; });
-    btn.style.borderColor = '#ea580c'; btn.style.background = '#fff7ed';
-}
-
-async function submitZenditGiftCard() {
-    const idx = document.getElementById('gcZenditSelect')?.value;
-    if (!idx || idx === '')              { showInlineError('Please select a gift card'); return; }
-    if (!gcZenditSelectedDenom)         { showInlineError('Please select a value'); return; }
-    const amountNgn = parseFloat(document.getElementById('gcZenditAmountNgn')?.value);
-    const email     = document.getElementById('gcZenditEmail')?.value.trim();
-    const pin       = document.getElementById('gcZenditPin')?.value.trim();
-    if (!amountNgn || amountNgn <= 0)   { showInlineError('Please enter the NGN amount to debit'); return; }
     if (!email || !email.includes('@')) { showInlineError('Please enter a valid recipient email'); return; }
+    if (!recipient)                     { showInlineError('Please enter the recipient name'); return; }
+    if (!sender)                        { showInlineError('Please enter the sender name'); return; }
     if (!pin || !/^\d{4}$/.test(pin))   { showInlineError('Please enter your 4-digit transaction PIN'); return; }
     setSubmitLoading(true, 'Processing…');
     try {
-        const product = gcZenditProducts[parseInt(idx)];
-        const offerId = product.offerId || product.id || product._id;
-        const pricingType = (product.pricingType || product.denominationType || '').toUpperCase();
-        const body = {
-            offerId,
-            quantity: 1,
-            amountNgn,
-            transactionPin: pin,
-            fields: [{ key: 'email address', value: email }]
-        };
-        // Only include value for RANGE type
-        if (pricingType !== 'FIXED') body.value = gcZenditSelectedDenom;
-        await api.purchaseZenditGiftCard(body);
+        await api.buyGiftCard({
+            productId:      gcId(gcSelected),
+            amount:         gcChosenValue,
+            recipientEmail: email,
+            recipientName:  recipient,
+            senderName:     sender,
+            message:        message || 'Enjoy your gift!',
+            transactionPin: pin
+        });
         closeModal();
-        const name = product.title || product.name || 'Gift card';
-        setTimeout(() => showSuccess(`${name} purchased! Your card will be sent to ${email}.`), 300);
+        setTimeout(() => showSuccess(`${gcName(gcSelected)} purchased! Your card will be sent to ${email}.`), 300);
     } catch (e) {
         setSubmitLoading(false, '', 'Purchase');
         showInlineError(e.message || 'Purchase failed. Please try again.');
@@ -1086,7 +1065,6 @@ async function _loadGCOrders() {
         container.innerHTML = `<div style="text-align:center;padding:16px;color:#dc2626;font-size:13px;">${e.message || 'Failed to load orders.'}</div>`;
     }
 }
-
 
 // ============================================================
 // 6. KIRANI

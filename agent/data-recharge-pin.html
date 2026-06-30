@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Recharge PIN - Yareema Agent Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{yareema:{primary:'#1E3D5C',secondary:'#16304a',dark:'#0f1f2e',success:'#10b981',warning:'#f59e0b',danger:'#ef4444'}}}}}</script>
+</head>
+<body class="text-slate-800 antialiased">
+<div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+<div class="w-full min-h-screen">
+    <div id="sidebarContainer"></div>
+    <main class="lg:ml-64 flex flex-col min-h-screen bg-slate-50">
+        <div id="headerContainer"></div>
+        <div class="p-4 lg:p-8 flex-1 overflow-y-auto space-y-6 max-w-2xl mx-auto w-full">
+
+            <div id="pageMsg" class="hidden p-4 rounded-xl text-sm font-medium"></div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div class="flex items-center gap-3 mb-1">
+                    <span class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:#f5f3ff">
+                        <i data-lucide="ticket" class="w-5 h-5" style="color:#7c3aed"></i>
+                    </span>
+                    <div>
+                        <h3 class="font-bold text-slate-900">Data Recharge PIN</h3>
+                        <p class="text-sm text-slate-500">Generate data bundle recharge PINs (EPINs)</p>
+                    </div>
+                </div>
+
+                <form onsubmit="submitEpin(event)" class="space-y-5 mt-5">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Network</label>
+                        <div id="networkWrap" class="grid grid-cols-4 gap-2">
+                            <button type="button" data-net="mtn" onclick="pickNetwork('mtn', this)" class="net-btn px-3 py-3 rounded-xl border-2 border-slate-200 bg-white text-slate-700 text-sm font-bold hover:border-yareema-primary transition-all">MTN</button>
+                            <button type="button" data-net="glo" onclick="pickNetwork('glo', this)" class="net-btn px-3 py-3 rounded-xl border-2 border-slate-200 bg-white text-slate-700 text-sm font-bold hover:border-yareema-primary transition-all">GLO</button>
+                            <button type="button" data-net="airtel" onclick="pickNetwork('airtel', this)" class="net-btn px-3 py-3 rounded-xl border-2 border-slate-200 bg-white text-slate-700 text-sm font-bold hover:border-yareema-primary transition-all">Airtel</button>
+                            <button type="button" data-net="9mobile" onclick="pickNetwork('9mobile', this)" class="net-btn px-3 py-3 rounded-xl border-2 border-slate-200 bg-white text-slate-700 text-sm font-bold hover:border-yareema-primary transition-all">9mobile</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Data Plan</label>
+                        <select id="planSel" onchange="onPlan()" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" disabled required>
+                            <option value="">Select a network first</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Quantity</label>
+                        <input id="qtyField" type="number" min="1" value="1" oninput="updTotal()"
+                            class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full">
+                    </div>
+
+                    <div id="totalBox" class="hidden rounded-xl bg-slate-50 border border-slate-200 p-4 text-sm">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-500">Total to pay</span>
+                            <span class="font-bold text-yareema-primary text-base" id="totalNgn">—</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Transaction PIN</label>
+                        <input id="pinField" type="password" maxlength="4" placeholder="Enter 4-digit PIN"
+                            class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
+                    </div>
+
+                    <button type="submit" id="submitBtn"
+                        class="w-full py-4 text-white font-bold rounded-xl hover:opacity-90 transition-all text-base flex items-center justify-center gap-2"
+                        style="background:linear-gradient(135deg,#1E3D5C,#16304a)">
+                        <i data-lucide="ticket" class="w-5 h-5"></i>
+                        Generate Recharge PIN
+                    </button>
+                </form>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+Auth.protectPage();
+fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();initSidebar();});
+fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('data-recharge-pin');if(typeof initHeader==='function')initHeader();lucide.createIcons();});
+
+let _allPlans = {}, _plans = [], _network = '', _selectedPlan = null;
+
+// EPIN plans live nested under data.<network>[0].raw.PRODUCT[]; prices are already in NGN.
+function extractPlans(networkData){
+    if (!Array.isArray(networkData)) return [];
+    for (const entry of networkData){
+        const prods = entry?.raw?.PRODUCT || entry?.raw?.product;
+        if (Array.isArray(prods) && prods.length){
+            return prods.map(p => ({
+                id:    String(p.PRODUCT_ID ?? p.productId ?? p.id ?? ''),
+                label: p.PRODUCT_NAME ?? p.productName ?? p.name ?? 'Plan',
+                price: Number(p.PRODUCT_AMOUNT ?? p.amount ?? p.price ?? 0)
+            })).filter(p => p.id);
+        }
+    }
+    // fallback: the entries themselves carry plan fields
+    return networkData.map(p => ({
+        id:    String(p.planId ?? p.dataPlan ?? p.id ?? p.PRODUCT_ID ?? ''),
+        label: p.name ?? p.planName ?? p.PRODUCT_NAME ?? 'Plan',
+        price: Number(p.price ?? p.amount ?? p.PRODUCT_AMOUNT ?? 0)
+    })).filter(p => p.id && p.price > 0);
+}
+
+async function loadPlans() {
+    try {
+        const res = await API.get('/telecom/epin/plans');
+        _allPlans = res?.data || res || {};
+    } catch (e) {
+        showMsg('Failed to load plans. Please try again.', 'error');
+    }
+}
+
+function pickNetwork(net, btn) {
+    _network = net; _selectedPlan = null;
+    document.querySelectorAll('.net-btn').forEach(b => b.className = 'net-btn px-3 py-3 rounded-xl border-2 border-slate-200 bg-white text-slate-700 text-sm font-bold hover:border-yareema-primary transition-all');
+    btn.className = 'net-btn px-3 py-3 rounded-xl border-2 border-yareema-primary bg-yareema-primary text-white text-sm font-bold transition-all';
+    const sel = document.getElementById('planSel');
+    _plans = extractPlans(_allPlans[net] || _allPlans[net.toLowerCase()] || []);
+    document.getElementById('totalBox').classList.add('hidden');
+    if (!_plans.length) { sel.innerHTML = '<option value="">No plans available</option>'; sel.disabled = true; return; }
+    sel.disabled = false;
+    sel.innerHTML = '<option value="">Choose a data plan</option>' + _plans.map((p, i) =>
+        `<option value="${i}">${p.label} — ₦${Number(p.price).toLocaleString()}</option>`
+    ).join('');
+}
+
+function onPlan() {
+    const pi = document.getElementById('planSel').value;
+    _selectedPlan = pi === '' ? null : _plans[+pi];
+    updTotal();
+}
+
+function updTotal() {
+    const box = document.getElementById('totalBox');
+    const qty = parseInt(document.getElementById('qtyField').value) || 0;
+    if (!_selectedPlan || qty < 1) { box.classList.add('hidden'); return; }
+    box.classList.remove('hidden');
+    document.getElementById('totalNgn').textContent = UI.formatCurrency(_selectedPlan.price * qty);
+}
+
+async function submitEpin(e) {
+    e.preventDefault();
+    const qty = parseInt(document.getElementById('qtyField').value) || 0;
+    const pin = document.getElementById('pinField').value.trim();
+    if (!_network)        { showMsg('Select a network', 'error'); return; }
+    if (!_selectedPlan)   { showMsg('Select a data plan', 'error'); return; }
+    if (qty < 1)          { showMsg('Enter a valid quantity', 'error'); return; }
+    if (!pin || !/^\d{4}$/.test(pin)) { showMsg('Enter your 4-digit transaction PIN', 'error'); return; }
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></span>Processing...';
+    try {
+        const res = await API.post('/telecom/epin/purchase', {
+            network:        _network,
+            dataPlan:       _selectedPlan.id,
+            quantity:       qty,
+            transactionPin: pin
+        });
+        const ref = res?.data?.reference || res?.reference || '';
+        showMsg(`${qty} × ${_selectedPlan.label} ${_network.toUpperCase()} recharge PIN${qty > 1 ? 's' : ''} generated! Check your email.${ref ? ' Ref: ' + ref : ''}`, 'success');
+        document.getElementById('pinField').value = '';
+        document.getElementById('qtyField').value = '1';
+        updTotal();
+    } catch (err) {
+        showMsg(err.message || 'Purchase failed. Please try again.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="ticket" class="w-5 h-5"></i> Generate Recharge PIN';
+        lucide.createIcons();
+    }
+}
+
+function showMsg(msg, type) {
+    const el = document.getElementById('pageMsg');
+    el.className = 'p-4 rounded-xl text-sm font-medium ' + (type==='success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200');
+    el.textContent = msg; el.classList.remove('hidden');
+    if (type === 'success') setTimeout(() => el.classList.add('hidden'), 6000);
+    el.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+loadPlans();
+lucide.createIcons();
+</script>
+</body>
+</html>

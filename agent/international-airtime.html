@@ -39,6 +39,12 @@
                         </select>
                     </div>
 
+                    <div id="phoneGroup" class="hidden">
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Recipient Phone <span id="dialCode" class="text-slate-400 font-normal"></span></label>
+                        <input id="intlPhone" type="tel" oninput="onInputChange()" placeholder="Recipient number"
+                            class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full">
+                    </div>
+
                     <div id="opGroup" class="hidden">
                         <label class="block text-sm font-semibold text-slate-700 mb-2">Operator</label>
                         <select id="intlOperator" onchange="onOperator()" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full">
@@ -49,20 +55,14 @@
                     <div id="amtGroup" class="hidden">
                         <label class="block text-sm font-semibold text-slate-700 mb-2" id="amtLabel">Amount</label>
                         <div id="denomWrap" class="flex flex-wrap gap-2 mb-3"></div>
-                        <input id="intlAmount" type="number" step="any" oninput="updReceipt()" placeholder="Amount"
+                        <input id="intlAmount" type="number" step="any" oninput="onInputChange()" placeholder="Amount"
                             class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full">
                         <p id="amtHint" class="text-xs text-slate-400 mt-1"></p>
                     </div>
 
-                    <div id="phoneGroup" class="hidden">
-                        <label class="block text-sm font-semibold text-slate-700 mb-2">Recipient Phone <span id="dialCode" class="text-slate-400 font-normal"></span></label>
-                        <input id="intlPhone" type="tel" oninput="updReceipt()" placeholder="Recipient number"
-                            class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full">
-                    </div>
-
-                    <div id="ngnGroup" class="hidden">
-                        <label class="block text-sm font-semibold text-slate-700 mb-2" id="ngnLabel">NGN Amount to Debit from Wallet</label>
-                        <input id="intlNgn" type="number" oninput="updReceipt()" placeholder="e.g. 16500"
+                    <div id="senderGroup" class="hidden">
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Your Phone Number <span class="text-slate-400 font-normal">(sender)</span></label>
+                        <input id="intlSender" type="tel" placeholder="e.g. 08012345678"
                             class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full">
                     </div>
 
@@ -70,7 +70,7 @@
                         <div class="flex justify-between"><span class="text-slate-500">Operator</span><span class="font-semibold" id="rcpOp">—</span></div>
                         <div class="flex justify-between"><span class="text-slate-500">Recipient</span><span class="font-semibold" id="rcpNum">—</span></div>
                         <div class="flex justify-between"><span class="text-slate-500">Top-up</span><span class="font-semibold" id="rcpAmt">—</span></div>
-                        <div class="flex justify-between"><span class="text-slate-500">Wallet debit</span><span class="font-bold text-yareema-primary" id="rcpNgn">—</span></div>
+                        <div class="flex justify-between"><span class="text-slate-500">You pay</span><span class="font-bold text-yareema-primary" id="rcpNgn">—</span></div>
                     </div>
 
                     <div id="pinGroup" class="hidden">
@@ -99,22 +99,41 @@ Auth.protectPage();
 fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();initSidebar();});
 fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('international');if(typeof initHeader==='function')initHeader();lucide.createIcons();});
 
-let _countries = [], _operators = [], _op = null;
+let _countries = [], _operators = [], _op = null, _quoteNgn = null, _quoteTimer = null;
+const SENDER_COUNTRY_CODE = 'NG';
 
-function opCurrency(op){ return op && op.localAmountsSupported ? (op.destinationCurrencyCode || 'Local') : 'USD'; }
+function pickNgn(res){
+    const d = (res && res.data) ? res.data : (res || {});
+    const named = [d.nairaPrice, d.nairaAmount, d.amountNgn, d.priceNgn, d.totalNgn, d.amountInNgn, d.ngnAmount, d.ngn, d.naira];
+    for (const v of named){ const x = Number(v); if (!isNaN(x) && x > 0) return Math.ceil(x); }
+    const cur = String(d.currency || d.currencyCode || '').toUpperCase();
+    if (cur === 'NGN'){ for (const v of [d.total, d.amount, d.price, d.amountCharged]){ const x = Number(v); if (!isNaN(x) && x > 0) return Math.ceil(x); } }
+    return null;
+}
+
+function countryCode(c){ return String(c.isoName || c.isoCode || c.countryCode || c.iso2 || c.iso || c.code || '').toUpperCase(); }
+function countryName(c){ return c.name || c.countryName || c.isoName || countryCode(c); }
+function countryDial(c){ const cc = c.callingCodes || c.callingCode; if (Array.isArray(cc)) return cc[0] || ''; return cc || ''; }
+function opId(op){ return op && (op.operatorId ?? op.id); }
+function opCurrency(op){ return (op && (op.senderCurrencyCode || op.currency)) || 'USD'; }
+function opLocal(op){ return !!(op && (op.supportsLocalAmounts || op.localAmountsSupported)); }
 
 async function loadCountries() {
     const sel = document.getElementById('intlCountry');
     try {
         const res = await API.get('/telecom/international/countries');
-        _countries = res?.data || res?.countries || (Array.isArray(res) ? res : []);
+        _countries = res?.data?.content || (Array.isArray(res?.data) ? res.data : null) || res?.countries || (Array.isArray(res) ? res : []);
         if (!Array.isArray(_countries) || !_countries.length) { sel.innerHTML = '<option value="">No countries available</option>'; return; }
-        sel.innerHTML = '<option value="">— Choose Country —</option>' + _countries.map(c => {
-            const code = c.isoCode || c.countryCode || c.iso2 || c.code || '';
-            const name = c.name || c.isoName || c.countryName || code;
-            const dial = (c.callingCodes || c.callingCode || ['+'])[0] || '+';
-            return `<option value="${code}" data-dial="${dial}">${name} (${dial})</option>`;
-        }).join('');
+        const seen = new Set();
+        const opts = [];
+        _countries.forEach((c, i) => {
+            const code = countryCode(c);
+            if (!code || seen.has(code)) return;
+            seen.add(code);
+            const dial = countryDial(c);
+            opts.push(`<option value="${i}" data-dial="${dial}">${countryName(c)}${dial ? ' (' + dial + ')' : ''}</option>`);
+        });
+        sel.innerHTML = '<option value="">— Choose Country —</option>' + opts.join('');
     } catch (e) {
         sel.innerHTML = '<option value="">Failed to load countries</option>';
         showMsg('Failed to load countries. Please try again.', 'error');
@@ -123,19 +142,21 @@ async function loadCountries() {
 
 async function onCountry() {
     const sel  = document.getElementById('intlCountry');
-    const code = sel.value;
+    const idx  = sel.value;
     const dial = sel.options[sel.selectedIndex]?.dataset?.dial || '';
-    _operators = []; _op = null;
-    ['opGroup','amtGroup','phoneGroup','ngnGroup','pinGroup','intlReceipt'].forEach(id => document.getElementById(id).classList.add('hidden'));
+    _operators = []; _op = null; _quoteNgn = null;
+    ['opGroup','amtGroup','senderGroup','pinGroup','intlReceipt'].forEach(id => document.getElementById(id).classList.add('hidden'));
+    document.getElementById('phoneGroup').classList.remove('hidden');
     document.getElementById('dialCode').textContent = dial ? '(' + dial + ')' : '';
-    if (!code) return;
+    if (idx === '') { document.getElementById('phoneGroup').classList.add('hidden'); return; }
+    const code = countryCode(_countries[+idx]);
 
     const opSel = document.getElementById('intlOperator');
     document.getElementById('opGroup').classList.remove('hidden');
     opSel.innerHTML = '<option value="">Loading operators...</option>';
     try {
-        const res = await API.get(`/telecom/international/operators/${code}?page=1&size=100`);
-        _operators = res?.data?.content || res?.data || res?.operators || (Array.isArray(res) ? res : []);
+        const res = await API.get(`/telecom/international/operators/${code}?page=1&size=100&includeBundles=true`);
+        _operators = res?.data?.content || (Array.isArray(res?.data) ? res.data : null) || res?.operators || (Array.isArray(res) ? res : []);
         if (!Array.isArray(_operators) || !_operators.length) { opSel.innerHTML = '<option value="">No operators found</option>'; return; }
         opSel.innerHTML = '<option value="">— Choose Operator —</option>' + _operators.map((op, i) => {
             const name = op.name || op.operatorName || ('Operator ' + (i + 1));
@@ -149,11 +170,12 @@ async function onCountry() {
 
 function onOperator() {
     const idx = document.getElementById('intlOperator').value;
+    _quoteNgn = null;
     if (idx === '') { _op = null; return; }
     _op = _operators[+idx];
     if (!_op) return;
 
-    ['amtGroup','phoneGroup','ngnGroup','pinGroup'].forEach(id => document.getElementById(id).classList.remove('hidden'));
+    ['amtGroup','senderGroup','pinGroup'].forEach(id => document.getElementById(id).classList.remove('hidden'));
 
     const cur = opCurrency(_op);
     document.getElementById('amtLabel').textContent = `Amount (${cur})`;
@@ -162,11 +184,6 @@ function onOperator() {
     if (_op.minAmount != null) hint.push(`Min: ${_op.minAmount} ${cur}`);
     if (_op.maxAmount != null) hint.push(`Max: ${_op.maxAmount} ${cur}`);
     document.getElementById('amtHint').textContent = hint.join('  ·  ');
-
-    const ngnLabel = document.getElementById('ngnLabel');
-    ngnLabel.innerHTML = _op.fxRate
-        ? `NGN Amount to Debit from Wallet <span class="text-xs text-slate-400 font-normal">(FX: 1 USD ≈ ₦${Number(_op.fxRate).toLocaleString(undefined,{maximumFractionDigits:2})})</span>`
-        : 'NGN Amount to Debit from Wallet';
 
     const denoms = _op.denominationType === 'FIXED' ? (_op.fixedAmounts || _op.fixedAmountsList || []) : [];
     const wrap = document.getElementById('denomWrap');
@@ -179,63 +196,101 @@ function onOperator() {
         wrap.innerHTML = '';
         document.getElementById('intlAmount').placeholder = `Amount in ${cur}`;
     }
-    updReceipt();
+    onInputChange();
 }
 
 function pickDenom(val, btn) {
     document.querySelectorAll('.denom-btn').forEach(b => b.className = 'denom-btn px-4 py-2 rounded-xl border-2 border-slate-200 bg-white text-slate-700 text-sm font-semibold hover:border-yareema-primary transition-all');
     btn.className = 'denom-btn px-4 py-2 rounded-xl border-2 border-yareema-primary bg-yareema-primary text-white text-sm font-semibold transition-all';
     document.getElementById('intlAmount').value = val;
-    updReceipt();
+    onInputChange();
 }
 
-function updReceipt() {
+function onInputChange() { renderReceipt(); runQuote(); }
+
+function renderReceipt() {
     if (!_op) return;
     const phone = document.getElementById('intlPhone').value.trim();
     const amt   = parseFloat(document.getElementById('intlAmount').value) || 0;
-    const ngn   = parseFloat(document.getElementById('intlNgn').value) || 0;
     const box   = document.getElementById('intlReceipt');
-    if (!phone || !amt || !ngn) { box.classList.add('hidden'); return; }
+    if (!phone || !amt) { box.classList.add('hidden'); return; }
     const cur = opCurrency(_op);
     box.classList.remove('hidden');
     document.getElementById('rcpOp').textContent  = _op.name || _op.operatorName || '—';
     document.getElementById('rcpNum').textContent = phone;
     document.getElementById('rcpAmt').textContent = `${amt} ${cur}`;
-    document.getElementById('rcpNgn').textContent = `₦${Number(ngn).toLocaleString()}`;
+    document.getElementById('rcpNgn').textContent = _quoteNgn ? UI.formatCurrency(_quoteNgn) : 'Enter recipient number to price';
+}
+
+// Quote requires recipientCountryCode + recipientNumber, so it runs once those + amount are set.
+function runQuote() {
+    _quoteNgn = null;
+    const cIdx  = document.getElementById('intlCountry').value;
+    const code  = cIdx === '' ? '' : countryCode(_countries[+cIdx]);
+    const phone = document.getElementById('intlPhone').value.trim();
+    const amt   = parseFloat(document.getElementById('intlAmount').value) || 0;
+    if (!_op || !amt || !code || phone.length < 4) { renderReceipt(); return; }
+    document.getElementById('rcpNgn').textContent = 'Calculating…';
+    clearTimeout(_quoteTimer);
+    const sender = document.getElementById('intlSender').value.trim();
+    _quoteTimer = setTimeout(async () => {
+        try {
+            const res = await API.post('/telecom/international/quote', {
+                operatorId:           opId(_op),
+                amount:               amt,
+                useLocalAmount:       opLocal(_op),
+                recipientCountryCode: code,
+                recipientNumber:      phone,
+                senderCountryCode:    SENDER_COUNTRY_CODE,
+                senderNumber:         sender,
+                amountNgn:            amt
+            });
+            if (parseFloat(document.getElementById('intlAmount').value) !== amt) return;
+            _quoteNgn = pickNgn(res);
+            renderReceipt();
+        } catch (err) {
+            _quoteNgn = null;
+            renderReceipt();
+        }
+    }, 400);
 }
 
 async function submitIntl(e) {
     e.preventDefault();
-    const code  = document.getElementById('intlCountry').value;
-    const phone = document.getElementById('intlPhone').value.trim();
-    const amt   = parseFloat(document.getElementById('intlAmount').value);
-    const ngn   = parseFloat(document.getElementById('intlNgn').value);
-    const pin   = document.getElementById('intlPin').value.trim();
+    const cIdx   = document.getElementById('intlCountry').value;
+    const code   = cIdx === '' ? '' : countryCode(_countries[+cIdx]);
+    const phone  = document.getElementById('intlPhone').value.trim();
+    const amt    = parseFloat(document.getElementById('intlAmount').value);
+    const sender = document.getElementById('intlSender').value.trim();
+    const pin    = document.getElementById('intlPin').value.trim();
     if (!code)                     { showMsg('Please select a country', 'error'); return; }
     if (!_op)                      { showMsg('Please select an operator', 'error'); return; }
     if (!phone || phone.length < 4){ showMsg('Enter a valid recipient phone number', 'error'); return; }
     if (!amt || amt <= 0)          { showMsg('Enter a valid amount', 'error'); return; }
-    if (!ngn || ngn <= 0)          { showMsg('Enter the NGN amount to debit from your wallet', 'error'); return; }
+    if (!sender || sender.length < 7) { showMsg('Enter your (sender) phone number', 'error'); return; }
     if (!pin || !/^\d{4}$/.test(pin)) { showMsg('Enter your 4-digit transaction PIN', 'error'); return; }
     const btn = document.getElementById('submitBtn');
     btn.disabled = true; btn.innerHTML = '<span class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></span>Processing...';
     try {
         await API.post('/telecom/international/topup', {
-            operatorId:           _op.id || _op.operatorId,
+            operatorId:           opId(_op),
             amount:               amt,
-            useLocalAmount:       !!_op.localAmountsSupported,
+            useLocalAmount:       opLocal(_op),
             recipientCountryCode: code,
             recipientNumber:      phone,
-            amountNgn:            ngn,
+            senderCountryCode:    SENDER_COUNTRY_CODE,
+            senderNumber:         sender,
+            amountNgn:            _quoteNgn || amt,
             transactionPin:       pin
         });
         const opName = _op.name || _op.operatorName || 'Operator';
         showMsg(`${amt} ${opCurrency(_op)} top-up sent to ${phone} via ${opName}!`, 'success');
         document.getElementById('intlAmount').value = '';
         document.getElementById('intlPhone').value = '';
-        document.getElementById('intlNgn').value = '';
+        document.getElementById('intlSender').value = '';
         document.getElementById('intlPin').value = '';
         document.getElementById('intlReceipt').classList.add('hidden');
+        _quoteNgn = null;
     } catch (err) {
         showMsg(err.message || 'Transaction failed. Please try again.', 'error');
     } finally {

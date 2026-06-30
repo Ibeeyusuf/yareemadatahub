@@ -47,15 +47,35 @@
                         <p id="valHint" class="text-xs text-slate-400 mt-1"></p>
                     </div>
 
-                    <div id="restGroup" class="hidden space-y-5">
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-700 mb-2">NGN Amount to Debit from Wallet</label>
-                            <input id="gcNgn" type="number" placeholder="e.g. 16500"
-                                class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full">
+                    <div id="quoteBox" class="hidden rounded-xl bg-slate-50 border border-slate-200 p-4 text-sm">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <span class="text-slate-500">You pay</span>
+                                <span id="quoteSub" class="block text-xs text-slate-400"></span>
+                            </div>
+                            <span class="font-bold text-yareema-primary text-base" id="quoteNgn">—</span>
                         </div>
+                    </div>
+
+                    <div id="restGroup" class="hidden space-y-5">
                         <div>
                             <label class="block text-sm font-semibold text-slate-700 mb-2">Recipient Email</label>
                             <input id="gcEmail" type="email" placeholder="recipient@email.com"
+                                class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Recipient Name</label>
+                            <input id="gcRecipient" type="text" placeholder="Recipient full name"
+                                class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Sender Name</label>
+                            <input id="gcSender" type="text" placeholder="Your name"
+                                class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Message <span class="text-slate-400 font-normal">(optional)</span></label>
+                            <input id="gcMessage" type="text" placeholder="Happy gifting!"
                                 class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full">
                         </div>
                         <div>
@@ -85,21 +105,33 @@ Auth.protectPage();
 fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();initSidebar();});
 fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('giftcards');if(typeof initHeader==='function')initHeader();lucide.createIcons();});
 
-let _products = [], _selected = null, _chosenValue = 0;
+let _products = [], _selected = null, _chosenValue = 0, _quoteNgn = null, _quoteTimer = null;
 
-function gcName(p){ return p.productName || p.name || p.brand || 'Gift Card'; }
-function gcId(p){ return String(p.productId ?? p.id ?? p._id ?? p.code ?? ''); }
-function gcCur(p){ return p.recipientCurrencyCode || p.currency || 'USD'; }
-function gcSenderCur(p){ return p.senderCurrencyCode || 'USD'; }
-function gcDenoms(p){
-    const list = p.fixedRecipientDenominations || p.denominations || p.fixedValues || p.values || [];
-    return Array.isArray(list) ? list.filter(v => Number(v) > 0).map(Number) : [];
+// Pull the NGN figure out of a quote/buy response (handles the backend's field names).
+function pickNgn(res){
+    const d = (res && res.data) ? res.data : (res || {});
+    const named = [d.nairaAmount, d.nairaPrice, d.amountNgn, d.priceNgn, d.totalNgn, d.amountInNgn, d.ngnAmount, d.ngn, d.naira];
+    for (const v of named){ const x = Number(v); if (!isNaN(x) && x > 0) return Math.ceil(x); }
+    const cur = String(d.currency || d.currencyCode || '').toUpperCase();
+    if (cur === 'NGN'){ for (const v of [d.total, d.amount, d.price, d.amountCharged]){ const x = Number(v); if (!isNaN(x) && x > 0) return Math.ceil(x); } }
+    return null;
 }
+
+function gcName(p){ return p.name || p.productName || p.brand || 'Gift Card'; }
+function gcId(p){ return String(p.id ?? p.productId ?? p._id ?? p.code ?? ''); }
+function gcCur(p){ return p.currency || p.recipientCurrencyCode || 'USD'; }
+function gcFixed(p){ return p.fixed === true || (Array.isArray(p.fixedAmounts) && p.fixedAmounts.length > 0); }
+function gcAmounts(p){
+    const list = p.fixedAmounts || p.fixedRecipientDenominations || p.denominations || [];
+    return Array.isArray(list) ? list.map(Number).filter(v => v > 0) : [];
+}
+function gcMin(p){ return Number(p.minAmount ?? p.minRecipientDenomination ?? p.minValue ?? 1); }
+function gcMax(p){ return Number(p.maxAmount ?? p.maxRecipientDenomination ?? p.maxValue ?? 9999); }
 
 async function loadProducts() {
     const sel = document.getElementById('gcProduct');
     try {
-        const res = await API.get('/giftcards/products?country=NG');
+        const res = await API.get('/giftcards/catalog');
         _products = res?.data?.content || res?.data?.products || res?.data?.items || (Array.isArray(res?.data) ? res.data : null) || res?.content || res?.products || (Array.isArray(res) ? res : []);
         if (!Array.isArray(_products)) _products = [];
         if (!_products.length) { sel.innerHTML = '<option value="">No gift cards available</option>'; return; }
@@ -113,33 +145,29 @@ async function loadProducts() {
 function onProduct() {
     const idx = document.getElementById('gcProduct').value;
     _selected = idx === '' ? null : _products[+idx];
-    _chosenValue = 0;
+    _chosenValue = 0; _quoteNgn = null;
     const valGroup = document.getElementById('valGroup');
     const rest = document.getElementById('restGroup');
     const wrap = document.getElementById('denomWrap');
     const range = document.getElementById('gcRange');
+    document.getElementById('quoteBox').classList.add('hidden');
     if (!_selected) { valGroup.classList.add('hidden'); rest.classList.add('hidden'); return; }
     valGroup.classList.remove('hidden'); rest.classList.remove('hidden');
 
     const cur = gcCur(_selected);
-    const senderCur = gcSenderCur(_selected);
-    const senderMap = _selected.fixedRecipientToSenderDenominationsMap || {};
-    const denoms = gcDenoms(_selected);
+    const amounts = gcAmounts(_selected);
     document.getElementById('valLabel').textContent = `Select Value (${cur})`;
 
-    if (denoms.length) {
+    if (gcFixed(_selected) && amounts.length) {
         range.classList.add('hidden'); range.value = '';
-        wrap.innerHTML = denoms.map(v => {
-            const usd = senderMap[String(v)] ?? senderMap[v.toFixed ? v.toFixed(1) : v] ?? null;
-            const sub = usd != null ? `<span class="block text-[10px] opacity-70">≈ ${senderCur} ${usd}</span>` : '';
-            return `<button type="button" onclick="pickDenom(${v}, this)" class="denom-btn px-4 py-2 rounded-xl border-2 border-slate-200 bg-white text-slate-700 text-sm font-semibold hover:border-yareema-primary transition-all">${cur} ${v}${sub}</button>`;
-        }).join('');
+        wrap.innerHTML = amounts.map((v, i) =>
+            `<button type="button" onclick="pickDenom(${v}, this)" class="denom-btn px-4 py-2 rounded-xl border-2 border-slate-200 bg-white text-slate-700 text-sm font-semibold hover:border-yareema-primary transition-all">${cur} ${v}</button>`
+        ).join('');
         document.getElementById('valHint').textContent = '';
     } else {
         wrap.innerHTML = '';
         range.classList.remove('hidden');
-        const minV = Number(_selected.minRecipientDenomination || _selected.minValue || 1);
-        const maxV = Number(_selected.maxRecipientDenomination || _selected.maxValue || 9999);
+        const minV = gcMin(_selected), maxV = gcMax(_selected);
         range.placeholder = `Enter value (${cur} ${minV} – ${maxV})`;
         document.getElementById('valHint').textContent = `Allowed range: ${cur} ${minV} – ${maxV}`;
     }
@@ -149,36 +177,67 @@ function pickDenom(val, btn) {
     document.querySelectorAll('.denom-btn').forEach(b => b.className = 'denom-btn px-4 py-2 rounded-xl border-2 border-slate-200 bg-white text-slate-700 text-sm font-semibold hover:border-yareema-primary transition-all');
     btn.className = 'denom-btn px-4 py-2 rounded-xl border-2 border-yareema-primary bg-yareema-primary text-white text-sm font-semibold transition-all';
     _chosenValue = val;
+    runQuote();
 }
 
 function setRange() {
     _chosenValue = parseFloat(document.getElementById('gcRange').value) || 0;
+    runQuote();
+}
+
+// Ask the backend for the live NGN price for the chosen card + value.
+function runQuote() {
+    _quoteNgn = null;
+    const box = document.getElementById('quoteBox');
+    if (!_selected || !_chosenValue || _chosenValue <= 0) { box.classList.add('hidden'); return; }
+    box.classList.remove('hidden');
+    document.getElementById('quoteSub').textContent = `Gift value: ${gcCur(_selected)} ${_chosenValue}`;
+    document.getElementById('quoteNgn').textContent = 'Calculating…';
+    clearTimeout(_quoteTimer);
+    const productId = gcId(_selected), amount = _chosenValue;
+    _quoteTimer = setTimeout(async () => {
+        try {
+            const res = await API.post('/giftcards/quote', { productId, amount });
+            if (_chosenValue !== amount) return; // selection changed mid-flight
+            _quoteNgn = pickNgn(res);
+            document.getElementById('quoteNgn').textContent = _quoteNgn ? UI.formatCurrency(_quoteNgn) : 'Charged at checkout';
+        } catch (err) {
+            _quoteNgn = null;
+            document.getElementById('quoteNgn').textContent = 'Charged at checkout';
+        }
+    }, 350);
 }
 
 async function submitGc(e) {
     e.preventDefault();
     if (!_selected)            { showMsg('Select a gift card', 'error'); return; }
     if (!_chosenValue || _chosenValue <= 0) { showMsg('Select or enter a value', 'error'); return; }
-    const ngn   = parseFloat(document.getElementById('gcNgn').value);
-    const email = document.getElementById('gcEmail').value.trim();
-    const pin   = document.getElementById('gcPin').value.trim();
-    if (!ngn || ngn <= 0)            { showMsg('Enter the NGN amount to debit', 'error'); return; }
+    const email     = document.getElementById('gcEmail').value.trim();
+    const recipient = document.getElementById('gcRecipient').value.trim();
+    const sender    = document.getElementById('gcSender').value.trim();
+    const message   = document.getElementById('gcMessage').value.trim();
+    const pin       = document.getElementById('gcPin').value.trim();
     if (!email || !email.includes('@')) { showMsg('Enter a valid recipient email', 'error'); return; }
-    if (!pin || !/^\d{4}$/.test(pin)) { showMsg('Enter your 4-digit transaction PIN', 'error'); return; }
+    if (!recipient)                     { showMsg('Enter the recipient name', 'error'); return; }
+    if (!sender)                        { showMsg('Enter the sender name', 'error'); return; }
+    if (!pin || !/^\d{4}$/.test(pin))   { showMsg('Enter your 4-digit transaction PIN', 'error'); return; }
     const btn = document.getElementById('submitBtn');
     btn.disabled = true; btn.innerHTML = '<span class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></span>Processing...';
     try {
-        await API.post('/giftcards/purchase', {
+        await API.post('/giftcards/buy', {
             productId:      gcId(_selected),
-            value:          _chosenValue,
-            quantity:       1,
-            amountNgn:      ngn,
+            amount:         _chosenValue,
             recipientEmail: email,
+            recipientName:  recipient,
+            senderName:     sender,
+            message:        message || 'Enjoy your gift!',
             transactionPin: pin
         });
         showMsg(`${gcName(_selected)} purchased! The card will be sent to ${email}.`, 'success');
-        document.getElementById('gcNgn').value = '';
         document.getElementById('gcEmail').value = '';
+        document.getElementById('gcRecipient').value = '';
+        document.getElementById('gcSender').value = '';
+        document.getElementById('gcMessage').value = '';
         document.getElementById('gcPin').value = '';
     } catch (err) {
         showMsg(err.message || 'Purchase failed. Please try again.', 'error');
