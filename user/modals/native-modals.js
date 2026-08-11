@@ -157,6 +157,9 @@ function openModal(type) {
 let selectedNetwork = 'mtn';
 let currentDataPlans = [];
 let selectedDataType = null;
+const dataTypesCache = {};
+const dataPlansCache = {};
+const dataPlansPromises = {};
 
 async function showDataModal() {
     selectedNetwork = 'mtn';
@@ -247,10 +250,13 @@ async function loadDataTypes(network) {
     const typeGrid = document.getElementById('dataTypeGrid');
 
     try {
-        const response = await api.getDataPlans(network);
+        const networkKey = network.toLowerCase();
+        const response = dataTypesCache[networkKey] || await api.getDataPlans(network);
+        dataTypesCache[networkKey] = response;
         const types = response.availableDataTypes;
 
         if (!typeGrid) return;
+        if (selectedNetwork !== networkKey) return;
 
         if (!types || !types.length) {
             typeGrid.innerHTML = '<span style="color:#dc2626;font-size:13px;">No data types available</span>';
@@ -269,10 +275,51 @@ async function loadDataTypes(network) {
                 ${type.charAt(0).toUpperCase() + type.slice(1)}
             </button>
         `).join('');
+        preloadDataPlans(networkKey, types);
 
     } catch (error) {
         if (typeGrid) typeGrid.innerHTML = '<span style="color:#dc2626;font-size:13px;">Failed to load types. Please retry.</span>';
     }
+}
+
+function getDataPlansCacheKey(network, dataType) {
+    return `${network.toLowerCase()}::${String(dataType).toLowerCase()}`;
+}
+
+function normalizeDataPlansResponse(response, network) {
+    let plans = [];
+    if (Array.isArray(response.data)) {
+        plans = response.data.filter(p => (p.price || p.PRODUCT_AMOUNT || p.sellingPrice) > 0);
+    } else if (response.data && Array.isArray(response.data[network.toLowerCase()])) {
+        plans = response.data[network.toLowerCase()].filter(p => p.price > 0);
+    } else if (response.data?.MOBILE_NETWORK) {
+        const nelloKey = { mtn:'MTN', glo:'Glo', '9mobile':'m_9mobile', airtel:'Airtel' }[network.toLowerCase()] || network;
+        const nd = response.data.MOBILE_NETWORK[nelloKey];
+        if (Array.isArray(nd) && nd[0]?.PRODUCT)
+            plans = nd[0].PRODUCT.map(p => ({ id: p.PRODUCT_ID, planName: p.PRODUCT_NAME, price: p.PRODUCT_AMOUNT }));
+    }
+    return plans;
+}
+
+function getCachedDataPlans(network, dataType) {
+    const key = getDataPlansCacheKey(network, dataType);
+    if (dataPlansCache[key]) return Promise.resolve(dataPlansCache[key]);
+    if (!dataPlansPromises[key]) {
+        dataPlansPromises[key] = api.getDataPlans(network, dataType)
+            .then(response => {
+                const plans = normalizeDataPlansResponse(response, network);
+                dataPlansCache[key] = plans;
+                return plans;
+            })
+            .finally(() => {
+                delete dataPlansPromises[key];
+            });
+    }
+    return dataPlansPromises[key];
+}
+
+function preloadDataPlans(network, types) {
+    types.forEach(type => getCachedDataPlans(network, type).catch(() => null));
 }
 
 async function selectDataType(type) {
@@ -302,19 +349,8 @@ async function loadDataPlans(network, dataType) {
     if (!planSelect) return;
 
     try {
-        const response = await api.getDataPlans(network, dataType);
-
-        let plans = [];
-        if (Array.isArray(response.data)) {
-            plans = response.data.filter(p => (p.price || p.PRODUCT_AMOUNT || p.sellingPrice) > 0);
-        } else if (response.data && Array.isArray(response.data[network.toLowerCase()])) {
-            plans = response.data[network.toLowerCase()].filter(p => p.price > 0);
-        } else if (response.data?.MOBILE_NETWORK) {
-            const nelloKey = { mtn:'MTN', glo:'Glo', '9mobile':'m_9mobile', airtel:'Airtel' }[network.toLowerCase()] || network;
-            const nd = response.data.MOBILE_NETWORK[nelloKey];
-            if (Array.isArray(nd) && nd[0]?.PRODUCT)
-                plans = nd[0].PRODUCT.map(p => ({ id: p.PRODUCT_ID, planName: p.PRODUCT_NAME, price: p.PRODUCT_AMOUNT }));
-        }
+        const plans = await getCachedDataPlans(network, dataType);
+        if (selectedNetwork !== network.toLowerCase() || selectedDataType !== dataType) return;
 
         currentDataPlans = plans;
 
