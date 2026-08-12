@@ -253,7 +253,7 @@ function extractDataPlans(res, network, dataType) {
     } else if (Array.isArray(res)) {
         plans = res;
     }
-    return plans;
+    return sortDataPlans(plans);
 }
 
 function extractCablePlans(res, provider) {
@@ -282,6 +282,19 @@ function planLabel(p) {
 }
 function planPrice(p) {
     return p.sellingPrice || p.price || p.amount || p.PRODUCT_AMOUNT || 0;
+}
+function planSizeInMB(p) {
+    const text = String(p.size || p.dataAmount || p.planName || p.name || '').toUpperCase();
+    const match = text.match(/(\d+(?:\.\d+)?)\s*(TB|GB|MB)/);
+    if (!match) return Number.POSITIVE_INFINITY;
+    const value = Number(match[1]);
+    return match[2] === 'TB' ? value * 1024 * 1024 : match[2] === 'GB' ? value * 1024 : value;
+}
+function sortDataPlans(plans) {
+    return [...plans].sort((left, right) => {
+        const priceDifference = Number(planPrice(left)) - Number(planPrice(right));
+        return priceDifference || planSizeInMB(left) - planSizeInMB(right);
+    });
 }
 function planId(p) {
     return p._id || p.planCode || p.id || p.planId || p.PRODUCT_ID || '';
@@ -685,7 +698,8 @@ async function submitTV() {
 // ═══════════════════════════════════════════════════════════════════════════════
 //  EDUCATION
 // ═══════════════════════════════════════════════════════════════════════════════
-const EDU_P = { waecdirect:3800, neco:1000, jamb:700, nabteb:900 };
+// Education pricing must come from the API; never estimate it in the client.
+const EDU_P = {};
 
 function showEdu() {
     M.show('Education PIN', `

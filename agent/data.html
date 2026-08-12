@@ -98,6 +98,8 @@ fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementByI
 fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('data');if(typeof initHeader==='function')initHeader();lucide.createIcons();});
 
 let _net='mtn', _plans=[], _type=null;
+const _plansByNetwork = new Map();
+const _plansByNetworkAndType = new Map();
 
 const NET_STYLES = {
     mtn:     {active:'border-yellow-400 bg-yellow-50 text-yellow-800',  dot:'bg-yellow-400 text-black'},
@@ -122,31 +124,60 @@ function selectNetwork(n) {
     loadTypes(n);
 }
 
+function extractNetworkPlans(res, network) {
+    const data = res?.data || {};
+    const candidates = [
+        data?.services?.data_recharge,
+        data?.[network],
+        data?.[network.toLowerCase()],
+        data?.plans,
+        data
+    ];
+    const allPlans = candidates.find(Array.isArray) || [];
+    return allPlans.filter(plan => {
+        const planNetwork = String(plan.network || plan.provider || '').toLowerCase();
+        return !planNetwork || planNetwork === network.toLowerCase();
+    });
+}
+
+function planType(plan) {
+    return String(plan.dataType || plan.providerPlanType || plan.category || plan.planType || '').toLowerCase();
+}
+
+function planSizeInMB(plan) {
+    const text = String(plan.size || plan.dataAmount || plan.planName || plan.name || '').toUpperCase();
+    const match = text.match(/(\d+(?:\.\d+)?)\s*(TB|GB|MB)/);
+    if (!match) return Number.POSITIVE_INFINITY;
+    const value = Number(match[1]);
+    return match[2] === 'TB' ? value * 1024 * 1024 : match[2] === 'GB' ? value * 1024 : value;
+}
+
+function sortDataPlans(plans) {
+    return [...plans].sort((left, right) => {
+        const leftPrice = Number(left.sellingPrice ?? left.price ?? left.amount ?? 0);
+        const rightPrice = Number(right.sellingPrice ?? right.price ?? right.amount ?? 0);
+        const priceDifference = leftPrice - rightPrice;
+        return priceDifference || planSizeInMB(left) - planSizeInMB(right);
+    });
+}
+
 async function loadTypes(n) {
     const wrap = document.getElementById('dataTypeWrap');
     wrap.innerHTML = '<p class="text-sm text-slate-400">Loading...</p>';
     try {
-        const res = await API.get(`${API_CONFIG.ENDPOINTS.DATA_PLANS}?network=${n}`);
-        
-        // Extract available data types from response
-        let types = res.availableDataTypes;
-        
-        // If availableDataTypes doesn't exist or is empty, extract from plans
-        if (!types || !types.length) {
-            if (res.data && res.data[n] && Array.isArray(res.data[n])) {
-                // Get unique providerPlanType values and clean them
-                const rawTypes = [...new Set(res.data[n].map(p => p.providerPlanType).filter(Boolean))];
-                // Map to simpler type names if needed
-                types = rawTypes.map(t => {
-                    if (t.toLowerCase().includes('corporate')) return 'corporate';
-                    if (t.toLowerCase().includes('gifting')) return 'gifting';
-                    if (t.toLowerCase().includes('sme')) return 'sme';
-                    return t;
-                });
-                // Remove duplicates after mapping
-                types = [...new Set(types)];
-            }
+        let plans = _plansByNetwork.get(n);
+        let types = [];
+        if (!plans) {
+            const res = await API.get(`${API_CONFIG.ENDPOINTS.DATA_PLANS}?network=${n}`);
+            plans = extractNetworkPlans(res, n);
+            if (plans.length) _plansByNetwork.set(n, plans);
+            // Some API responses intentionally return only availableDataTypes
+            // until the user chooses one. Preserve that supported shape.
+            types = Array.isArray(res.availableDataTypes) ? res.availableDataTypes : [];
         }
+        if (n !== _net) return;
+
+        if (!types.length) types = [...new Set(plans.map(planType).filter(Boolean))];
         
         if (!types || !types.length) { 
             wrap.innerHTML = '<p class="text-sm text-red-500">No data types available</p>'; 
@@ -176,31 +207,18 @@ async function selectType(t) {
     ps.disabled = true;
     
     try {
-        const res = await API.get(`${API_CONFIG.ENDPOINTS.DATA_PLANS}?network=${_net}&dataType=${t}`);
-        
-        // Handle the actual response structure
-        let plans = [];
-        
-        // Check if plans exist in data[network] format
-        if (res.data && res.data[_net] && Array.isArray(res.data[_net])) {
-            plans = [...res.data[_net]];
-        } 
-        // Fallback: check if data is directly an array
-        else if (Array.isArray(res.data)) {
-            plans = [...res.data];
-        }
-        // Another fallback: check if data has plans array
-        else if (res.data && Array.isArray(res.data.plans)) {
-            plans = [...res.data.plans];
-        }
-        
-        // Filter plans by dataType if needed
-        if (t && t !== 'all') {
-            plans = plans.filter(p => {
-                const planType = (p.providerPlanType || '').toLowerCase();
-                // Check if plan type contains the selected type (e.g., "corporate" matches "corporate gifting")
-                return planType.includes(t.toLowerCase()) || planType === t.toLowerCase();
-            });
+        // Types and plans are delivered by the same endpoint response. Reuse
+        // the cached list instead of making a second network request.
+        const allPlans = _plansByNetwork.get(_net) || [];
+        let plans = allPlans.filter(plan => planType(plan) === String(t).toLowerCase());
+        if (!plans.length) {
+            const cacheKey = `${_net}:${String(t).toLowerCase()}`;
+            plans = _plansByNetworkAndType.get(cacheKey) || [];
+            if (!plans.length) {
+                const res = await API.get(`${API_CONFIG.ENDPOINTS.DATA_PLANS}?network=${_net}&dataType=${encodeURIComponent(t)}`);
+                plans = extractNetworkPlans(res, _net);
+                _plansByNetworkAndType.set(cacheKey, plans);
+            }
         }
         
         // Remove duplicates based on id or planCode
@@ -213,7 +231,7 @@ async function selectType(t) {
                 uniquePlans.push(plan);
             }
         }
-        plans = uniquePlans;
+        plans = sortDataPlans(uniquePlans);
         
         _plans = plans;
         

@@ -92,7 +92,8 @@
         });
         
         async function loadEarningsData() {
-            // Earnings come from dashboard endpoint
+            // Summary totals are supplied by the dashboard; the commission
+            // history itself is loaded from /wallet/transactions?type=commission.
             const result = await AgentDashboard.getDashboardData();
             
             if (result.success && result.data && result.data.stats) {
@@ -121,13 +122,17 @@
             }
             
             container.innerHTML = services.map(service => {
-                const commission = (service.amount || 0) * (service.commissionRate || 0) / 100;
+                // Aggregated dashboard entries use `_id` as the service name
+                // (e.g. `data_recharge`), rather than `name`.
+                const serviceName = service.name || service.service || service._id || 'Other service';
+                const commission = Number(service.commission ?? service.earnings ?? 0)
+                    || (Number(service.amount) || 0) * (Number(service.commissionRate) || 0) / 100;
                 return `
                     <div class="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:bg-slate-50">
                         <div class="flex items-center gap-3">
-                            ${getServiceIcon(service.name)}
+                            ${getServiceIcon(serviceName)}
                             <div>
-                                <p class="font-semibold text-slate-900">${service.name}</p>
+                                <p class="font-semibold text-slate-900">${serviceName}</p>
                                 <p class="text-xs text-slate-500">${UI.formatNumber(service.count || 0)} transactions</p>
                             </div>
                         </div>
@@ -156,18 +161,24 @@
                 if (!transactions || transactions.length === 0) {
                     container.innerHTML = '<div class="text-center py-8 text-slate-500"><i data-lucide="inbox" class="w-12 h-12 mx-auto mb-3 text-slate-400"></i><p>No commission earned yet</p></div>';
                 } else {
-                    container.innerHTML = transactions.map(txn => `
+                    container.innerHTML = transactions.map(txn => {
+                        const service = typeof txn.service === 'string'
+                            ? txn.service
+                            : txn.service?.name || txn.service?.network || txn.serviceType || txn.category || 'Service';
+                        const commission = Number(txn.commission ?? txn.amount ?? 0) || 0;
+                        return `
                         <div class="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:bg-slate-50">
                             <div>
                                 <p class="font-semibold text-slate-900">${txn.description || 'Commission earned'}</p>
                                 <p class="text-xs text-slate-500">${UI.formatDate(txn.createdAt || txn.date)}</p>
                             </div>
                             <div class="text-right">
-                                <p class="font-bold text-green-600">+${UI.formatCurrency(txn.amount)}</p>
-                                <p class="text-xs text-slate-500">${txn.service || 'Service'}</p>
+                                <p class="font-bold text-green-600">+${UI.formatCurrency(commission)}</p>
+                                <p class="text-xs text-slate-500">${service}</p>
                             </div>
                         </div>
-                    `).join('');
+                    `;
+                    }).join('');
                 }
             } else {
                 container.innerHTML = '<div class="text-center py-8 text-red-500"><i data-lucide="alert-circle" class="w-12 h-12 mx-auto mb-3"></i><p>Failed to load earnings</p></div>';

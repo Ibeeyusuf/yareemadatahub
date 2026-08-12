@@ -353,8 +353,8 @@ async function handleWithdrawalSubmit(e) {
 
 function calculateEducationCost() {
     const qty = parseInt(document.getElementById('educationQty')?.value || 1);
-    const pricePerPin = window._educationPinPrice || 3500;
-    const commissionRate = window._educationCommissionRate || 5;
+    const pricePerPin = Number(window._educationPinPrice) || 0;
+    const commissionRate = Number(window._educationCommissionRate) || 0;
     const cost = qty * pricePerPin;
     const commission = cost * commissionRate / 100;
     const costEl = document.getElementById('educationCost');
@@ -367,7 +367,12 @@ async function handleEducationPurchase(e) {
     e.preventDefault();
     const phone = document.getElementById('educationPhone')?.value.trim();
     const qty   = parseInt(document.getElementById('educationQty')?.value || 1);
-    const examType = window.currentEducationType || 'waec';
+    const examType = window.currentEducationType;
+
+    if (!examType) {
+        _modalMsg('educationMsg', 'Please select an available exam type.', 'error');
+        return;
+    }
 
     if (!phone || phone.length < 10) {
         _modalMsg('educationMsg', 'Please enter a valid phone number.', 'error');

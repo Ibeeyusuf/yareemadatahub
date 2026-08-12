@@ -244,8 +244,13 @@ const AgentDashboard = {
                 return;
             }
             
-            const dashboard = result.data || {};
-            const { stats = {}, recentTransactions = [], serviceBreakdown = [], weeklyEarnings = [], weeklyPerformance = [] } = dashboard;
+            const dashboard = result.data && typeof result.data === 'object' ? result.data : {};
+            const rawStats = dashboard.stats;
+            const stats = rawStats && typeof rawStats === 'object' ? rawStats : {};
+            const recentTransactions = Array.isArray(dashboard.recentTransactions) ? dashboard.recentTransactions : [];
+            const serviceBreakdown = Array.isArray(dashboard.serviceBreakdown) ? dashboard.serviceBreakdown : [];
+            const weeklyEarnings = Array.isArray(dashboard.weeklyEarnings) ? dashboard.weeklyEarnings : [];
+            const weeklyPerformance = Array.isArray(dashboard.weeklyPerformance) ? dashboard.weeklyPerformance : [];
 
             // The API returns wallet and agent details alongside stats.  Keep the
             // dashboard tolerant of both the older `stats.walletBalance` shape
@@ -254,10 +259,10 @@ const AgentDashboard = {
                 stats.walletBalance = dashboard.wallet.balance;
             }
 
-            if (stats) this.updateStats(stats);
-            if (dashboard.wallet) this.updateWalletAccount(dashboard.wallet);
-            if (recentTransactions) this.updateRecentTransactions(recentTransactions);
-            if (serviceBreakdown) this.updateServiceBreakdown(serviceBreakdown);
+            this.updateStats(stats);
+            if (dashboard.wallet && typeof dashboard.wallet === 'object') this.updateWalletAccount(dashboard.wallet);
+            this.updateRecentTransactions(recentTransactions);
+            this.updateServiceBreakdown(serviceBreakdown);
 
             // Charts are supplementary. A chart-library or chart-data problem
             // must never make a successfully loaded dashboard look like an API

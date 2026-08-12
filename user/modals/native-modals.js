@@ -286,6 +286,23 @@ function getDataPlansCacheKey(network, dataType) {
     return `${network.toLowerCase()}::${String(dataType).toLowerCase()}`;
 }
 
+function dataPlanSizeInMB(plan) {
+    const text = String(plan.size || plan.dataAmount || plan.PRODUCT_NAME || plan.planName || plan.name || '').toUpperCase();
+    const match = text.match(/(\d+(?:\.\d+)?)\s*(TB|GB|MB)/);
+    if (!match) return Number.POSITIVE_INFINITY;
+    const value = Number(match[1]);
+    return match[2] === 'TB' ? value * 1024 * 1024 : match[2] === 'GB' ? value * 1024 : value;
+}
+
+function sortDataPlans(plans) {
+    return [...plans].sort((left, right) => {
+        const leftPrice = Number(left.PRODUCT_AMOUNT ?? left.sellingPrice ?? left.price ?? left.amount ?? 0);
+        const rightPrice = Number(right.PRODUCT_AMOUNT ?? right.sellingPrice ?? right.price ?? right.amount ?? 0);
+        const priceDifference = leftPrice - rightPrice;
+        return priceDifference || dataPlanSizeInMB(left) - dataPlanSizeInMB(right);
+    });
+}
+
 function normalizeDataPlansResponse(response, network) {
     let plans = [];
     if (Array.isArray(response.data)) {
@@ -298,7 +315,7 @@ function normalizeDataPlansResponse(response, network) {
         if (Array.isArray(nd) && nd[0]?.PRODUCT)
             plans = nd[0].PRODUCT.map(p => ({ id: p.PRODUCT_ID, planName: p.PRODUCT_NAME, price: p.PRODUCT_AMOUNT }));
     }
-    return plans;
+    return sortDataPlans(plans);
 }
 
 function getCachedDataPlans(network, dataType) {

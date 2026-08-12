@@ -116,12 +116,6 @@ const ServiceHandler = {
                 providers: ['DSTV', 'GOTV', 'Startimes'],
                 commissionRate: 2
             },
-            'education': {
-                type: 'education',
-                name: 'Education PINs',
-                providers: ['WAEC', 'NECO', 'NABTEB', 'JAMB'],
-                commissionRate: 5
-            },
             'sms': {
                 type: 'sms',
                 name: 'Bulk SMS',
@@ -301,7 +295,7 @@ const ServiceHandler = {
     
     // Generate education fields
     generateEducationFields(service) {
-        const providers = service.providers || ['WAEC', 'NECO', 'NABTEB', 'JAMB'];
+        const providers = Array.isArray(service.providers) ? service.providers : [];
         
         return `
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -309,7 +303,11 @@ const ServiceHandler = {
                     <label class="block text-sm font-semibold text-slate-700 mb-2">Select Exam</label>
                     <select id="provider" required class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary focus:border-transparent w-full">
                         <option value="">Choose exam...</option>
-                        ${providers.map(p => `<option value="${p.toLowerCase()}">${p}</option>`).join('')}
+                        ${providers.map(p => {
+                            const value = typeof p === 'object' ? (p.id || p.code || p.slug || p.value) : p;
+                            const label = typeof p === 'object' ? (p.name || p.label || value) : p;
+                            return value ? `<option value="${value}">${label}</option>` : '';
+                        }).join('')}
                     </select>
                 </div>
                 <div>
