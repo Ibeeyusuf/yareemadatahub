@@ -244,33 +244,41 @@ const AgentDashboard = {
                 return;
             }
             
-            const { stats, recentTransactions, serviceBreakdown, weeklyEarnings, weeklyPerformance } = result.data;
+            const dashboard = result.data || {};
+            const { stats = {}, recentTransactions = [], serviceBreakdown = [], weeklyEarnings = [], weeklyPerformance = [] } = dashboard;
+
+            // The API returns wallet and agent details alongside stats.  Keep the
+            // dashboard tolerant of both the older `stats.walletBalance` shape
+            // and the current `wallet.balance` shape.
+            if (dashboard.wallet && stats.walletBalance == null) {
+                stats.walletBalance = dashboard.wallet.balance;
+            }
 
             if (stats) this.updateStats(stats);
+            if (dashboard.wallet) this.updateWalletAccount(dashboard.wallet);
             if (recentTransactions) this.updateRecentTransactions(recentTransactions);
             if (serviceBreakdown) this.updateServiceBreakdown(serviceBreakdown);
 
+            // Charts are supplementary. A chart-library or chart-data problem
+            // must never make a successfully loaded dashboard look like an API
+            // failure.
             if (typeof Chart !== 'undefined' && typeof Charts !== 'undefined') {
-                if (weeklyEarnings && weeklyEarnings.length > 0) {
-                    Charts.renderEarningsChart(weeklyEarnings);
-                } else {
-                    Charts.showEmpty('earningsChart', 'No earnings data yet');
-                }
+                try {
+                    if (weeklyEarnings.length > 0) Charts.renderEarningsChart(weeklyEarnings);
+                    else Charts.showEmpty('earningsChart', 'No earnings data yet');
 
-                if (serviceBreakdown && serviceBreakdown.length > 0) {
-                    Charts.renderCommissionChart(serviceBreakdown);
-                } else {
-                    Charts.showEmpty('commissionChart', 'No commission data yet');
-                }
+                    if (serviceBreakdown.length > 0) Charts.renderCommissionChart(serviceBreakdown);
+                    else Charts.showEmpty('commissionChart', 'No commission data yet');
 
-                if (weeklyPerformance && weeklyPerformance.length > 0) {
-                    Charts.renderPerformanceChart(weeklyPerformance);
-                } else {
-                    Charts.showEmpty('performanceChart', 'No performance data yet');
+                    if (weeklyPerformance.length > 0) Charts.renderPerformanceChart(weeklyPerformance);
+                    else Charts.showEmpty('performanceChart', 'No performance data yet');
+                } catch (error) {
+                    console.warn('Dashboard charts could not be rendered:', error);
                 }
             }
 
         } catch (error) {
+            console.error('Dashboard render error:', error);
             UI.showToast('Failed to load dashboard', 'error');
         }
     },
@@ -310,6 +318,16 @@ const AgentDashboard = {
             sidebarBal.textContent = parseFloat(walletBalance).toLocaleString('en-NG', { minimumFractionDigits: 2 });
         }
     },
+
+    updateWalletAccount(wallet) {
+        const account = wallet.virtualAccount || {};
+        const accountElement = document.getElementById('agentWalletAccount');
+        if (!accountElement) return;
+
+        accountElement.textContent = account.accountNumber
+            ? `${account.bankName || 'Virtual account'}: ${account.accountNumber}`
+            : 'No virtual account assigned';
+    },
     
     updateRecentTransactions(transactions) {
         const container = document.getElementById('recent-transactions-table');
@@ -330,9 +348,15 @@ const AgentDashboard = {
         }
         
         const transactionsHTML = transactions.map(txn => {
-            const service = txn.service || txn.serviceType || txn.type || 'Transaction';
+            // The dashboard API supplies `service` as an object for purchases
+            // (for example, { network, phoneNumber, provider }). Convert it to
+            // a displayable string before passing it to icon helpers.
+            const serviceDetails = txn.service && typeof txn.service === 'object' ? txn.service : {};
+            const service = typeof txn.service === 'string'
+                ? txn.service
+                : txn.serviceType || serviceDetails.network || serviceDetails.provider || txn.type || 'Transaction';
             const description = txn.description || txn.details || service;
-            const customer = txn.customerName || txn.phoneNumber || txn.recipient || 'N/A';
+            const customer = txn.customerName || txn.phoneNumber || txn.recipient || serviceDetails.phoneNumber || 'N/A';
             
             return `
                 <tr class="hover:bg-slate-50">
@@ -404,8 +428,8 @@ const AgentDashboard = {
         const servicesHTML = services.map(service => `
             <div class="flex items-center justify-between p-3 hover:bg-slate-50 rounded transition-colors">
                 <div class="flex items-center gap-3">
-                    ${this.getServiceIcon(service.name)}
-                    <span class="text-sm font-medium">${service.name}</span>
+                    ${this.getServiceIcon(service.name || service._id)}
+                    <span class="text-sm font-medium">${service.name || service._id || 'Other'}</span>
                 </div>
                 <div class="text-right">
                     <p class="text-sm font-bold">${UI.formatNumber(service.count || 0)}</p>

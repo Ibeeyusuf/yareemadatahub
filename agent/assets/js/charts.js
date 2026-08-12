@@ -52,7 +52,8 @@ const Charts = {
 
         if (this.commissionChart) this.commissionChart.destroy();
 
-        const labels = serviceBreakdown.map(s => s.name || s.service || '');
+        // Dashboard aggregation groups services in Mongo's `_id` field.
+        const labels = serviceBreakdown.map(s => s.name || s.service || s._id || 'Other');
         const data = serviceBreakdown.map(s => s.commission || s.amount || 0);
         const colors = ['#0ea5e9', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#ec4899'];
 
