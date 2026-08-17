@@ -212,6 +212,31 @@ const Auth = {
     }
 };
 
+function getNumericValue(source, paths) {
+    if (!source || typeof source !== 'object') return 0;
+
+    for (const path of paths) {
+        const keys = path.split('.');
+        let current = source;
+        let found = true;
+
+        for (const key of keys) {
+            if (current == null || !(key in current)) {
+                found = false;
+                break;
+            }
+            current = current[key];
+        }
+
+        if (!found || current === undefined || current === null || current === '') continue;
+
+        const parsed = Number(current);
+        if (!Number.isNaN(parsed)) return parsed;
+    }
+
+    return 0;
+}
+
 const AgentDashboard = {
     
     async getDashboardData() {
@@ -252,11 +277,21 @@ const AgentDashboard = {
             const weeklyEarnings = Array.isArray(dashboard.weeklyEarnings) ? dashboard.weeklyEarnings : [];
             const weeklyPerformance = Array.isArray(dashboard.weeklyPerformance) ? dashboard.weeklyPerformance : [];
 
-            // The API returns wallet and agent details alongside stats.  Keep the
-            // dashboard tolerant of both the older `stats.walletBalance` shape
-            // and the current `wallet.balance` shape.
-            if (dashboard.wallet && stats.walletBalance == null) {
-                stats.walletBalance = dashboard.wallet.balance;
+            // The API returns wallet and agent details alongside stats. Keep the
+            // dashboard tolerant of older and newer payload layouts without
+            // mixing wallet balance into the available commission metric.
+            const walletBalanceValue = getNumericValue({ ...dashboard, ...stats }, ['walletBalance', 'wallet.balance', 'wallet.availableBalance', 'wallet.walletBalance']);
+            const availableCommissionValue = getNumericValue({ ...dashboard, ...stats }, ['availableCommission', 'available_commission', 'commission.available', 'commission.balance', 'commission.currentBalance']);
+            const totalCommissionValue = getNumericValue({ ...dashboard, ...stats }, ['totalCommissionEarned', 'totalCommission', 'total.commission', 'commission.total', 'commission.earned']);
+
+            if (stats.walletBalance == null && walletBalanceValue) {
+                stats.walletBalance = walletBalanceValue;
+            }
+            if ((stats.availableCommission == null || stats.availableCommission === 0) && availableCommissionValue) {
+                stats.availableCommission = availableCommissionValue;
+            }
+            if ((stats.totalCommissionEarned == null || stats.totalCommissionEarned === 0) && totalCommissionValue) {
+                stats.totalCommissionEarned = totalCommissionValue;
             }
 
             this.updateStats(stats);
@@ -289,7 +324,10 @@ const AgentDashboard = {
     },
     
     updateStats(stats) {
-        const walletBalance = stats.walletBalance || 0;
+        const walletBalance = Number(stats.walletBalance || 0);
+        const availableCommissionValue = Number(stats.availableCommission || 0);
+        const totalCommissionEarnedValue = Number(stats.totalCommissionEarned || 0);
+
         localStorage.setItem('agentWalletBalance', walletBalance.toString());
 
         const todayEarnings = document.getElementById('today-earnings');
@@ -311,8 +349,8 @@ const AgentDashboard = {
         const availableCommission = document.getElementById('available-commission');
         const totalCommissionEarned = document.getElementById('total-commission-earned');
         if (referralsCount) referralsCount.textContent = UI.formatNumber(stats.referrals || 0);
-        if (availableCommission) availableCommission.textContent = UI.formatCurrency(stats.availableCommission || 0);
-        if (totalCommissionEarned) totalCommissionEarned.textContent = UI.formatCurrency(stats.totalCommissionEarned || 0);
+        if (availableCommission) availableCommission.textContent = UI.formatCurrency(availableCommissionValue);
+        if (totalCommissionEarned) totalCommissionEarned.textContent = UI.formatCurrency(totalCommissionEarnedValue);
 
         document.querySelectorAll('[data-wallet-balance]').forEach(el => {
             el.textContent = UI.formatCurrency(walletBalance);

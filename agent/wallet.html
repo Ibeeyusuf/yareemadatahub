@@ -126,6 +126,36 @@
         fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('wallet');initHeader();lucide.createIcons();});
         fetch('partials/modals.html').then(r=>r.text()).then(d=>{document.getElementById('modalsContainer').innerHTML=d;lucide.createIcons();});
         
+        function readWalletBalanceValue(source) {
+            const data = source && typeof source === 'object' ? source : {};
+            const nested = data.wallet || data.data || data.result || data.account || data.virtualAccount || {};
+            const candidates = [
+                data.balance,
+                data.availableBalance,
+                data.walletBalance,
+                data.amount,
+                data.available,
+                data.currentBalance,
+                data.totalBalance,
+                nested.balance,
+                nested.availableBalance,
+                nested.walletBalance,
+                nested.amount,
+                nested.available,
+                nested.currentBalance,
+                nested.totalBalance
+            ];
+
+            for (let i = 0; i < candidates.length; i++) {
+                const value = candidates[i];
+                if (value === undefined || value === null || value === '') continue;
+                const num = Number(value);
+                if (!Number.isNaN(num)) return num;
+            }
+
+            return 0;
+        }
+
         // Load wallet data
         document.addEventListener('DOMContentLoaded', async () => {
             await loadWalletData();
@@ -160,7 +190,7 @@
             }
 
             if (result.success && result.data) {
-                const balance = result.data.balance || result.data.availableBalance || result.data.walletBalance || 0;
+                const balance = readWalletBalanceValue(result.data);
                 document.getElementById('wallet-balance').textContent = UI.formatCurrency(balance);
             }
             renderFundAccounts(accounts);

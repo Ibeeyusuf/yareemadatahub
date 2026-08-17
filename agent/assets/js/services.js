@@ -354,6 +354,76 @@ const AgentServices = {
     }
 };
 
+function readWalletBalanceValue(source) {
+    const data = source && typeof source === 'object' ? source : {};
+    const nested = data.wallet || data.data || data.result || data.account || data.virtualAccount || {};
+    const candidates = [
+        data.balance,
+        data.availableBalance,
+        data.walletBalance,
+        data.amount,
+        data.available,
+        data.currentBalance,
+        data.totalBalance,
+        nested.balance,
+        nested.availableBalance,
+        nested.walletBalance,
+        nested.amount,
+        nested.available,
+        nested.currentBalance,
+        nested.totalBalance,
+        data.wallet && data.wallet.balance,
+        data.wallet && data.wallet.availableBalance,
+        data.wallet && data.wallet.walletBalance,
+        data.data && data.data.balance,
+        data.data && data.data.availableBalance,
+        data.data && data.data.walletBalance
+    ];
+
+    for (let i = 0; i < candidates.length; i++) {
+        const value = candidates[i];
+        if (value === undefined || value === null || value === '') continue;
+        const num = Number(value);
+        if (!Number.isNaN(num)) return num;
+    }
+
+    return 0;
+}
+
+function readCommissionBalanceValue(source) {
+    const data = source && typeof source === 'object' ? source : {};
+    const nested = data.wallet || data.data || data.result || data.agent || data.commission || {};
+    const candidates = [
+        data.availableCommission,
+        data.available_commission,
+        data.totalCommissionEarned,
+        data.commission,
+        data.balance,
+        data.available,
+        data.amount,
+        nested.availableCommission,
+        nested.available_commission,
+        nested.totalCommissionEarned,
+        nested.commission,
+        nested.balance,
+        nested.amount,
+        nested.available,
+        data.wallet && data.wallet.availableCommission,
+        data.wallet && data.wallet.balance,
+        data.data && data.data.availableCommission,
+        data.data && data.data.balance
+    ];
+
+    for (let i = 0; i < candidates.length; i++) {
+        const value = candidates[i];
+        if (value === undefined || value === null || value === '') continue;
+        const num = Number(value);
+        if (!Number.isNaN(num)) return num;
+    }
+
+    return 0;
+}
+
 // Wallet API
 const WalletAPI = {
     
@@ -365,11 +435,15 @@ const WalletAPI = {
             const response = await API.get(API_CONFIG.ENDPOINTS.WALLET_BALANCE);
             
             console.log('[Wallet] Balance response:', response);
+
+            const payload = (response && (response.data !== undefined ? response.data : response)) || {};
+            const balance = readWalletBalanceValue(payload);
             
-            if (response.success || response.status === 'success') {
+            if (response && (response.success || response.status === 'success' || payload && Object.keys(payload).length > 0)) {
                 return {
                     success: true,
-                    data: response.data
+                    data: payload,
+                    balance
                 };
             }
             
@@ -497,25 +571,37 @@ const WalletAPI = {
         }
     },
 
-    // Available commission balance (GET /agent/commission/balance; falls back to dashboard stats)
+    // Commission balance should prefer the dashboard payload because the dedicated
+    // /agent/commission/balance route is not available on this backend.
     async getCommissionBalance() {
         try {
-            const response = await API.get('/agent/commission/balance');
-            if (response.success || response.status === 'success') {
-                const d = response.data || {};
-                const bal = d.balance ?? d.availableCommission ?? d.available ?? d.commission ?? 0;
-                return { success: true, balance: Number(bal) || 0, data: d };
+            const dash = await API.get(API_CONFIG.ENDPOINTS.AGENT_DASHBOARD);
+            const sObj = (dash && (dash.data || dash)) || {};
+            const stats = sObj.stats || sObj;
+            const bal = readCommissionBalanceValue({
+                ...sObj,
+                ...stats,
+                commission: stats.commission || sObj.commission || {},
+                wallet: sObj.wallet || stats.wallet || {}
+            });
+
+            if (stats.availableCommission !== undefined || stats.available_commission !== undefined || stats.totalCommissionEarned !== undefined || sObj.availableCommission !== undefined || sObj.totalCommissionEarned !== undefined) {
+                return { success: true, balance: bal, data: sObj, fallback: true };
             }
-            throw new Error(response.message || 'Failed to load commission balance');
+
+            throw new Error('No commission data found in dashboard');
         } catch (error) {
-            // Fallback so the card still shows something using existing dashboard data
             try {
-                const dash = await API.get(API_CONFIG.ENDPOINTS.AGENT_DASHBOARD);
-                const sObj = (dash && (dash.data || dash)) || {};
-                const bal = sObj.availableCommission ?? sObj.available_commission ?? (sObj.commission && sObj.commission.available) ?? 0;
-                return { success: true, balance: Number(bal) || 0, data: sObj, fallback: true };
+                const response = await API.get('/agent/commission/balance');
+                if (response && (response.success || response.status === 'success' || response.data || response.wallet || response.agent)) {
+                    const d = response.data || response || {};
+                    const bal = readCommissionBalanceValue(d);
+                    return { success: true, balance: bal, data: d };
+                }
+                throw new Error(response.message || 'Failed to load commission balance');
             } catch (e2) {
-                return { success: false, balance: 0, message: error.message || 'Failed to load commission balance' };
+                const fallback = 0;
+                return { success: false, balance: fallback, message: error.message || 'Failed to load commission balance' };
             }
         }
     },
@@ -554,9 +640,8 @@ async function updateWalletBalance() {
         }
 
         if (result.success && result.data) {
-            const balance = parseFloat(
-                result.data.balance || result.data.availableBalance || result.data.walletBalance || 0
-            );
+            const rawData = result.data || {};
+            const balance = readWalletBalanceValue(rawData);
             const formatted = UI.formatCurrency(balance);
             const rawFormatted = balance.toLocaleString('en-NG', { minimumFractionDigits: 2 });
 
