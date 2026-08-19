@@ -1,297 +1,717 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <link rel="icon" type="image/svg+xml" href="assets/images/logo.png">
-    <link rel="apple-touch-icon" href="assets/images/logo.png">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="assets/images/logo.png" />
+    <link rel="apple-touch-icon" href="assets/images/logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Set Transaction PIN — Yareema Data Hub</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
     <style>
-        * { font-family: 'Inter', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
-        .card { background: white; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); width: 100%; max-width: 420px; padding: 36px 32px; animation: fadeUp 0.4s ease-out; }
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .steps { display: flex; align-items: center; justify-content: center; margin-bottom: 28px; }
-        .step { display: flex; flex-direction: column; align-items: center; gap: 5px; }
-        .step-circle { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; }
-        .done { background: #dcfce7; color: #16a34a; }
-        .active { background: #1e3d5c; color: white; }
-        .step-label { font-size: 10px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.4px; }
-        .label-active { color: #1e3d5c; }
-        .label-done { color: #16a34a; }
-        .step-line { width: 44px; height: 2px; background: #e2e8f0; margin-bottom: 19px; }
-        .line-done { background: #16a34a; }
-        .icon-wrap { width: 60px; height: 60px; border-radius: 14px; background: linear-gradient(135deg, #eff6ff, #dbeafe); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
-        h2 { font-size: 21px; font-weight: 800; color: #0f172a; text-align: center; margin-bottom: 6px; }
-        .subtitle { font-size: 13px; color: #64748b; text-align: center; margin-bottom: 20px; line-height: 1.5; }
-        .pin-label { font-size: 13px; font-weight: 600; color: #0f172a; text-align: center; margin-bottom: 10px; }
-        .pin-row { display: flex; justify-content: center; gap: 10px; margin-bottom: 6px; }
-        .pin-box { width: 54px; height: 58px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 22px; font-weight: 700; text-align: center; color: #1e3d5c; background: #f8fafc; outline: none; transition: border-color 0.2s, background 0.2s; }
-        .pin-box:focus { border-color: #1e3d5c; background: white; box-shadow: 0 0 0 3px rgba(30,61,92,0.08); }
-        .pin-box.filled { border-color: #1e3d5c; background: #eff6ff; }
-        .pin-box.error { border-color: #dc2626 !important; background: #fef2f2 !important; }
-        .error-text { font-size: 12px; color: #dc2626; text-align: center; min-height: 18px; margin-bottom: 2px; font-weight: 500; }
-        .btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #1e3d5c, #2d5a8a); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; margin-top: 18px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s; }
-        .btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(30,61,92,0.25); }
-        .btn.inactive { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
-        .overlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.92); z-index: 100; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
-        .overlay.show { display: flex; }
-        .spinner { width: 44px; height: 44px; border: 4px solid #e2e8f0; border-top-color: #1e3d5c; border-radius: 50%; animation: spin 0.8s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .overlay p { font-size: 15px; font-weight: 700; color: #1e3d5c; }
-        .overlay small { font-size: 13px; color: #64748b; }
-        .success-wrap { display: none; text-align: center; }
-        .success-wrap.show { display: block; animation: fadeUp 0.4s ease-out; }
-        .success-icon { width: 76px; height: 76px; background: linear-gradient(135deg, #dcfce7, #bbf7d0); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; box-shadow: 0 0 0 8px #f0fdf4; }
-        .acct-box { background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 14px 16px; margin-top: 12px; }
-        .acct-box p { font-size: 11px; color: #16a34a; font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .acct-number { font-size: 22px; font-weight: 800; color: #15803d; letter-spacing: 2px; }
-        .acct-bank { font-size: 12px; color: #16a34a; margin-top: 2px; }
-        .copy-btn { margin-top: 8px; background: #dcfce7; border: none; border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 700; color: #16a34a; cursor: pointer; }
-        @media (max-width: 400px) { .card { padding: 28px 18px; } .pin-box { width: 46px; height: 52px; font-size: 18px; } }
+      * {
+        font-family: "Inter", sans-serif;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      .card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 420px;
+        padding: 36px 32px;
+        animation: fadeUp 0.4s ease-out;
+      }
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .steps {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 28px;
+      }
+      .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+      }
+      .step-circle {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .done {
+        background: #dcfce7;
+        color: #16a34a;
+      }
+      .active {
+        background: #1e3d5c;
+        color: white;
+      }
+      .step-label {
+        font-size: 10px;
+        font-weight: 600;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+      }
+      .label-active {
+        color: #1e3d5c;
+      }
+      .label-done {
+        color: #16a34a;
+      }
+      .step-line {
+        width: 44px;
+        height: 2px;
+        background: #e2e8f0;
+        margin-bottom: 19px;
+      }
+      .line-done {
+        background: #16a34a;
+      }
+      .icon-wrap {
+        width: 60px;
+        height: 60px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #eff6ff, #dbeafe);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+      }
+      h2 {
+        font-size: 21px;
+        font-weight: 800;
+        color: #0f172a;
+        text-align: center;
+        margin-bottom: 6px;
+      }
+      .subtitle {
+        font-size: 13px;
+        color: #64748b;
+        text-align: center;
+        margin-bottom: 20px;
+        line-height: 1.5;
+      }
+      .pin-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #0f172a;
+        text-align: center;
+        margin-bottom: 10px;
+      }
+      .pin-row {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 6px;
+      }
+      .pin-box {
+        width: 54px;
+        height: 58px;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 22px;
+        font-weight: 700;
+        text-align: center;
+        color: #1e3d5c;
+        background: #f8fafc;
+        outline: none;
+        transition:
+          border-color 0.2s,
+          background 0.2s;
+      }
+      .pin-box:focus {
+        border-color: #1e3d5c;
+        background: white;
+        box-shadow: 0 0 0 3px rgba(30, 61, 92, 0.08);
+      }
+      .pin-box.filled {
+        border-color: #1e3d5c;
+        background: #eff6ff;
+      }
+      .pin-box.error {
+        border-color: #dc2626 !important;
+        background: #fef2f2 !important;
+      }
+      .error-text {
+        font-size: 12px;
+        color: #dc2626;
+        text-align: center;
+        min-height: 18px;
+        margin-bottom: 2px;
+        font-weight: 500;
+      }
+      .btn {
+        width: 100%;
+        padding: 14px;
+        background: linear-gradient(135deg, #1e3d5c, #2d5a8a);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 700;
+        font-family: inherit;
+        cursor: pointer;
+        margin-top: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition:
+          transform 0.2s,
+          box-shadow 0.2s,
+          opacity 0.2s;
+      }
+      .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 20px rgba(30, 61, 92, 0.25);
+      }
+      .btn.inactive {
+        opacity: 0.45;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+      .overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.92);
+        z-index: 100;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+      }
+      .overlay.show {
+        display: flex;
+      }
+      .spinner {
+        width: 44px;
+        height: 44px;
+        border: 4px solid #e2e8f0;
+        border-top-color: #1e3d5c;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .overlay p {
+        font-size: 15px;
+        font-weight: 700;
+        color: #1e3d5c;
+      }
+      .overlay small {
+        font-size: 13px;
+        color: #64748b;
+      }
+      .success-wrap {
+        display: none;
+        text-align: center;
+      }
+      .success-wrap.show {
+        display: block;
+        animation: fadeUp 0.4s ease-out;
+      }
+      .success-icon {
+        width: 76px;
+        height: 76px;
+        background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 18px;
+        box-shadow: 0 0 0 8px #f0fdf4;
+      }
+      .acct-box {
+        background: #f0fdf4;
+        border: 1.5px solid #86efac;
+        border-radius: 12px;
+        padding: 14px 16px;
+        margin-top: 12px;
+      }
+      .acct-box p {
+        font-size: 11px;
+        color: #16a34a;
+        font-weight: 600;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .acct-number {
+        font-size: 22px;
+        font-weight: 800;
+        color: #15803d;
+        letter-spacing: 2px;
+      }
+      .acct-bank {
+        font-size: 12px;
+        color: #16a34a;
+        margin-top: 2px;
+      }
+      .copy-btn {
+        margin-top: 8px;
+        background: #dcfce7;
+        border: none;
+        border-radius: 8px;
+        padding: 6px 14px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #16a34a;
+        cursor: pointer;
+      }
+      @media (max-width: 400px) {
+        .card {
+          padding: 28px 18px;
+        }
+        .pin-box {
+          width: 46px;
+          height: 52px;
+          font-size: 18px;
+        }
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
+    <div class="overlay" id="loadingOverlay">
+      <div class="spinner"></div>
+      <p id="overlayTitle">Setting up your account...</p>
+      <small id="overlaySub">This only takes a moment</small>
+    </div>
 
-<div class="overlay" id="loadingOverlay">
-    <div class="spinner"></div>
-    <p id="overlayTitle">Setting up your account...</p>
-    <small id="overlaySub">This only takes a moment</small>
-</div>
-
-<div class="card">
-    <div class="steps">
+    <div class="card">
+      <div class="steps">
         <div class="step">
-            <div class="step-circle done">&#10003;</div>
-            <span class="step-label label-done">Registered</span>
+          <div class="step-circle done">&#10003;</div>
+          <span class="step-label label-done">Registered</span>
         </div>
         <div class="step-line line-done"></div>
         <div class="step">
-            <div class="step-circle done">&#10003;</div>
-            <span class="step-label label-done">Logged In</span>
+          <div class="step-circle done">&#10003;</div>
+          <span class="step-label label-done">Logged In</span>
         </div>
         <div class="step-line" id="line2"></div>
         <div class="step">
-            <div class="step-circle active" id="step3Circle">3</div>
-            <span class="step-label label-active">Set PIN</span>
+          <div class="step-circle active" id="step3Circle">3</div>
+          <span class="step-label label-active">Set PIN</span>
         </div>
-    </div>
+      </div>
 
-    <div id="setupForm">
+      <div id="setupForm">
         <div class="icon-wrap">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1e3d5c" stroke-width="2" stroke-linecap="round">
-                <rect x="3" y="11" width="18" height="11" rx="2"/>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                <circle cx="12" cy="16" r="1" fill="#1e3d5c"/>
-            </svg>
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#1e3d5c"
+            stroke-width="2"
+            stroke-linecap="round"
+          >
+            <rect x="3" y="11" width="18" height="11" rx="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            <circle cx="12" cy="16" r="1" fill="#1e3d5c" />
+          </svg>
         </div>
         <h2>Secure Your Account</h2>
         <p class="subtitle">Set a 4-digit PIN to authorise transactions.</p>
 
         <div class="pin-label">Enter 4-digit PIN</div>
         <div class="pin-row" id="pinRow1">
-            <input class="pin-box" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]*">
-            <input class="pin-box" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]*">
-            <input class="pin-box" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]*">
-            <input class="pin-box" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]*">
+          <input
+            class="pin-box"
+            type="password"
+            maxlength="1"
+            inputmode="numeric"
+            pattern="[0-9]*"
+          />
+          <input
+            class="pin-box"
+            type="password"
+            maxlength="1"
+            inputmode="numeric"
+            pattern="[0-9]*"
+          />
+          <input
+            class="pin-box"
+            type="password"
+            maxlength="1"
+            inputmode="numeric"
+            pattern="[0-9]*"
+          />
+          <input
+            class="pin-box"
+            type="password"
+            maxlength="1"
+            inputmode="numeric"
+            pattern="[0-9]*"
+          />
         </div>
         <div class="error-text" id="err1"></div>
 
-        <div class="pin-label" style="margin-top:14px;">Confirm PIN</div>
+        <div class="pin-label" style="margin-top: 14px">Confirm PIN</div>
         <div class="pin-row" id="pinRow2">
-            <input class="pin-box" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]*">
-            <input class="pin-box" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]*">
-            <input class="pin-box" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]*">
-            <input class="pin-box" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]*">
+          <input
+            class="pin-box"
+            type="password"
+            maxlength="1"
+            inputmode="numeric"
+            pattern="[0-9]*"
+          />
+          <input
+            class="pin-box"
+            type="password"
+            maxlength="1"
+            inputmode="numeric"
+            pattern="[0-9]*"
+          />
+          <input
+            class="pin-box"
+            type="password"
+            maxlength="1"
+            inputmode="numeric"
+            pattern="[0-9]*"
+          />
+          <input
+            class="pin-box"
+            type="password"
+            maxlength="1"
+            inputmode="numeric"
+            pattern="[0-9]*"
+          />
         </div>
         <div class="error-text" id="err2"></div>
 
         <button class="btn inactive" id="submitBtn" onclick="submitSetup()">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            Set PIN &amp; Activate Account
+          <svg
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
+          Set PIN &amp; Activate Account
         </button>
-    </div>
+      </div>
 
-    <div class="success-wrap" id="successWrap">
+      <div class="success-wrap" id="successWrap">
         <div class="success-icon">
-            <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <svg
+            width="38"
+            height="38"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#16a34a"
+            stroke-width="2.5"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
         </div>
-        <h2 style="color:#16a34a;">You're All Set! &#127881;</h2>
-        <p class="subtitle">Your PIN is set and your wallet is ready.<br>Taking you to your dashboard...</p>
-        <div id="acctDisplay" style="display:none;">
-            <div class="acct-box">
-                <p>Your Virtual Account</p>
-                <div class="acct-number" id="acctNum">—</div>
-                <div class="acct-bank" id="acctBank"></div>
-                <button class="copy-btn" onclick="copyAcct()">&#x274F; Copy Account Number</button>
-            </div>
+        <h2 style="color: #16a34a">You're All Set! &#127881;</h2>
+        <p class="subtitle">
+          Your PIN is set and your wallet is ready.<br />Taking you to your
+          dashboard...
+        </p>
+        <div id="acctDisplay" style="display: none">
+          <div class="acct-box">
+            <p>Your Virtual Account</p>
+            <div class="acct-number" id="acctNum">—</div>
+            <div class="acct-bank" id="acctBank"></div>
+            <button class="copy-btn" onclick="copyAcct()">
+              &#x274F; Copy Account Number
+            </button>
+          </div>
         </div>
-        <div style="background:#f0fdf4;border-radius:10px;padding:13px;margin-top:10px;">
-            <p style="font-size:13px;color:#16a34a;font-weight:600;text-align:center;">&#10003; Wallet &amp; virtual account created</p>
+        <div
+          style="
+            background: #f0fdf4;
+            border-radius: 10px;
+            padding: 13px;
+            margin-top: 10px;
+          "
+        >
+          <p
+            style="
+              font-size: 13px;
+              color: #16a34a;
+              font-weight: 600;
+              text-align: center;
+            "
+          >
+            &#10003; Wallet &amp; virtual account created
+          </p>
         </div>
+      </div>
     </div>
-</div>
 
-<script>
-    var TOKEN = localStorage.getItem('agentToken') || sessionStorage.getItem('agentToken');
-    if (!TOKEN) { window.location.href = 'index.html'; }
+    <script>
+      var TOKEN =
+        localStorage.getItem("agentToken") ||
+        sessionStorage.getItem("agentToken");
+      if (!TOKEN) {
+        window.location.href = "index.html";
+      }
 
-    var BASE_URL = 'https://vtu-api-d3q2.onrender.com';
-    var savedAcctNumber = null;
+      var BASE_URL = "https://api.yareemadatahub.com";
+      var savedAcctNumber = null;
 
-    async function callAPI(endpoint, body) {
+      async function callAPI(endpoint, body) {
         var res = await fetch(BASE_URL + endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
-            body: JSON.stringify(body)
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + TOKEN,
+          },
+          body: JSON.stringify(body),
         });
         var data = await res.json();
         if (res.status === 401 || res.status === 403) {
-            localStorage.removeItem('agentToken');
-            localStorage.removeItem('agentData');
-            localStorage.removeItem('agent_wallet_accounts');
-            window.location.href = 'index.html';
-            return;
+          localStorage.removeItem("agentToken");
+          localStorage.removeItem("agentData");
+          localStorage.removeItem("agent_wallet_accounts");
+          window.location.href = "index.html";
+          return;
         }
-        if (!res.ok) throw new Error(data.message || data.error || 'Request failed');
+        if (!res.ok)
+          throw new Error(data.message || data.error || "Request failed");
         return data;
-    }
+      }
 
-    var row1 = Array.from(document.querySelectorAll('#pinRow1 .pin-box'));
-    var row2 = Array.from(document.querySelectorAll('#pinRow2 .pin-box'));
+      var row1 = Array.from(document.querySelectorAll("#pinRow1 .pin-box"));
+      var row2 = Array.from(document.querySelectorAll("#pinRow2 .pin-box"));
 
-    function getPin(boxes) { return boxes.map(function(b){ return b.value; }).join(''); }
+      function getPin(boxes) {
+        return boxes
+          .map(function (b) {
+            return b.value;
+          })
+          .join("");
+      }
 
-    function wireRow(boxes, errId) {
-        boxes.forEach(function(box, i) {
-            box.addEventListener('keydown', function(e) {
-                if (e.key === 'Backspace') {
-                    e.preventDefault();
-                    this.value = '';
-                    this.classList.remove('filled');
-                    if (i > 0) boxes[i-1].focus();
-                    updateBtn(); return;
-                }
-                if (e.key.length === 1 && !/[0-9]/.test(e.key)) e.preventDefault();
+      function wireRow(boxes, errId) {
+        boxes.forEach(function (box, i) {
+          box.addEventListener("keydown", function (e) {
+            if (e.key === "Backspace") {
+              e.preventDefault();
+              this.value = "";
+              this.classList.remove("filled");
+              if (i > 0) boxes[i - 1].focus();
+              updateBtn();
+              return;
+            }
+            if (e.key.length === 1 && !/[0-9]/.test(e.key)) e.preventDefault();
+          });
+          box.addEventListener("input", function () {
+            var v = this.value.replace(/[^0-9]/g, "");
+            this.value = v ? v[v.length - 1] : "";
+            this.classList.toggle("filled", !!this.value);
+            document.getElementById(errId).textContent = "";
+            boxes.forEach(function (b) {
+              b.classList.remove("error");
             });
-            box.addEventListener('input', function() {
-                var v = this.value.replace(/[^0-9]/g, '');
-                this.value = v ? v[v.length-1] : '';
-                this.classList.toggle('filled', !!this.value);
-                document.getElementById(errId).textContent = '';
-                boxes.forEach(function(b){ b.classList.remove('error'); });
-                if (this.value && i < 3) boxes[i+1].focus();
-                updateBtn();
-            });
+            if (this.value && i < 3) boxes[i + 1].focus();
+            updateBtn();
+          });
         });
-    }
+      }
 
-    wireRow(row1, 'err1');
-    wireRow(row2, 'err2');
-    setTimeout(function(){ row1[0].focus(); }, 200);
+      wireRow(row1, "err1");
+      wireRow(row2, "err2");
+      setTimeout(function () {
+        row1[0].focus();
+      }, 200);
 
-    function updateBtn() {
-        var btn = document.getElementById('submitBtn');
-        btn.classList.toggle('inactive', getPin(row1).length !== 4 || getPin(row2).length !== 4);
-    }
+      function updateBtn() {
+        var btn = document.getElementById("submitBtn");
+        btn.classList.toggle(
+          "inactive",
+          getPin(row1).length !== 4 || getPin(row2).length !== 4,
+        );
+      }
 
-    function submitSetup() {
-        var btn = document.getElementById('submitBtn');
-        if (btn.classList.contains('inactive')) return;
-        var p1 = getPin(row1), p2 = getPin(row2);
-        if (p1.length !== 4) { showErr(row1, 'err1', 'Please enter all 4 digits'); return; }
-        if (p2.length !== 4) { showErr(row2, 'err2', 'Please enter all 4 digits'); return; }
-        if (p1 !== p2) { showErr(row2, 'err2', 'PINs do not match — try again'); clearRow(row2); updateBtn(); return; }
+      function submitSetup() {
+        var btn = document.getElementById("submitBtn");
+        if (btn.classList.contains("inactive")) return;
+        var p1 = getPin(row1),
+          p2 = getPin(row2);
+        if (p1.length !== 4) {
+          showErr(row1, "err1", "Please enter all 4 digits");
+          return;
+        }
+        if (p2.length !== 4) {
+          showErr(row2, "err2", "Please enter all 4 digits");
+          return;
+        }
+        if (p1 !== p2) {
+          showErr(row2, "err2", "PINs do not match — try again");
+          clearRow(row2);
+          updateBtn();
+          return;
+        }
         doSetup(p1, p2);
-    }
+      }
 
-    async function doSetup(p1, p2) {
-        setLoading('Setting your transaction PIN...', 'Securing your account');
+      async function doSetup(p1, p2) {
+        setLoading("Setting your transaction PIN...", "Securing your account");
         try {
-            await callAPI('/api/v1/agent/wallet/set-pin', { transactionPin: p1, confirmPin: p2 });
+          await callAPI("/api/v1/agent/wallet/set-pin", {
+            transactionPin: p1,
+            confirmPin: p2,
+          });
 
-            // Save pin flag
-            try {
-                var agent = JSON.parse(localStorage.getItem('agentData') || '{}');
-                var uid = agent._id || agent.id || '';
-                if (uid) localStorage.setItem('agent_pin_set_' + uid, 'true');
-                agent.pin = true;
-                localStorage.setItem('agentData', JSON.stringify(agent));
-            } catch(e){}
+          // Save pin flag
+          try {
+            var agent = JSON.parse(localStorage.getItem("agentData") || "{}");
+            var uid = agent._id || agent.id || "";
+            if (uid) localStorage.setItem("agent_pin_set_" + uid, "true");
+            agent.pin = true;
+            localStorage.setItem("agentData", JSON.stringify(agent));
+          } catch (e) {}
 
-            // Create wallet
-            setLoading('Creating your wallet...', 'Setting up your virtual bank account');
-            try {
-                var wr = await callAPI('/api/v1/wallet/create', {});
-                var wallet = (wr && wr.data && wr.data.wallet) ? wr.data.wallet
-                           : (wr && wr.data) ? wr.data : (wr || {});
+          // Create wallet
+          setLoading(
+            "Creating your wallet...",
+            "Setting up your virtual bank account",
+          );
+          try {
+            var wr = await callAPI("/api/v1/wallet/create", {});
+            var wallet =
+              wr && wr.data && wr.data.wallet
+                ? wr.data.wallet
+                : wr && wr.data
+                  ? wr.data
+                  : wr || {};
 
-                // Handle virtualAccount{} OR accounts[]
-                var accounts = [];
-                if (wallet.accounts && wallet.accounts.length > 0) {
-                    accounts = wallet.accounts;
-                } else if (wallet.virtualAccount && wallet.virtualAccount.accountNumber) {
-                    accounts = [{ ...wallet.virtualAccount, isDefault: true }];
-                }
-
-                if (accounts.length > 0) {
-                    try {
-                        var agent2 = JSON.parse(localStorage.getItem('agentData') || '{}');
-                        var uid2 = agent2._id || agent2.id || '';
-                        if (uid2) localStorage.setItem('agent_wallet_accounts_' + uid2, JSON.stringify(accounts));
-                    } catch(e){}
-                    localStorage.setItem('agent_wallet_accounts', JSON.stringify(accounts));
-
-                    // Show account number on success screen
-                    var acc = accounts[0];
-                    savedAcctNumber = acc.accountNumber;
-                    document.getElementById('acctNum').textContent = acc.accountNumber;
-                    document.getElementById('acctBank').textContent = acc.bankName || '';
-                    document.getElementById('acctDisplay').style.display = 'block';
-                }
-            } catch(we) {
-                console.warn('Wallet create non-fatal:', we.message);
+            // Handle virtualAccount{} OR accounts[]
+            var accounts = [];
+            if (wallet.accounts && wallet.accounts.length > 0) {
+              accounts = wallet.accounts;
+            } else if (
+              wallet.virtualAccount &&
+              wallet.virtualAccount.accountNumber
+            ) {
+              accounts = [{ ...wallet.virtualAccount, isDefault: true }];
             }
 
-            hideLoading();
-            document.getElementById('setupForm').style.display = 'none';
-            document.getElementById('step3Circle').className = 'step-circle done';
-            document.getElementById('step3Circle').textContent = '✓';
-            document.getElementById('line2').className = 'step-line line-done';
-            document.getElementById('successWrap').classList.add('show');
-            setTimeout(function(){ window.location.href = 'dashboard.html'; }, 3500);
+            if (accounts.length > 0) {
+              try {
+                var agent2 = JSON.parse(
+                  localStorage.getItem("agentData") || "{}",
+                );
+                var uid2 = agent2._id || agent2.id || "";
+                if (uid2)
+                  localStorage.setItem(
+                    "agent_wallet_accounts_" + uid2,
+                    JSON.stringify(accounts),
+                  );
+              } catch (e) {}
+              localStorage.setItem(
+                "agent_wallet_accounts",
+                JSON.stringify(accounts),
+              );
 
-        } catch(err) {
-            hideLoading();
-            showErr(row1, 'err1', err.message || 'Something went wrong. Please try again.');
-            clearRow(row1); clearRow(row2); updateBtn();
+              // Show account number on success screen
+              var acc = accounts[0];
+              savedAcctNumber = acc.accountNumber;
+              document.getElementById("acctNum").textContent =
+                acc.accountNumber;
+              document.getElementById("acctBank").textContent =
+                acc.bankName || "";
+              document.getElementById("acctDisplay").style.display = "block";
+            }
+          } catch (we) {
+            console.warn("Wallet create non-fatal:", we.message);
+          }
+
+          hideLoading();
+          document.getElementById("setupForm").style.display = "none";
+          document.getElementById("step3Circle").className = "step-circle done";
+          document.getElementById("step3Circle").textContent = "✓";
+          document.getElementById("line2").className = "step-line line-done";
+          document.getElementById("successWrap").classList.add("show");
+          setTimeout(function () {
+            window.location.href = "dashboard.html";
+          }, 3500);
+        } catch (err) {
+          hideLoading();
+          showErr(
+            row1,
+            "err1",
+            err.message || "Something went wrong. Please try again.",
+          );
+          clearRow(row1);
+          clearRow(row2);
+          updateBtn();
         }
-    }
+      }
 
-    function copyAcct() {
+      function copyAcct() {
         if (!savedAcctNumber) return;
-        navigator.clipboard.writeText(savedAcctNumber).then(function() {
-            var btn = document.querySelector('.copy-btn');
-            btn.textContent = '✓ Copied!';
-            setTimeout(function(){ btn.textContent = '\u274F Copy Account Number'; }, 2000);
+        navigator.clipboard.writeText(savedAcctNumber).then(function () {
+          var btn = document.querySelector(".copy-btn");
+          btn.textContent = "✓ Copied!";
+          setTimeout(function () {
+            btn.textContent = "\u274F Copy Account Number";
+          }, 2000);
         });
-    }
+      }
 
-    function setLoading(t, s) {
-        document.getElementById('overlayTitle').textContent = t;
-        document.getElementById('overlaySub').textContent = s;
-        document.getElementById('loadingOverlay').classList.add('show');
-    }
-    function hideLoading() { document.getElementById('loadingOverlay').classList.remove('show'); }
-    function showErr(boxes, errId, msg) {
+      function setLoading(t, s) {
+        document.getElementById("overlayTitle").textContent = t;
+        document.getElementById("overlaySub").textContent = s;
+        document.getElementById("loadingOverlay").classList.add("show");
+      }
+      function hideLoading() {
+        document.getElementById("loadingOverlay").classList.remove("show");
+      }
+      function showErr(boxes, errId, msg) {
         document.getElementById(errId).textContent = msg;
-        boxes.forEach(function(b){ b.classList.add('error'); b.classList.remove('filled'); });
-    }
-    function clearRow(boxes) {
-        boxes.forEach(function(b){ b.value = ''; b.classList.remove('filled','error'); });
+        boxes.forEach(function (b) {
+          b.classList.add("error");
+          b.classList.remove("filled");
+        });
+      }
+      function clearRow(boxes) {
+        boxes.forEach(function (b) {
+          b.value = "";
+          b.classList.remove("filled", "error");
+        });
         boxes[0].focus();
-    }
-</script>
-</body>
+      }
+    </script>
+  </body>
 </html>
