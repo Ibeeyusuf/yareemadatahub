@@ -259,7 +259,7 @@ async function loadDataTypes(network) {
         if (selectedNetwork !== networkKey) return;
 
         if (!types || !types.length) {
-            typeGrid.innerHTML = '<span style="color:#dc2626;font-size:13px;">No data types available</span>';
+            typeGrid.innerHTML = '<span style="color:#dc2626;font-size:13px;">No data types available for this network</span>';
             return;
         }
 
@@ -278,7 +278,11 @@ async function loadDataTypes(network) {
         preloadDataPlans(networkKey, types);
 
     } catch (error) {
-        if (typeGrid) typeGrid.innerHTML = '<span style="color:#dc2626;font-size:13px;">Failed to load types. Please retry.</span>';
+        console.error('loadDataTypes error:', error);
+        const message = error.message && error.message.includes('timed out')
+            ? 'Request timed out. Please check your connection and try again.'
+            : 'Failed to load data types. Please retry.';
+        if (typeGrid) typeGrid.innerHTML = `<span style="color:#dc2626;font-size:13px;">${message}</span>`;
     }
 }
 
