@@ -821,7 +821,9 @@ function calculateCommission(type) {
 
 // ==================== MISSING SERVICES (ported from User module) ====================
 
-// Airtime Swap (User: swapAirtime)
+// Airtime2Cash — the live multi-step (OTP) flow lives inline in service.html
+// (showSwap / a2cStep* / submitA2C*). This object is unused legacy code kept
+// only for reference and is not wired into any page.
 const AgentAirtimeSwap = {
     async swap(phoneNumber, network, airtimeAmount, transactionPin) {
         try {

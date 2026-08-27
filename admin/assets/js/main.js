@@ -64,7 +64,7 @@ async function loadPartials() {
     // Also try a fresh API call to keep sidebar name up to date
     try {
         if (typeof api !== 'undefined' && typeof api.getProfile === 'function') {
-            api.getProfile().then(function(res) {
+            api.getProfile(true).then(function(res) {
                 var user = (res && res.data && res.data.admin) ? res.data.admin : null;
                 if (!user) return;
                 localStorage.setItem('admin_user', JSON.stringify(user));

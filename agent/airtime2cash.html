@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Airtime to Cash - Yareema Agent Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{yareema:{primary:'#1E3D5C',secondary:'#16304a'}}}}}</script>
+</head>
+<body class="text-slate-800 antialiased">
+<div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+<div class="w-full min-h-screen">
+    <div id="sidebarContainer"></div>
+    <main class="lg:ml-64 flex flex-col min-h-screen bg-slate-50">
+        <div id="headerContainer"></div>
+        <div class="p-4 lg:p-8 flex-1 overflow-y-auto space-y-6 max-w-2xl mx-auto w-full">
+            <div id="pageMsg" class="hidden p-4 rounded-xl text-sm font-medium"></div>
+
+            <!-- STEP 1: DETAILS -->
+            <div id="stepDetails" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-4">Step 1 of 3 — Details</p>
+
+                <h3 class="font-bold text-slate-900 mb-4">Select Network</h3>
+                <div class="grid grid-cols-4 gap-3 mb-6">
+                    <button onclick="selNet('mtn')"     id="net-mtn"     class="net-btn flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-yellow-400 bg-yellow-50 font-bold text-sm text-yellow-800 transition-all">
+                        <span class="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center font-black text-black text-xs">MTN</span><span>MTN</span></button>
+                    <button onclick="selNet('airtel')"  id="net-airtel"  class="net-btn flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-slate-200 bg-white text-slate-500 font-bold text-sm transition-all">
+                        <span class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-black text-red-600 text-xs">AIR</span><span>Airtel</span></button>
+                    <button onclick="selNet('glo')"     id="net-glo"     class="net-btn flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-slate-200 bg-white text-slate-500 font-bold text-sm transition-all">
+                        <span class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-black text-green-600 text-xs">GLO</span><span>Glo</span></button>
+                    <button onclick="selNet('9mobile')" id="net-9mobile" class="net-btn flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-slate-200 bg-white text-slate-500 font-bold text-sm transition-all">
+                        <span class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-black text-green-900 text-xs">9MB</span><span>9mobile</span></button>
+                </div>
+
+                <form onsubmit="submitDetails(event)" class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Phone Number (line with the airtime)</label>
+                        <input id="a2cPhone" type="tel" maxlength="11" placeholder="08012345678"
+                            class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Amount to Convert (₦)</label>
+                        <input id="a2cAmt" type="number" placeholder="Enter amount"
+                            class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
+                        <p id="a2cHint" class="text-xs text-slate-400 mt-2">Enter amount</p>
+                    </div>
+                    <button type="submit" id="a2cSendBtn" class="w-full py-4 text-white font-bold rounded-xl hover:opacity-90 transition-all text-base flex items-center justify-center gap-2" style="background:linear-gradient(135deg,#1E3D5C,#16304a)">
+                        <i data-lucide="arrow-right" class="w-5 h-5"></i> Send OTP
+                    </button>
+                </form>
+            </div>
+
+            <!-- STEP 2: OTP -->
+            <div id="stepOtp" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-4">Step 2 of 3 — Verify OTP</p>
+                <p id="a2cOtpMsg" class="text-sm text-slate-500 mb-6">We sent a code to your phone</p>
+
+                <form onsubmit="submitOtp(event)" class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Enter OTP</label>
+                        <input id="a2cOtp" type="text" inputmode="numeric" maxlength="6" placeholder="123456"
+                            class="px-4 py-3 border-2 border-slate-200 rounded-xl text-lg text-center tracking-[6px] focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
+                    </div>
+                    <button type="submit" id="a2cVerifyBtn" class="w-full py-4 text-white font-bold rounded-xl hover:opacity-90 transition-all text-base flex items-center justify-center gap-2" style="background:linear-gradient(135deg,#1E3D5C,#16304a)">
+                        <i data-lucide="check" class="w-5 h-5"></i> Verify
+                    </button>
+                    <div class="flex justify-between text-sm">
+                        <button type="button" onclick="backToDetails()" class="text-slate-500 font-semibold hover:text-slate-700">&larr; Back</button>
+                        <button type="button" onclick="resendOtp()" class="text-yareema-primary font-semibold hover:underline">Resend OTP</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- STEP 3: CONFIRM -->
+            <div id="stepConfirm" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-4">Step 3 of 3 — Confirm</p>
+
+                <div class="bg-slate-50 rounded-xl p-4 mb-6 space-y-2">
+                    <div class="flex justify-between text-sm"><span class="text-slate-500">Network</span><span id="cfNet" class="font-bold text-slate-800">—</span></div>
+                    <div class="flex justify-between text-sm"><span class="text-slate-500">Phone</span><span id="cfPhone" class="font-bold text-slate-800">—</span></div>
+                    <div class="flex justify-between text-sm"><span class="text-slate-500">Airtime Balance</span><span id="cfBal" class="font-bold text-slate-800">—</span></div>
+                    <div class="flex justify-between text-sm"><span class="text-slate-500">Amount to Convert</span><span id="cfAmt" class="font-bold text-slate-800">—</span></div>
+                </div>
+
+                <form onsubmit="submitTransfer(event)" class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Transaction PIN</label>
+                        <input id="a2cPin" type="password" maxlength="4" placeholder="Enter 4-digit PIN"
+                            class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
+                    </div>
+                    <button type="submit" id="a2cTransferBtn" class="w-full py-4 text-white font-bold rounded-xl hover:opacity-90 transition-all text-base flex items-center justify-center gap-2" style="background:linear-gradient(135deg,#1E3D5C,#16304a)">
+                        <i data-lucide="repeat" class="w-5 h-5"></i> Convert to Cash
+                    </button>
+                </form>
+            </div>
+        </div>
+    </main>
+</div>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+Auth.protectPage();
+fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();initSidebar();});
+fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('airtime2cash');if(typeof initHeader==='function')initHeader();lucide.createIcons();});
+
+let _net = 'mtn', _limits = null, _sessionId = null, _amount = 0, _phone = '';
+const NSTYLES={mtn:{a:'border-yellow-400 bg-yellow-50 text-yellow-800',dot:'bg-yellow-400 text-black'},airtel:{a:'border-red-400 bg-red-50 text-red-800',dot:'bg-red-500 text-white'},glo:{a:'border-green-500 bg-green-50 text-green-800',dot:'bg-green-500 text-white'},'9mobile':{a:'border-green-800 bg-green-50 text-green-900',dot:'bg-green-800 text-white'}};
+
+function selNet(n) {
+    _net = n;
+    document.querySelectorAll('.net-btn').forEach(b => {
+        const id = b.id.replace('net-',''); const s = NSTYLES[id];
+        b.className = 'net-btn flex flex-col items-center gap-2 p-4 rounded-xl border-2 font-bold text-sm transition-all '+(id===n?s.a:'border-slate-200 bg-white text-slate-500');
+        const dot = b.querySelector('span'); if(dot) dot.className='w-10 h-10 rounded-full flex items-center justify-center font-black text-xs '+(id===n?s.dot:'bg-slate-100 text-slate-500');
+    });
+    updateHint();
+}
+
+function limitFor(n) {
+    if (!_limits) return null;
+    return _limits[n] || _limits[(n||'').toUpperCase()] || _limits[(n||'').toLowerCase()] || null;
+}
+function updateHint() {
+    const lim = limitFor(_net);
+    const hint = document.getElementById('a2cHint');
+    hint.textContent = lim ? `Min ₦${lim.min.toLocaleString()} — Max ₦${lim.max.toLocaleString()}` : 'Enter amount';
+}
+
+async function submitDetails(e) {
+    e.preventDefault();
+    const phone = document.getElementById('a2cPhone').value.trim();
+    const amount = +document.getElementById('a2cAmt').value;
+
+    if (!phone || phone.length !== 11) { showMsg('Enter a valid 11-digit phone number', 'error'); return; }
+    if (!amount || amount <= 0)        { showMsg('Enter an amount', 'error'); return; }
+
+    const lim = limitFor(_net);
+    if (lim && (amount < lim.min || amount > lim.max)) {
+        showMsg(`Amount must be between ₦${lim.min.toLocaleString()} and ₦${lim.max.toLocaleString()} for ${_net.toUpperCase()}`, 'error');
+        return;
+    }
+
+    _phone = phone; _amount = amount;
+    const btn = document.getElementById('a2cSendBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></span>Sending OTP...';
+    try {
+        const res = await API.post(API_CONFIG.ENDPOINTS.A2C_GENERATE_OTP, { networkName: _net.toUpperCase(), sender: phone });
+        document.getElementById('a2cOtpMsg').textContent = res.message || `We sent a code to ${phone}`;
+        document.getElementById('stepDetails').classList.add('hidden');
+        document.getElementById('stepOtp').classList.remove('hidden');
+        document.getElementById('a2cOtp').focus();
+    } catch (err) {
+        showMsg(err.message || 'Unable to send OTP. Please try again.', 'error');
+    } finally {
+        btn.disabled = false; btn.innerHTML = '<i data-lucide="arrow-right" class="w-5 h-5"></i> Send OTP'; lucide.createIcons();
+    }
+}
+
+function backToDetails() {
+    document.getElementById('stepOtp').classList.add('hidden');
+    document.getElementById('stepDetails').classList.remove('hidden');
+}
+
+async function resendOtp() {
+    try {
+        await API.post(API_CONFIG.ENDPOINTS.A2C_GENERATE_OTP, { networkName: _net.toUpperCase(), sender: _phone });
+        showMsg('A new OTP has been sent.', 'success');
+    } catch (err) {
+        showMsg(err.message || 'Unable to resend OTP.', 'error');
+    }
+}
+
+async function submitOtp(e) {
+    e.preventDefault();
+    const otp = document.getElementById('a2cOtp').value.trim();
+    if (!otp || otp.length < 4) { showMsg('Enter the OTP sent to your phone', 'error'); return; }
+
+    const btn = document.getElementById('a2cVerifyBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></span>Verifying...';
+    try {
+        const verifyRes = await API.post(API_CONFIG.ENDPOINTS.A2C_VERIFY_OTP, { networkName: _net.toUpperCase(), sender: _phone, otp });
+        const verifyData = verifyRes.data || verifyRes;
+        _sessionId = verifyData.sessionId;
+
+        await API.post(API_CONFIG.ENDPOINTS.A2C_LOGIN_SESSION, { networkName: _net.toUpperCase(), sender: _phone, sessionId: _sessionId });
+        const quotaRes = await API.post(API_CONFIG.ENDPOINTS.A2C_CHECK_QUOTA, { networkName: _net.toUpperCase(), amount: _amount });
+        const quotaData = quotaRes.data || quotaRes;
+
+        if (quotaData.available === false) {
+            showMsg(quotaData.message || 'No recipient is available for this amount right now. Try a different amount.', 'error');
+            return;
+        }
+
+        document.getElementById('cfNet').textContent  = _net.toUpperCase();
+        document.getElementById('cfPhone').textContent = _phone;
+        document.getElementById('cfBal').textContent  = verifyData.airtimeBalance || '—';
+        document.getElementById('cfAmt').textContent  = `₦${_amount.toLocaleString()}`;
+
+        document.getElementById('stepOtp').classList.add('hidden');
+        document.getElementById('stepConfirm').classList.remove('hidden');
+    } catch (err) {
+        showMsg(err.message || 'Invalid or expired OTP. Please try again.', 'error');
+    } finally {
+        btn.disabled = false; btn.innerHTML = '<i data-lucide="check" class="w-5 h-5"></i> Verify'; lucide.createIcons();
+    }
+}
+
+async function submitTransfer(e) {
+    e.preventDefault();
+    const pin = document.getElementById('a2cPin').value.trim();
+    if (!pin || !/^\d{4}$/.test(pin)) { showMsg('Enter your 4-digit transaction PIN', 'error'); return; }
+
+    const btn = document.getElementById('a2cTransferBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></span>Processing...';
+    try {
+        const res = await API.post(API_CONFIG.ENDPOINTS.A2C_TRANSFER, {
+            networkName: _net.toUpperCase(),
+            sender: _phone,
+            amount: _amount,
+            pin,
+            sessionId: _sessionId,
+            transactionPin: pin
+        });
+        const data = res.data || res;
+
+        if (data.status === 'pending') {
+            showMsg(`₦${_amount.toLocaleString()} airtime conversion is pending. We'll notify you once confirmed.`, 'success');
+        } else {
+            const received = data.amountConverted != null ? data.amountConverted : _amount;
+            showMsg(`₦${_amount.toLocaleString()} airtime converted to ₦${received.toLocaleString()} cash!`, 'success');
+        }
+
+        setTimeout(() => { window.location.href = 'dashboard.html'; }, 1800);
+    } catch (err) {
+        showMsg(err.message || 'Conversion failed. Please try again.', 'error');
+        btn.disabled = false; btn.innerHTML = '<i data-lucide="repeat" class="w-5 h-5"></i> Convert to Cash'; lucide.createIcons();
+    }
+}
+
+function showMsg(msg,type){const el=document.getElementById('pageMsg');el.className='p-4 rounded-xl text-sm font-medium '+(type==='success'?'bg-green-50 text-green-700 border border-green-200':'bg-red-50 text-red-700 border border-red-200');el.textContent=msg;el.classList.remove('hidden');if(type==='success')setTimeout(()=>el.classList.add('hidden'),5000);el.scrollIntoView({behavior:'smooth',block:'nearest'});}
+
+selNet('mtn'); lucide.createIcons();
+API.get(API_CONFIG.ENDPOINTS.A2C_NETWORK_LIMITS).then(res => { _limits = res.data || res; updateHint(); }).catch(() => {});
+</script>
+</body>
+</html>

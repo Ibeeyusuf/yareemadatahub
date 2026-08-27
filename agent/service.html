@@ -825,56 +825,189 @@ function cpPin(id, btn) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  AIRTIME SWAP
+//  AIRTIME2CASH (multi-step: details -> OTP -> confirm)
 // ═══════════════════════════════════════════════════════════════════════════════
-let _sN = 'mtn';
+let _a2c = { network: 'mtn', phone: '', amount: 0, sessionId: null, balance: null, tariff: null, limits: null };
 
-function showSwap() {
-    _sN = 'mtn';
+async function showSwap() {
+    _a2c = { network: 'mtn', phone: '', amount: 0, sessionId: null, balance: null, tariff: null, limits: null };
+    M.show('Airtime to Cash', `<div style="text-align:center;padding:24px 0"><p style="font-size:13px;color:#64748b">Loading network limits...</p></div>`, '');
+    try {
+        const res = await API.get(API_CONFIG.ENDPOINTS.A2C_NETWORK_LIMITS);
+        _a2c.limits = res.data || res;
+    } catch (e) {
+        _a2c.limits = null;
+    }
+    a2cStepAmount();
+}
+
+function a2cLimit(n) {
+    const l = _a2c.limits;
+    if (!l) return null;
+    return l[n] || l[(n||'').toUpperCase()] || l[(n||'').toLowerCase()] || null;
+}
+function a2cHint(n) {
+    const lim = a2cLimit(n);
+    return lim ? `Min &#8358;${lim.min.toLocaleString()} — Max &#8358;${lim.max.toLocaleString()}` : 'Enter amount';
+}
+
+function a2cStepAmount() {
     M.show('Airtime to Cash', `
+        <p style="font-size:12px;color:#94a3b8;margin:-4px 0 16px">Step 1 of 3 — Details</p>
         <div class="f-group">
             <label class="f-label">Network</label>
-            ${netBtns('snet-btn', 'selSNet')}
+            ${netBtns('a2c-net-btn', 'selA2CNet')}
         </div>
         <div class="f-group">
-            <label class="f-label">Phone Number</label>
-            <input type="tel" id="sPhone" maxlength="11" placeholder="08012345678" class="f-input">
+            <label class="f-label">Phone Number (line with the airtime)</label>
+            <input type="tel" id="a2cPhone" maxlength="11" placeholder="08012345678" class="f-input" value="${_a2c.phone}">
         </div>
         <div class="f-group">
-            <label class="f-label">Airtime Amount (&#8358;)</label>
-            <input type="number" id="sAmt" min="500" placeholder="Min &#8358;500" class="f-input" oninput="updSwap()">
+            <label class="f-label">Amount to Convert (&#8358;)</label>
+            <input type="number" id="a2cAmt" placeholder="Enter amount" class="f-input" value="${_a2c.amount || ''}">
+            <p id="a2cHint" style="font-size:12px;color:#94a3b8;margin-top:4px">${a2cHint(_a2c.network)}</p>
         </div>
-        <div id="swPrev" style="display:none;padding:12px;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;margin-bottom:4px">
-            <p style="font-size:13px;color:#92400e">You receive: <strong id="swRec">&#8358;0</strong> <span style="font-size:11px">(85% of airtime value)</span></p>
+    `, `<button class="btn-s" onclick="M.close()">Cancel</button>
+        <button class="btn-p" onclick="submitA2CDetails()">Send OTP</button>`);
+    setNet('a2c-net-btn', _a2c.network);
+}
+
+function selA2CNet(n) {
+    _a2c.network = n;
+    setNet('a2c-net-btn', n);
+    const hintEl = document.getElementById('a2cHint');
+    if (hintEl) hintEl.innerHTML = a2cHint(n);
+}
+
+async function submitA2CDetails() {
+    const phone  = _v('a2cPhone'), amount = +_v('a2cAmt');
+    if (!phone || phone.length !== 11) { M.inlineErr('Enter a valid 11-digit phone number'); return; }
+    if (!amount || amount <= 0)        { M.inlineErr('Enter an amount'); return; }
+
+    const lim = a2cLimit(_a2c.network);
+    if (lim && (amount < lim.min || amount > lim.max)) {
+        M.inlineErr(`Amount must be between &#8358;${lim.min.toLocaleString()} and &#8358;${lim.max.toLocaleString()} for ${_a2c.network.toUpperCase()}`);
+        return;
+    }
+
+    _a2c.phone = phone; _a2c.amount = amount;
+    M.loading(true);
+    try {
+        const res = await API.post(API_CONFIG.ENDPOINTS.A2C_GENERATE_OTP, { networkName: _a2c.network.toUpperCase(), sender: phone });
+        M.loading(false, 'Send OTP');
+        a2cStepOTP(res.message);
+    } catch (e) {
+        M.loading(false, 'Send OTP');
+        M.inlineErr(e.message || 'Unable to send OTP. Please try again.');
+    }
+}
+
+function a2cStepOTP(sentMessage) {
+    M.show('Verify OTP', `
+        <p style="font-size:12px;color:#94a3b8;margin:-4px 0 16px">Step 2 of 3 — Verify OTP</p>
+        <p style="font-size:13px;color:#64748b;margin-bottom:16px">${sentMessage || `We sent a code to ${_a2c.phone}`}</p>
+        <div class="f-group">
+            <label class="f-label">Enter OTP</label>
+            <input type="text" id="a2cOtp" maxlength="6" inputmode="numeric" placeholder="123456"
+                   class="f-input" style="letter-spacing:4px;text-align:center;font-size:18px">
+        </div>
+        <p style="text-align:center;font-size:12px">
+            <a href="#" onclick="resendA2COTP();return false;" style="color:#1E3D5C;font-weight:600">Resend OTP</a>
+        </p>
+    `, `<button class="btn-s" onclick="a2cStepAmount()">Back</button>
+        <button class="btn-p" onclick="submitA2COTP()">Verify</button>`);
+}
+
+async function resendA2COTP() {
+    try {
+        await API.post(API_CONFIG.ENDPOINTS.A2C_GENERATE_OTP, { networkName: _a2c.network.toUpperCase(), sender: _a2c.phone });
+        M.inlineErr('A new OTP has been sent.');
+    } catch (e) {
+        M.inlineErr(e.message || 'Unable to resend OTP.');
+    }
+}
+
+async function submitA2COTP() {
+    const otp = _v('a2cOtp');
+    if (!otp || otp.length < 4) { M.inlineErr('Enter the OTP sent to your phone'); return; }
+
+    M.loading(true);
+    try {
+        const verifyRes  = await API.post(API_CONFIG.ENDPOINTS.A2C_VERIFY_OTP, { networkName: _a2c.network.toUpperCase(), sender: _a2c.phone, otp });
+        const verifyData = verifyRes.data || verifyRes;
+        _a2c.sessionId = verifyData.sessionId;
+        _a2c.balance   = verifyData.airtimeBalance;
+        _a2c.tariff    = verifyData.tariff;
+
+        await API.post(API_CONFIG.ENDPOINTS.A2C_LOGIN_SESSION, { networkName: _a2c.network.toUpperCase(), sender: _a2c.phone, sessionId: _a2c.sessionId });
+        const quotaRes  = await API.post(API_CONFIG.ENDPOINTS.A2C_CHECK_QUOTA, { networkName: _a2c.network.toUpperCase(), amount: _a2c.amount });
+        const quotaData = quotaRes.data || quotaRes;
+
+        if (quotaData.available === false) {
+            M.loading(false, 'Verify');
+            M.inlineErr(quotaData.message || 'No recipient is available for this amount right now. Try a different amount.');
+            return;
+        }
+
+        M.loading(false);
+        a2cStepConfirm();
+    } catch (e) {
+        M.loading(false, 'Verify');
+        M.inlineErr(e.message || 'Invalid or expired OTP. Please try again.');
+    }
+}
+
+function a2cStepConfirm() {
+    M.show('Confirm Conversion', `
+        <p style="font-size:12px;color:#94a3b8;margin:-4px 0 16px">Step 3 of 3 — Confirm</p>
+        <div style="padding:14px;background:#f8fafc;border-radius:10px;margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0">
+                <span style="color:#64748b">Network</span><strong>${_a2c.network.toUpperCase()}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0">
+                <span style="color:#64748b">Phone</span><strong>${_a2c.phone}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0">
+                <span style="color:#64748b">Airtime Balance</span><strong>${_a2c.balance || '—'}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0">
+                <span style="color:#64748b">Amount to Convert</span><strong>&#8358;${_a2c.amount.toLocaleString()}</strong>
+            </div>
         </div>
         <div class="f-group">
             <label class="f-label">Transaction PIN</label>
-            <input type="password" id="sPin" maxlength="4" placeholder="••••" class="f-input">
+            <input type="password" id="a2cPin" maxlength="4" placeholder="••••" class="f-input">
         </div>
     `, `<button class="btn-s" onclick="M.close()">Cancel</button>
-        <button class="btn-p" onclick="submitSwap()">Convert to Cash</button>`);
+        <button class="btn-p" onclick="submitA2CTransfer()">Convert to Cash</button>`);
 }
 
-function selSNet(n) { _sN = n; setNet('snet-btn', n); }
-function updSwap() {
-    const a = +_v('sAmt') || 0;
-    document.getElementById('swRec').textContent  = `&#8358;${(a*0.85).toLocaleString()}`;
-    document.getElementById('swPrev').style.display = a > 0 ? 'block' : 'none';
-}
+async function submitA2CTransfer() {
+    const pin = _v('a2cPin');
+    if (!pin || !/^\d{4}$/.test(pin)) { M.inlineErr('Enter your 4-digit transaction PIN'); return; }
 
-async function submitSwap() {
-    const phone = _v('sPhone'), amount = +_v('sAmt'), pin = _v('sPin');
-    if (!phone || phone.length !== 11) { M.inlineErr('Enter a valid 11-digit phone number'); return; }
-    if (!amount || amount < 500)       { M.inlineErr('Minimum swap amount is &#8358;500'); return; }
-    if (!pin || !/^\d{4}$/.test(pin))  { M.inlineErr('Enter your 4-digit transaction PIN'); return; }
     M.loading(true);
     try {
-        await API.post(API_CONFIG.ENDPOINTS.AIRTIME_SWAP, { phoneNumber:phone, network:_sN, airtimeAmount:amount, transactionPin:pin });
+        const res  = await API.post(API_CONFIG.ENDPOINTS.A2C_TRANSFER, {
+            networkName: _a2c.network.toUpperCase(),
+            sender: _a2c.phone,
+            amount: _a2c.amount,
+            pin,
+            sessionId: _a2c.sessionId,
+            transactionPin: pin
+        });
+        const data = res.data || res;
         M.close();
-        setTimeout(() => M.ok(`<p style="font-size:15px;font-weight:600;margin-bottom:4px">Swap Successful!</p><p style="font-size:13px;color:#64748b">&#8358;${amount.toLocaleString()} airtime → <strong style="color:#16a34a">&#8358;${(amount*0.85).toLocaleString()}</strong> cash</p>`), 300);
-    } catch(e) {
+
+        if (data.status === 'pending') {
+            setTimeout(() => M.ok(`<p style="font-size:15px;font-weight:600;margin-bottom:4px">Conversion Pending</p><p style="font-size:13px;color:#64748b">&#8358;${_a2c.amount.toLocaleString()} airtime conversion is being processed. We'll notify you once confirmed.</p>`), 300);
+        } else {
+            const received = data.amountConverted != null ? data.amountConverted : _a2c.amount;
+            setTimeout(() => M.ok(`<p style="font-size:15px;font-weight:600;margin-bottom:4px">Conversion Successful!</p><p style="font-size:13px;color:#64748b">&#8358;${_a2c.amount.toLocaleString()} airtime → <strong style="color:#16a34a">&#8358;${received.toLocaleString()}</strong> cash</p>`), 300);
+        }
+    } catch (e) {
         M.loading(false, 'Convert to Cash');
-        M.inlineErr(e.message || 'Swap failed. Please try again.');
+        M.inlineErr(e.message || 'Conversion failed. Please try again.');
     }
 }
 

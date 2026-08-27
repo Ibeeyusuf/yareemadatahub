@@ -121,6 +121,7 @@ function updatePageTitle(page) {
         cable:       { en: 'Cable TV',           ha: 'Cable TV' },
         education:   { en: 'Education PINs',     ha: 'PIN Karatu' },
         sms:         { en: 'Bulk SMS',           ha: 'SMS Da Yawa' },
+        airtime2cash:{ en: 'Airtime to Cash',    ha: 'Canza Katin Waya' },
         customers:   { en: 'My Customers',       ha: 'Abokan Ciniki Na' },
         wallet:      { en: 'Wallet',             ha: 'Wallet' },
         reports:     { en: 'Reports',            ha: 'Rahotanni' },

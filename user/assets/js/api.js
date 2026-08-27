@@ -51,7 +51,8 @@ class YareemaUserAPI {
                                           endpoint.includes('/telecom/') ||
                                           endpoint.includes('/bills/') ||
                                           endpoint.includes('/wallet/') ||
-                                          endpoint.includes('/remita/');
+                                          endpoint.includes('/remita/') ||
+                                          endpoint.includes('/airtime2cash/');
             
                 if (isServiceEndpoint) {
                     // Just surface the error message to the UI — don't touch the session
@@ -282,11 +283,55 @@ class YareemaUserAPI {
         });
     }
 
-    async swapAirtime(phoneNumber, network, airtimeAmount, transactionPin) {
-        return await this.request('/api/v1/telecom/airtime/swap', {
+    async getAirtimeToCashLimits() {
+        return await this.request('/api/v1/airtime2cash/network-limits');
+    }
+
+    async generateAirtimeToCashOTP(networkName, sender) {
+        return await this.request('/api/v1/airtime2cash/generate-otp', {
             method: 'POST',
-            body: { phoneNumber, network: network.toLowerCase(), airtimeAmount, transactionPin }
+            body: { networkName: networkName.toUpperCase(), sender }
         });
+    }
+
+    async verifyAirtimeToCashOTP(networkName, sender, otp) {
+        return await this.request('/api/v1/airtime2cash/verify-otp', {
+            method: 'POST',
+            body: { networkName: networkName.toUpperCase(), sender, otp }
+        });
+    }
+
+    async loginAirtimeToCashSession(networkName, sender, sessionId) {
+        return await this.request('/api/v1/airtime2cash/login-session', {
+            method: 'POST',
+            body: { networkName: networkName.toUpperCase(), sender, sessionId }
+        });
+    }
+
+    async checkAirtimeToCashQuota(networkName, amount) {
+        return await this.request('/api/v1/airtime2cash/check-quota', {
+            method: 'POST',
+            body: { networkName: networkName.toUpperCase(), amount }
+        });
+    }
+
+    async transferAirtimeToCash(networkName, sender, amount, transactionPin, sessionId) {
+        return await this.request('/api/v1/airtime2cash/transfer', {
+            method: 'POST',
+            body: {
+                networkName: networkName.toUpperCase(),
+                sender,
+                amount,
+                pin: transactionPin,
+                sessionId,
+                transactionPin
+            }
+        });
+    }
+
+    async getAirtimeToCashConversions(params = {}) {
+        const query = new URLSearchParams(params).toString();
+        return await this.request(`/api/v1/airtime2cash/conversions${query ? '?' + query : ''}`);
     }
 
     // ==================== RECHARGE PIN ====================

@@ -1282,13 +1282,43 @@ function copyPinToClipboard(elemId, btn) {
     });
 }
 
-// ==================== SWAP / AIRTIME2CASH MODAL ====================
+// ==================== AIRTIME2CASH MODAL (multi-step: details -> OTP -> confirm) ====================
 
-function showSwapModal() {
+let _a2c = { network: 'mtn', phone: '', amount: 0, sessionId: null, balance: null, tariff: null, limits: null };
+
+async function showSwapModal() {
+    _a2c = { network: 'mtn', phone: '', amount: 0, sessionId: null, balance: null, tariff: null, limits: null };
     showModal('Airtime to Cash', `
+        <div style="text-align:center;padding:32px 0;">
+            <p style="font-size:13px;color:#64748b;">Loading network limits...</p>
+        </div>
+    `, '');
+    try {
+        const res = await api.getAirtimeToCashLimits();
+        _a2c.limits = res.data || res;
+    } catch (e) {
+        _a2c.limits = null; // still let them try even if this call fails
+    }
+    renderA2CStepAmount();
+}
+
+function a2cLimitFor(network) {
+    const l = _a2c.limits;
+    if (!l) return null;
+    return l[network] || l[(network || '').toUpperCase()] || l[(network || '').toLowerCase()] || null;
+}
+
+function a2cLimitHint(network) {
+    const lim = a2cLimitFor(network);
+    return lim ? `Min ₦${lim.min.toLocaleString()} — Max ₦${lim.max.toLocaleString()}` : 'Enter amount';
+}
+
+function renderA2CStepAmount() {
+    showModal('Airtime to Cash', `
+        <p style="font-size:12px;color:#94a3b8;margin:-4px 0 16px;">Step 1 of 3 — Details</p>
         <div class="form-group">
             <label>Network</label>
-            <select id="swapNetwork" class="form-input">
+            <select id="a2cNetwork" class="form-input" onchange="onA2CNetworkChange()">
                 <option value="mtn">MTN</option>
                 <option value="airtel">Airtel</option>
                 <option value="glo">Glo</option>
@@ -1296,70 +1326,172 @@ function showSwapModal() {
             </select>
         </div>
         <div class="form-group">
-            <label>Phone Number</label>
-            <input type="tel" id="swapPhone" placeholder="08012345678"
-                   maxlength="11" class="form-input">
+            <label>Phone Number (line with the airtime)</label>
+            <input type="tel" id="a2cPhone" placeholder="08012345678" maxlength="11"
+                   class="form-input" value="${_a2c.phone}">
         </div>
         <div class="form-group">
-            <label>Airtime Amount</label>
-            <input type="number" id="swapAmount" placeholder="Enter amount (min ₦500)"
-                   min="500" class="form-input" oninput="updateSwapPreview()">
-        </div>
-        <div id="swapPreview"
-             style="padding:16px;background:#fef3c7;border-radius:8px;
-                    margin-bottom:16px;display:none;">
-            <p style="font-size:14px;color:#92400e;">
-                You will receive: <strong id="swapReceive">₦0.00</strong>
-                (85% of airtime value)
-            </p>
-        </div>
-        <div class="form-group">
-            <label>Transaction PIN</label>
-            <input type="password" id="swapPin" placeholder="Enter 4-digit PIN"
-                   maxlength="4" class="form-input">
+            <label>Amount to Convert</label>
+            <input type="number" id="a2cAmount" placeholder="Enter amount"
+                   class="form-input" value="${_a2c.amount || ''}">
+            <p id="a2cLimitHint" style="font-size:12px;color:#94a3b8;margin-top:4px;">${a2cLimitHint(_a2c.network)}</p>
         </div>
     `, `
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
-        <button onclick="submitAirtimeSwap()" class="btn-primary">Convert to Cash</button>
+        <button onclick="submitA2CDetails()" class="btn-primary">Send OTP</button>
+    `);
+    const sel = document.getElementById('a2cNetwork');
+    if (sel) sel.value = _a2c.network;
+}
+
+function onA2CNetworkChange() {
+    _a2c.network = document.getElementById('a2cNetwork').value;
+    const hintEl = document.getElementById('a2cLimitHint');
+    if (hintEl) hintEl.textContent = a2cLimitHint(_a2c.network);
+}
+
+async function submitA2CDetails() {
+    const network = document.getElementById('a2cNetwork').value;
+    const phone   = document.getElementById('a2cPhone').value.trim();
+    const amount  = parseInt(document.getElementById('a2cAmount').value);
+
+    if (!phone || phone.length !== 11) { showInlineError('Please enter a valid 11-digit phone number'); return; }
+    if (!amount || amount <= 0)        { showInlineError('Please enter an amount'); return; }
+
+    const lim = a2cLimitFor(network);
+    if (lim && (amount < lim.min || amount > lim.max)) {
+        showInlineError(`Amount must be between ₦${lim.min.toLocaleString()} and ₦${lim.max.toLocaleString()} for ${network.toUpperCase()}`);
+        return;
+    }
+
+    _a2c.network = network;
+    _a2c.phone   = phone;
+    _a2c.amount  = amount;
+
+    setSubmitLoading(true, 'Sending OTP...');
+    try {
+        const res = await api.generateAirtimeToCashOTP(network, phone);
+        setSubmitLoading(false);
+        renderA2CStepOTP(res.message);
+    } catch (error) {
+        setSubmitLoading(false, '', 'Send OTP');
+        showInlineError(error.message || 'Unable to send OTP. Please try again.');
+    }
+}
+
+function renderA2CStepOTP(sentMessage) {
+    showModal('Verify OTP', `
+        <p style="font-size:12px;color:#94a3b8;margin:-4px 0 16px;">Step 2 of 3 — Verify OTP</p>
+        <p style="font-size:13px;color:#64748b;margin-bottom:16px;">
+            ${sentMessage || `We sent a code to ${_a2c.phone}`}
+        </p>
+        <div class="form-group">
+            <label>Enter OTP</label>
+            <input type="text" id="a2cOtp" placeholder="123456" maxlength="6" inputmode="numeric"
+                   class="form-input" style="letter-spacing:4px;text-align:center;font-size:18px;">
+        </div>
+        <p style="text-align:center;font-size:12px;">
+            <a href="#" onclick="resendA2COTP();return false;" style="color:#1e3d5c;font-weight:600;">Resend OTP</a>
+        </p>
+    `, `
+        <button onclick="renderA2CStepAmount()" class="btn-secondary">Back</button>
+        <button onclick="submitA2COTP()" class="btn-primary">Verify</button>
     `);
 }
 
-function updateSwapPreview() {
-    const amount  = parseInt(document.getElementById('swapAmount').value) || 0;
-    const receive = amount * 0.85;
-    document.getElementById('swapReceive').textContent = `₦${receive.toLocaleString()}`;
-    document.getElementById('swapPreview').style.display = amount > 0 ? 'block' : 'none';
+async function resendA2COTP() {
+    try {
+        await api.generateAirtimeToCashOTP(_a2c.network, _a2c.phone);
+        showInlineError('A new OTP has been sent.');
+    } catch (error) {
+        showInlineError(error.message || 'Unable to resend OTP. Please try again.');
+    }
 }
 
-async function submitAirtimeSwap() {
-    const network = document.getElementById('swapNetwork').value;
-    const phone   = document.getElementById('swapPhone').value.trim();
-    const amount  = parseInt(document.getElementById('swapAmount').value);
-    const pin     = document.getElementById('swapPin').value.trim();
+async function submitA2COTP() {
+    const otp = document.getElementById('a2cOtp').value.trim();
+    if (!otp || otp.length < 4) { showInlineError('Please enter the OTP sent to your phone'); return; }
 
-    if (!pin || !/^\d{4}$/.test(pin))      { showInlineError('Please enter your 4-digit transaction PIN'); return; }
-    if (!phone || phone.length !== 11)     { showInlineError('Please enter a valid 11-digit phone number'); return; }
-    if (!amount || amount < 500)           { showInlineError('Minimum swap amount is ₦500'); return; }
+    setSubmitLoading(true, 'Verifying...');
+    try {
+        const verifyRes = await api.verifyAirtimeToCashOTP(_a2c.network, _a2c.phone, otp);
+        const verifyData = verifyRes.data || verifyRes;
+        _a2c.sessionId = verifyData.sessionId;
+        _a2c.balance   = verifyData.airtimeBalance;
+        _a2c.tariff    = verifyData.tariff;
+
+        // Establish the authenticated session, then confirm a recipient is
+        // available for this amount before asking for the transaction PIN.
+        await api.loginAirtimeToCashSession(_a2c.network, _a2c.phone, _a2c.sessionId);
+        const quotaRes  = await api.checkAirtimeToCashQuota(_a2c.network, _a2c.amount);
+        const quotaData = quotaRes.data || quotaRes;
+
+        if (quotaData.available === false) {
+            setSubmitLoading(false, '', 'Verify');
+            showInlineError(quotaData.message || 'No recipient is available for this amount right now. Please try a different amount or try again shortly.');
+            return;
+        }
+
+        setSubmitLoading(false);
+        renderA2CStepConfirm();
+    } catch (error) {
+        setSubmitLoading(false, '', 'Verify');
+        showInlineError(error.message || 'Invalid or expired OTP. Please try again.');
+    }
+}
+
+function renderA2CStepConfirm() {
+    showModal('Confirm Conversion', `
+        <p style="font-size:12px;color:#94a3b8;margin:-4px 0 16px;">Step 3 of 3 — Confirm</p>
+        <div style="padding:14px;background:#f8fafc;border-radius:10px;margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;">
+                <span style="color:#64748b;">Network</span><strong>${_a2c.network.toUpperCase()}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;">
+                <span style="color:#64748b;">Phone</span><strong>${_a2c.phone}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;">
+                <span style="color:#64748b;">Airtime Balance</span><strong>${_a2c.balance || '—'}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;">
+                <span style="color:#64748b;">Amount to Convert</span><strong>₦${_a2c.amount.toLocaleString()}</strong>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Transaction PIN</label>
+            <input type="password" id="a2cPin" placeholder="Enter 4-digit PIN" maxlength="4" class="form-input">
+        </div>
+    `, `
+        <button onclick="closeModal()" class="btn-secondary">Cancel</button>
+        <button onclick="submitA2CTransfer()" class="btn-primary">Convert to Cash</button>
+    `);
+}
+
+async function submitA2CTransfer() {
+    const pin = document.getElementById('a2cPin').value.trim();
+    if (!pin || !/^\d{4}$/.test(pin)) { showInlineError('Please enter your 4-digit transaction PIN'); return; }
 
     setSubmitLoading(true, 'Processing...');
     try {
-        await api.swapAirtime(phone, network, amount, pin);
-        const cashValue = amount * 0.85;
+        const res  = await api.transferAirtimeToCash(_a2c.network, _a2c.phone, _a2c.amount, pin, _a2c.sessionId);
+        const data = res.data || res;
         closeModal();
-        setTimeout(() => showSuccess(`
-            <div style="text-align:center;">
-                <p style="font-size:16px;margin-bottom:8px;">Swap Successful! 🎉</p>
-                <p style="font-size:14px;color:#64748b;">
-                    ₦${amount.toLocaleString()} airtime converted to
-                </p>
-                <p style="font-size:24px;font-weight:700;color:#16a34a;">
-                    ₦${cashValue.toLocaleString()}
-                </p>
-            </div>
-        `), 300);
+
+        if (data.status === 'pending') {
+            setTimeout(() => showSuccess(`
+                Your conversion of ₦${_a2c.amount.toLocaleString()} airtime is <strong>pending</strong>.
+                We'll notify you once it's confirmed.
+            `), 300);
+        } else {
+            const received = data.amountConverted != null ? data.amountConverted : _a2c.amount;
+            setTimeout(() => showSuccess(`
+                ₦${_a2c.amount.toLocaleString()} airtime converted to<br>
+                <span style="font-size:24px;font-weight:700;color:#16a34a;">₦${received.toLocaleString()}</span>
+            `), 300);
+        }
     } catch (error) {
         setSubmitLoading(false, '', 'Convert to Cash');
-        showInlineError(error.message || 'Unable to complete swap. Please try again.');
+        showInlineError(error.message || 'Conversion failed. Please try again.');
     }
 }
 

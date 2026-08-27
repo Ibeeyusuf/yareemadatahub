@@ -92,6 +92,16 @@ class YareemaAPI {
             throw new Error(errorMessage);
           }
 
+          // Background/non-critical calls (e.g. the sidebar profile refresh
+          // fired on every page load) shouldn't be able to kill a session
+          // that just logged in fine. If a call opts into this, just throw
+          // a normal error and leave the token/redirect alone.
+          if (options.suppressAuthRedirect) {
+            throw new Error(
+              data.message || data.error || "Request failed (401)",
+            );
+          }
+
           // For non-login endpoints, handle session expiration
           console.error("Session expired - Logging out");
           this.clearToken();
@@ -179,8 +189,10 @@ class YareemaAPI {
 
   // ==================== PROFILE & ACCOUNT ====================
 
-  async getProfile() {
-    return await this.request("/api/v1/admin/profile");
+  async getProfile(silent = false) {
+    return await this.request("/api/v1/admin/profile", {
+      suppressAuthRedirect: silent,
+    });
   }
 
   async updateProfile(data) {

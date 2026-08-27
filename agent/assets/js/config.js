@@ -32,6 +32,13 @@ if (typeof API_CONFIG === "undefined") {
       DATA_PURCHASE: "/telecom/data/purchase",
       AIRTIME_PURCHASE: "/telecom/airtime/purchase",
       AIRTIME_SWAP: "/telecom/airtime/swap",
+      A2C_NETWORK_LIMITS: "/airtime2cash/network-limits",
+      A2C_GENERATE_OTP: "/airtime2cash/generate-otp",
+      A2C_VERIFY_OTP: "/airtime2cash/verify-otp",
+      A2C_LOGIN_SESSION: "/airtime2cash/login-session",
+      A2C_CHECK_QUOTA: "/airtime2cash/check-quota",
+      A2C_TRANSFER: "/airtime2cash/transfer",
+      A2C_CONVERSIONS: "/airtime2cash/conversions",
       RECHARGE_PIN_PURCHASE: "/telecom/recharge-pin/purchase",
       CABLE_PLANS: "/bills/cable/plans",
       CABLE_PURCHASE: "/bills/cable/purchase",
@@ -177,6 +184,18 @@ if (typeof API === "undefined") {
             if (isLoginRequest) {
               throw new Error(errorMessage);
             }
+
+            // Airtime2Cash has its own OTP/session lifecycle (the aggregator
+            // sessionId from verify-otp) that is completely separate from the
+            // agent's portal login token. Messages like "OTP session expired"
+            // contain the word "expired" and would otherwise be misread by
+            // the token-error check below as the agent's login expiring,
+            // logging them out of the whole portal over an unrelated OTP
+            // timeout. Never let 401s from these endpoints trigger a logout.
+            if (endpoint.includes("/airtime2cash/")) {
+              throw new Error(errorMessage);
+            }
+
             // Only treat as session expired if it's a REAL token error.
             // Business-logic 401s (pending approval, wrong PIN, access denied)
             // must surface as error messages to the UI — NOT log the user out.
