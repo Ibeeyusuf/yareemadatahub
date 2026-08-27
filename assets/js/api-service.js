@@ -27,7 +27,15 @@ class YareemaUserAPI {
             headers['Authorization'] = `Bearer ${currentToken}`;
         }
 
-        const config = { method: options.method || 'GET', headers };
+        const timeoutMs = options.timeout || API_CONFIG.TIMEOUT || 30000;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+        const config = {
+            method: options.method || 'GET',
+            headers,
+            signal: controller.signal,
+        };
 
         if (options.body) {
             config.body = JSON.stringify(options.body);
@@ -58,8 +66,13 @@ class YareemaUserAPI {
 
             return data;
         } catch (error) {
+            if (error.name === 'AbortError') {
+                throw new Error('Request timed out. Please check your connection and try again.');
+            }
             console.error('API Error:', error);
             throw error;
+        } finally {
+            clearTimeout(timeoutId);
         }
     }
 
@@ -252,8 +265,10 @@ class YareemaUserAPI {
 
     // ==================== TELECOM ====================
 
-    async getDataPlans(network) {
-        return await this.request(`/api/v1/telecom/data/plans?network=${network.toLowerCase()}`);
+    async getDataPlans(network, dataType = null) {
+        let url = `/api/v1/telecom/data/plans?network=${network.toLowerCase()}`;
+        if (dataType) url += `&dataType=${dataType}`;
+        return await this.request(url);
     }
 
     async purchaseData(phoneNumber, network, planId, transactionPin) {

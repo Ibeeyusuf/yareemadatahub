@@ -39,10 +39,14 @@ class YareemaAPI {
       headers["Authorization"] = `Bearer ${this.token}`;
     }
 
+    const timeoutMs = options.timeout || API_CONFIG?.TIMEOUT || 30000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
     const config = {
       method: options.method || "GET",
       headers,
-      ...options,
+      signal: controller.signal,
     };
 
     if (options.body && typeof options.body === "object") {
@@ -53,6 +57,7 @@ class YareemaAPI {
       console.log(`API Request: ${url} ${config.method}`);
 
       const response = await fetch(url, config);
+      clearTimeout(timeoutId);
 
       // Check if response is ok before trying to parse JSON
       if (!response.ok) {
@@ -162,6 +167,11 @@ class YareemaAPI {
       }
       return data;
     } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === "AbortError") {
+        console.error("Request timeout:", url);
+        throw new Error("Request timed out. Please check your internet connection.");
+      }
       // CORS error detection
       if (error instanceof TypeError && error.message === "Failed to fetch") {
         console.error("Network/CORS Error:", error);

@@ -27,7 +27,11 @@ class YareemaUserAPI {
             headers['Authorization'] = `Bearer ${currentToken}`;
         }
 
-        const config = { method: options.method || 'GET', headers };
+        const timeoutMs = options.timeout || API_CONFIG?.TIMEOUT || 30000;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+        const config = { method: options.method || 'GET', headers, signal: controller.signal };
 
         if (options.body) {
             config.body = JSON.stringify(options.body);
@@ -35,6 +39,7 @@ class YareemaUserAPI {
 
         try {
             const response = await fetch(url, config);
+            clearTimeout(timeoutId);
             let data;
             try {
                 data = await response.json();
@@ -82,6 +87,11 @@ class YareemaUserAPI {
 
             return data;
         } catch (error) {
+            clearTimeout(timeoutId);
+            if (error.name === 'AbortError') {
+                console.error('Request timeout:', url);
+                throw new Error('Request timed out. Please check your internet connection.');
+            }
             console.error('API Error:', error);
             throw error;
         }
