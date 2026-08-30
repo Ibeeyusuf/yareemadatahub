@@ -821,12 +821,16 @@ class YareemaAPI {
 
   // ==================== NOTIFICATIONS ====================
 
-  async getNotifications() {
-    return await this.request("/api/v1/notifications");
+  async getNotifications(silent = false) {
+    return await this.request("/api/v1/notifications", {
+      suppressAuthRedirect: silent,
+    });
   }
 
-  async getUnreadNotificationCount() {
-    return await this.request("/api/v1/notifications/unread-count");
+  async getUnreadNotificationCount(silent = false) {
+    return await this.request("/api/v1/notifications/unread-count", {
+      suppressAuthRedirect: silent,
+    });
   }
 
   async markNotificationRead(notificationId) {

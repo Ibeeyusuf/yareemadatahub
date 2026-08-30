@@ -221,13 +221,18 @@ async function selectType(t) {
             }
         }
         
-        // Remove duplicates based on id or planCode
+        // Remove duplicates: aggregators sometimes list the same plan twice
+        // (duplicate SKUs across upstream routes/providers) under different
+        // ids/planCodes but with an identical displayed name + price. Dedupe
+        // on what's actually shown, not just the id, so repeats don't appear.
         const uniquePlans = [];
-        const seenIds = new Set();
+        const seenKeys = new Set();
         for (const plan of plans) {
-            const planId = plan.id || plan.planCode;
-            if (planId && !seenIds.has(planId)) {
-                seenIds.add(planId);
+            const name = String(plan.planName || plan.name || plan.PRODUCT_NAME || '').trim().toLowerCase();
+            const price = Number(plan.sellingPrice ?? plan.price ?? plan.amount ?? plan.PRODUCT_AMOUNT ?? 0);
+            const key = `${name}|${price}`;
+            if (!seenKeys.has(key)) {
+                seenKeys.add(key);
                 uniquePlans.push(plan);
             }
         }

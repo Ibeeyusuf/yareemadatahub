@@ -616,7 +616,7 @@ if (document.readyState === 'loading') {
     async function _fetchNotifs() {
         try {
             if (typeof api === 'undefined' || typeof api.getNotifications !== 'function') return;
-            var res = await api.getNotifications();
+            var res = await api.getNotifications(true);
             _notifs = (res.data && Array.isArray(res.data)) ? res.data
                     : (res.data && Array.isArray(res.data.notifications)) ? res.data.notifications
                     : Array.isArray(res.notifications) ? res.notifications
@@ -632,7 +632,7 @@ if (document.readyState === 'loading') {
     async function _fetchUnreadCount() {
         try {
             if (typeof api === 'undefined' || typeof api.getUnreadNotificationCount !== 'function') return;
-            var res   = await api.getUnreadNotificationCount();
+            var res   = await api.getUnreadNotificationCount(true);
             var count = (res.data && res.data.count != null) ? res.data.count : (res.count != null) ? res.count : null;
             if (count !== null) {
                 var badge = document.getElementById('adminNotifBadge');

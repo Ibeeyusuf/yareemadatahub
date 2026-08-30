@@ -299,7 +299,19 @@ function dataPlanSizeInMB(plan) {
 }
 
 function sortDataPlans(plans) {
-    return [...plans].sort((left, right) => {
+    // Aggregators sometimes list the same plan twice (duplicate SKUs across
+    // upstream routes/providers) with identical name + price. Keep only the
+    // first occurrence of each so the dropdown doesn't show repeats.
+    const seen = new Set();
+    const deduped = plans.filter(plan => {
+        const name   = String(plan.PRODUCT_NAME || plan.planName || plan.name || '').trim().toLowerCase();
+        const amount = Number(plan.PRODUCT_AMOUNT ?? plan.sellingPrice ?? plan.price ?? plan.amount ?? 0);
+        const key = `${name}|${amount}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+    return [...deduped].sort((left, right) => {
         const leftPrice = Number(left.PRODUCT_AMOUNT ?? left.sellingPrice ?? left.price ?? left.amount ?? 0);
         const rightPrice = Number(right.PRODUCT_AMOUNT ?? right.sellingPrice ?? right.price ?? right.amount ?? 0);
         const priceDifference = leftPrice - rightPrice;
