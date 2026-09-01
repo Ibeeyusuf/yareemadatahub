@@ -398,20 +398,42 @@ class YareemaUserAPI {
         });
     }
 
-    // ==================== REMITA ====================
+    // ==================== REMITA (biller bill-payment flow) ====================
+    // Replaces the old validateRRR/processRRRPayment "pay an existing RRR"
+    // flow. This one generates its own RRR internally: browse a biller's
+    // products, validate the customer, generate an RRR, then pay it.
 
-    async validateRRR(rrr) {
-        return await this.request('/api/v1/remita/validate', {
+    async getRemitaBillerProducts(billerId) {
+        return await this.request(`/api/v1/remita/biller/${billerId}/products`);
+    }
+
+    async validateRemitaCustomer(billPaymentProductId, customerId) {
+        return await this.request('/api/v1/remita/validate-customer', {
             method: 'POST',
-            body: { rrr }
+            body: { billPaymentProductId, customerId }
         });
     }
 
-    async processRRRPayment(rrr, transactionPin) {
-        return await this.request('/api/v1/remita/payment', {
+    async initiateRemitaTransaction({ billPaymentProductId, amount, name, paymentIdentifier, email, phoneNumber, customerId, metadata }) {
+        return await this.request('/api/v1/remita/biller/initiate', {
             method: 'POST',
-            body: { rrr, transactionPin }
+            body: { billPaymentProductId, amount, name, paymentIdentifier, email, phoneNumber, customerId, metadata }
         });
+    }
+
+    async processRemitaTransaction(rrr, paymentIdentifier, amount) {
+        return await this.request('/api/v1/remita/process', {
+            method: 'POST',
+            body: { rrr, paymentIdentifier, amount }
+        });
+    }
+
+    async checkRemitaStatus(rrr) {
+        return await this.request(`/api/v1/remita/status/${rrr}`);
+    }
+
+    async lookupRemitaTransaction(rrr) {
+        return await this.request(`/api/v1/remita/lookup/${rrr}`);
     }
 
     // ==================== LOGOUT ====================

@@ -127,7 +127,7 @@ function updatePageTitle(page) {
         reports:     { en: 'Reports',            ha: 'Rahotanni' },
         settings:    { en: 'Settings',           ha: 'Saitunan' },
         profile:     { en: 'My Profile',         ha: 'Bayanan Ni' },
-        'rrr-payment': { en: 'RRR Payment',      ha: 'RRR Payment' }
+        'rrr-payment': { en: 'Pay a Bill',        ha: 'Biya Kudin Haraji' }
     };
 
     const title = titles[page] || { en: 'Dashboard', ha: 'Dashboard' };

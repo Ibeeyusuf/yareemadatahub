@@ -1,3 +1,92 @@
+// ==================== ROLE PERMISSIONS ====================
+// Matches the client's "Roles & Permissions Update" requirement doc.
+// NOTE: this is a FRONTEND-ONLY convenience layer — it hides UI the current
+// role shouldn't use and blocks direct navigation to restricted pages. It is
+// NOT a security boundary; the backend must independently enforce the same
+// rules on every endpoint (and, per the doc, the backend must be the one to
+// actually assign the primary account's role as "superadmin" — the frontend
+// only reads whatever role value the backend/database already has).
+
+const ROLE_PERMISSIONS = {
+    superadmin: { dashboard:'full', users:'full', agents:'full', wallet:'full', transactions:'full', pricing:'full', settings:'full', staff:'full', reports:'full' },
+    admin:      { dashboard:'full', users:'full', agents:'full', wallet:'view', transactions:'view', pricing:'none', settings:'none', staff:'none', reports:'full' },
+    support:    { dashboard:'full', users:'view', agents:'none', wallet:'none', transactions:'view', pricing:'none', settings:'none', staff:'none', reports:'none' },
+};
+
+// Which permission "category" each admin page/nav-item belongs to.
+const PAGE_CATEGORY = {
+    'dashboard.html':    'dashboard',
+    'users.html':        'users',
+    'agents.html':       'agents',
+    'wallet.html':       'wallet',
+    'transactions.html': 'transactions',
+    'bulk-pricing.html': 'pricing',
+    'api.html':          'settings',
+    'staff.html':        'staff',
+    'notification.html': 'settings',
+    'reports.html':      'reports',
+    'settings.html':     'settings',
+};
+
+function getCurrentRole() {
+    try {
+        const user = JSON.parse(localStorage.getItem('admin_user') || 'null');
+        const role = String(user?.role || '').toLowerCase().replace(/[\s_-]/g, '');
+        if (role === 'superadmin' || role === 'admin' || role === 'support') return role;
+    } catch (e) {}
+    // Unknown/missing role — fail safe to the MOST restrictive role rather
+    // than silently granting broader access. (Previously defaulted to
+    // 'admin', which meant any response that omitted the role field — e.g.
+    // a profile refresh that doesn't return `role` — quietly upgraded a
+    // restricted account's effective permissions instead of restricting it.)
+    return 'support';
+}
+
+// Returns 'full' | 'view' | 'none' for the given category and the current role.
+function hasAccess(category) {
+    const perms = ROLE_PERMISSIONS[getCurrentRole()] || ROLE_PERMISSIONS.support;
+    return perms[category] || 'none';
+}
+
+function canManage(category) { return hasAccess(category) === 'full'; }
+function canAccessPage(pageFile) {
+    const category = PAGE_CATEGORY[pageFile];
+    if (!category) return true; // ungated page (e.g. profile) — allow
+    return hasAccess(category) !== 'none';
+}
+
+// Hide sidebar nav items the current role has no access to at all.
+function applySidebarRestrictions() {
+    document.querySelectorAll('#sidebar a.nav-item[href]').forEach(link => {
+        const href = link.getAttribute('href');
+        if (PAGE_CATEGORY[href] && !canAccessPage(href)) {
+            link.style.display = 'none';
+        }
+    });
+}
+
+// Block direct navigation to a restricted page (typing the URL, old bookmark,
+// etc.) even though its nav link is hidden.
+function guardCurrentPage() {
+    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+    if (!PAGE_CATEGORY[currentPage]) return;
+    if (canAccessPage(currentPage)) return;
+
+    document.body.innerHTML = '';
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'error',
+            title: 'Access Restricted',
+            text: "Your role doesn't have permission to view this page.",
+            confirmButtonText: 'Go to Dashboard',
+            allowOutsideClick: false,
+        }).then(() => { window.location.href = 'dashboard.html'; });
+    } else {
+        alert("Your role doesn't have permission to view this page.");
+        window.location.href = 'dashboard.html';
+    }
+}
+
 // Helper to extract data from response (handles different structures)
 function extractData(response) {
     if (response && response.data) {
@@ -29,7 +118,9 @@ function checkAuthentication() {
         const token = api.getToken();
         if (!token) {
             window.location.href = 'login.html';
+            return;
         }
+        guardCurrentPage();
     }
 }
 
@@ -43,6 +134,7 @@ async function loadPartials() {
                 const html = await response.text();
                 element.innerHTML = html;
                 lucide.createIcons();
+                if (partial === 'sidebar') applySidebarRestrictions();
             } catch (error) {
                 console.error(`Error loading ${partial}:`, error);
             }
@@ -56,8 +148,13 @@ async function loadPartials() {
             var name = (fn + ' ' + ln).trim() || adminUser.email || 'Admin';
             var nameEl   = document.getElementById('sidebarAdminName');
             var avatarEl = document.getElementById('sidebarAdminAvatar');
+            var roleEl   = document.getElementById('sidebarAdminRole');
             if (nameEl)   nameEl.textContent   = name;
             if (avatarEl) avatarEl.textContent = name.charAt(0).toUpperCase();
+            if (roleEl) {
+                var roleLabels = { superadmin: 'Super Admin', admin: 'Admin', support: 'Support' };
+                roleEl.textContent = roleLabels[getCurrentRole()] || 'Support';
+            }
         }
     } catch(e) {}
 
@@ -65,16 +162,33 @@ async function loadPartials() {
     try {
         if (typeof api !== 'undefined' && typeof api.getProfile === 'function') {
             api.getProfile(true).then(function(res) {
-                var user = (res && res.data && res.data.admin) ? res.data.admin : null;
-                if (!user) return;
-                localStorage.setItem('admin_user', JSON.stringify(user));
-                var fn   = user.firstName || '';
-                var ln   = user.lastName  || '';
-                var name = (fn + ' ' + ln).trim() || user.email || 'Admin';
+                var freshUser = (res && res.data && res.data.admin) ? res.data.admin : null;
+                if (!freshUser) return;
+
+                // MERGE, don't replace: this profile response doesn't
+                // necessarily include every field admin_user needs (e.g.
+                // `role`), so overwriting the whole object would silently
+                // wipe those fields out on every page load. Keep whatever
+                // was already stored (from login/staff data) and only layer
+                // the fresh fields on top.
+                var existing = {};
+                try { existing = JSON.parse(localStorage.getItem('admin_user') || '{}') || {}; } catch (e) {}
+                var merged = Object.assign({}, existing, freshUser);
+                if (existing.role && !freshUser.role) merged.role = existing.role;
+                localStorage.setItem('admin_user', JSON.stringify(merged));
+
+                var fn   = merged.firstName || '';
+                var ln   = merged.lastName  || '';
+                var name = (fn + ' ' + ln).trim() || merged.email || 'Admin';
                 var nameEl   = document.getElementById('sidebarAdminName');
                 var avatarEl = document.getElementById('sidebarAdminAvatar');
+                var roleEl   = document.getElementById('sidebarAdminRole');
                 if (nameEl)   nameEl.textContent   = name;
                 if (avatarEl) avatarEl.textContent = name.charAt(0).toUpperCase();
+                if (roleEl) {
+                    var roleLabels = { superadmin: 'Super Admin', admin: 'Admin', support: 'Support' };
+                    roleEl.textContent = roleLabels[getCurrentRole()] || 'Support';
+                }
             }).catch(function() {});
         }
     } catch(e) {}
@@ -200,7 +314,7 @@ function renderUsersTable(users) {
             <td class="p-4 text-slate-500">${user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}</td>
             <td class="p-4 text-right">
                 <button onclick="viewUserDetails('${user._id || user.id}')" class="text-primary hover:text-blue-700 p-1" title="View Details"><i data-lucide="eye" class="w-5 h-5"></i></button>
-                <button onclick="${user.isActive || user.status === 'active' ? 'suspendUserPrompt' : 'activateUserPrompt'}('${user._id || user.id}')" class="text-amber-600 hover:text-amber-700 p-1 ml-2" title="${user.isActive || user.status === 'active' ? 'Suspend' : 'Activate'}"><i data-lucide="${user.isActive || user.status === 'active' ? 'user-x' : 'user-check'}" class="w-5 h-5"></i></button>
+                ${canManage('users') ? `<button onclick="${user.isActive || user.status === 'active' ? 'suspendUserPrompt' : 'activateUserPrompt'}('${user._id || user.id}')" class="text-amber-600 hover:text-amber-700 p-1 ml-2" title="${user.isActive || user.status === 'active' ? 'Suspend' : 'Activate'}"><i data-lucide="${user.isActive || user.status === 'active' ? 'user-x' : 'user-check'}" class="w-5 h-5"></i></button>` : ''}
             </td>
         </tr>`).join('');
     lucide.createIcons();
@@ -353,7 +467,7 @@ function renderTransactionsTable(transactions) {
             <td class="p-4 text-slate-500">${txn.createdAt ? new Date(txn.createdAt).toLocaleString() : 'N/A'}</td>
             <td class="p-4 text-right">
                 <button onclick="viewTransactionDetails('${txn._id || txn.id}')" class="text-slate-400 hover:text-primary p-1"><i data-lucide="eye" class="w-5 h-5"></i></button>
-                ${txn.status === 'failed' ? `<button onclick="retryTransaction('${txn._id || txn.id}')" class="text-amber-600 hover:text-amber-700 p-1"><i data-lucide="rotate-cw" class="w-5 h-5"></i></button>` : ''}
+                ${txn.status === 'failed' && canManage('transactions') ? `<button onclick="retryTransaction('${txn._id || txn.id}')" class="text-amber-600 hover:text-amber-700 p-1"><i data-lucide="rotate-cw" class="w-5 h-5"></i></button>` : ''}
             </td>
         </tr>`).join('');
     lucide.createIcons();

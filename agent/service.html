@@ -127,7 +127,7 @@
                 </div>
                 <div class="svc-tile" onclick="window.location.href='rrr-payment.html'">
                     <div class="ico" style="background:#fef2f2"><i data-lucide="credit-card" style="width:20px;height:20px;color:#dc2626"></i></div>
-                    <span class="lbl">Remita RRR</span>
+                    <span class="lbl">Pay a Bill</span>
                 </div>
             </div>
 
@@ -291,7 +291,17 @@ function planSizeInMB(p) {
     return match[2] === 'TB' ? value * 1024 * 1024 : match[2] === 'GB' ? value * 1024 : value;
 }
 function sortDataPlans(plans) {
-    return [...plans].sort((left, right) => {
+    // Aggregators sometimes list the same plan twice (duplicate SKUs across
+    // upstream routes/providers) with identical name + price. Keep only the
+    // first occurrence of each so the dropdown doesn't show repeats.
+    const seen = new Set();
+    const deduped = plans.filter(p => {
+        const key = `${String(planLabel(p)).trim().toLowerCase()}|${Number(planPrice(p))}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+    return [...deduped].sort((left, right) => {
         const priceDifference = Number(planPrice(left)) - Number(planPrice(right));
         return priceDifference || planSizeInMB(left) - planSizeInMB(right);
     });

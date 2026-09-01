@@ -39,6 +39,12 @@ if (typeof API_CONFIG === "undefined") {
       A2C_CHECK_QUOTA: "/airtime2cash/check-quota",
       A2C_TRANSFER: "/airtime2cash/transfer",
       A2C_CONVERSIONS: "/airtime2cash/conversions",
+      REMITA_BILLER_PRODUCTS: "/remita/biller",  // append /:billerId/products
+      REMITA_VALIDATE_CUSTOMER: "/remita/validate-customer",
+      REMITA_INITIATE: "/remita/biller/initiate",
+      REMITA_PROCESS: "/remita/process",
+      REMITA_STATUS: "/remita/status",   // append /:rrr
+      REMITA_LOOKUP: "/remita/lookup",   // append /:rrr
       RECHARGE_PIN_PURCHASE: "/telecom/recharge-pin/purchase",
       CABLE_PLANS: "/bills/cable/plans",
       CABLE_PURCHASE: "/bills/cable/purchase",
