@@ -5,7 +5,7 @@
     <link rel="icon" type="image/svg+xml" href="assets/images/logo.png">
     <link rel="apple-touch-icon" href="assets/images/logo.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pay a Bill - Yareema Data Hub</title>
+    <title>Remita - Yareema Data Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -58,7 +58,7 @@
         <!-- Top Bar -->
         <div class="top-bar">
             <div>
-                <h1>Pay a Bill</h1>
+                <h1>Remita</h1>
                 <p style="color: #64748b; margin-top: 4px;">Pay electricity, cable, and other billers via Remita</p>
             </div>
             <div class="top-bar-actions">
@@ -70,31 +70,38 @@
 
         <div style="max-width: 600px;">
 
-            <!-- STEP 1: BROWSE PRODUCTS -->
-            <div id="stepProducts" style="display: block;">
+            <!-- STEP 1: BROWSE BILLERS -->
+            <div id="stepBillers" style="display: block;">
                 <div style="background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                    <p style="font-size: 12px; color: #94a3b8; margin: -4px 0 16px;">Step 1 of 4 — Choose a Product</p>
+                    <p style="font-size: 12px; color: #94a3b8; margin: -4px 0 16px;">Step 1 of 5 — Choose a Biller</p>
 
                     <div class="form-group">
-                        <label>Biller ID</label>
-                        <input type="text" id="billerIdInput" placeholder="Enter biller ID" class="form-input">
-                        <small style="color: #64748b; font-size: 13px; display: block; margin-top: 8px;">
-                            Ask support for the biller ID if you don't have one.
-                        </small>
+                        <input type="text" id="billerSearchInput" placeholder="Search billers (e.g. electricity, cable)"
+                               class="form-input" oninput="filterBillers()">
                     </div>
 
-                    <button id="loadProductsBtn" onclick="loadBillerProducts()" class="btn-primary" style="width: 100%; margin-bottom: 16px;">
-                        Load Products
-                    </button>
-
-                    <div id="productsList"></div>
+                    <div id="billersList" style="max-height: 360px; overflow-y: auto;">
+                        <p style="color: #94a3b8; font-size: 13px; text-align: center; padding: 24px 0;">Loading billers...</p>
+                    </div>
                 </div>
             </div>
 
-            <!-- STEP 2: VALIDATE CUSTOMER -->
+            <!-- STEP 2: BROWSE PRODUCTS -->
+            <div id="stepProducts" style="display: none;">
+                <div style="background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <p style="font-size: 12px; color: #94a3b8; margin: -4px 0 16px;">Step 2 of 5 — Choose a Product</p>
+                    <p id="selectedBillerLabel" style="font-size: 14px; font-weight: 600; color: #0f172a; margin-bottom: 16px;"></p>
+
+                    <div id="productsList"></div>
+
+                    <button onclick="backToBillers()" class="btn-secondary" style="width: 100%; margin-top: 12px;">Back</button>
+                </div>
+            </div>
+
+            <!-- STEP 3: VALIDATE CUSTOMER -->
             <div id="stepValidate" style="display: none;">
                 <div style="background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                    <p style="font-size: 12px; color: #94a3b8; margin: -4px 0 16px;">Step 2 of 4 — Customer Details</p>
+                    <p style="font-size: 12px; color: #94a3b8; margin: -4px 0 16px;">Step 3 of 5 — Customer Details</p>
                     <p id="selectedProductLabel" style="font-size: 14px; font-weight: 600; color: #0f172a; margin-bottom: 16px;"></p>
 
                     <div class="form-group">
@@ -112,7 +119,7 @@
             <!-- STEP 3: AMOUNT & GENERATE RRR -->
             <div id="stepAmount" style="display: none;">
                 <div style="background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                    <p style="font-size: 12px; color: #94a3b8; margin: -4px 0 16px;">Step 3 of 4 — Amount</p>
+                    <p style="font-size: 12px; color: #94a3b8; margin: -4px 0 16px;">Step 4 of 5 — Amount</p>
 
                     <div id="customerInfoBox" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 14px; margin-bottom: 16px;"></div>
 
@@ -137,7 +144,7 @@
             <!-- STEP 4: CONFIRM & PAY -->
             <div id="stepPay" style="display: none;">
                 <div style="background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                    <p style="font-size: 12px; color: #94a3b8; margin: -4px 0 16px;">Step 4 of 4 — Confirm &amp; Pay</p>
+                    <p style="font-size: 12px; color: #94a3b8; margin: -4px 0 16px;">Step 5 of 5 — Confirm &amp; Pay</p>
 
                     <div style="background: #f8fafc; border-radius: 10px; padding: 14px; margin-bottom: 16px;">
                         <div style="display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0;">
@@ -230,9 +237,11 @@
         let _rrr = null;
         let _paymentIdentifier = null;
         let _amount = 0;
+        let _billers = [];
+        let _selectedBiller = null;
 
         function showStep(id) {
-            ['stepProducts', 'stepValidate', 'stepAmount', 'stepPay', 'successState', 'pendingState', 'failedState']
+            ['stepBillers', 'stepProducts', 'stepValidate', 'stepAmount', 'stepPay', 'successState', 'pendingState', 'failedState']
                 .forEach(s => { const el = document.getElementById(s); if (el) el.style.display = (s === id) ? 'block' : 'none'; });
         }
 
@@ -250,23 +259,62 @@
             else { btn.disabled = false; btn.textContent = btn._orig || btn.textContent; }
         }
 
-        // ─── STEP 1: Browse products ─────────────────────────────────────────────
-        async function loadBillerProducts() {
-            const billerId = document.getElementById('billerIdInput').value.trim();
-            if (!billerId) { showError('Enter a biller ID'); return; }
+        // ─── STEP 1: Browse billers ──────────────────────────────────────────────
+        function renderBillersList(list) {
+            const listEl = document.getElementById('billersList');
+            if (!list.length) {
+                listEl.innerHTML = '<p style="color:#94a3b8;font-size:13px;text-align:center;padding:24px 0;">No billers found.</p>';
+                return;
+            }
+            listEl.innerHTML = list.map((b, i) => {
+                const name = b.billerName || b.billerShortName || 'Biller';
+                return `<button onclick="selectBiller(${i})" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:12px 14px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px;background:#fff;cursor:pointer;font-size:14px;color:#0f172a;">
+                    ${b.billerLogoUrl ? `<img src="${b.billerLogoUrl}" style="width:28px;height:28px;border-radius:6px;object-fit:contain;flex-shrink:0;" onerror="this.style.display='none'">` : ''}
+                    <span>${name}</span>
+                </button>`;
+            }).join('');
+        }
 
-            setBtnLoading('loadProductsBtn', true, 'Loading...');
+        async function loadBillers() {
             try {
-                const res = await api.getRemitaBillerProducts(billerId);
+                const res = await api.getRemitaBillers();
                 const data = res.data || res;
-                // Defensive parsing — exact response shape for this endpoint
-                // isn't documented, so accept the common candidate shapes.
+                _billers = Array.isArray(data) ? data : Array.isArray(data.data) ? data.data : [];
+                renderBillersList(_billers);
+            } catch (error) {
+                document.getElementById('billersList').innerHTML =
+                    `<p style="color:#dc2626;font-size:13px;text-align:center;padding:24px 0;">${error.message || 'Unable to load billers.'}</p>`;
+            }
+        }
+
+        function filterBillers() {
+            const q = document.getElementById('billerSearchInput').value.trim().toLowerCase();
+            if (!q) { renderBillersList(_billers); return; }
+            renderBillersList(_billers.filter(b => (b.billerName || b.billerShortName || '').toLowerCase().includes(q)));
+        }
+
+        async function selectBiller(i) {
+            _selectedBiller = _billers[i];
+            document.getElementById('selectedBillerLabel').textContent = _selectedBiller.billerName || _selectedBiller.billerShortName || 'Biller';
+            showStep('stepProducts');
+            await loadBillerProducts();
+        }
+
+        function backToBillers() { showStep('stepBillers'); }
+
+        // ─── STEP 2: Browse products for the selected biller ─────────────────────
+        async function loadBillerProducts() {
+            const listEl = document.getElementById('productsList');
+            listEl.innerHTML = '<p style="color:#94a3b8;font-size:13px;text-align:center;padding:16px 0;">Loading products...</p>';
+            try {
+                const res = await api.getRemitaBillerProducts(_selectedBiller.billerId);
+                const data = res.data || res;
+                // Defensive parsing — exact response shape can vary by biller.
                 _products = Array.isArray(data) ? data
                           : Array.isArray(data.products) ? data.products
                           : Array.isArray(data.data) ? data.data
                           : [];
 
-                const listEl = document.getElementById('productsList');
                 if (!_products.length) {
                     listEl.innerHTML = '<p style="color:#94a3b8;font-size:13px;text-align:center;padding:16px 0;">No products found for this biller.</p>';
                     return;
@@ -279,9 +327,7 @@
                     </button>`;
                 }).join('');
             } catch (error) {
-                showError(error.message || 'Unable to load products. Please check the biller ID.');
-            } finally {
-                setBtnLoading('loadProductsBtn', false, 'Load Products');
+                listEl.innerHTML = `<p style="color:#dc2626;font-size:13px;text-align:center;padding:16px 0;">${error.message || 'Unable to load products.'}</p>`;
             }
         }
 
@@ -426,16 +472,19 @@
 
         // ─── Reset ────────────────────────────────────────────────────────────────
         function resetForm() {
-            _products = []; _selectedProduct = null; _customer = null; _rrr = null; _paymentIdentifier = null; _amount = 0;
-            document.getElementById('billerIdInput').value = '';
+            _selectedBiller = null; _products = []; _selectedProduct = null; _customer = null;
+            _rrr = null; _paymentIdentifier = null; _amount = 0;
+            document.getElementById('billerSearchInput').value = '';
             document.getElementById('productsList').innerHTML = '';
             document.getElementById('customerIdInput').value = '';
             document.getElementById('amountInput').value = '';
             document.getElementById('phoneInput').value = '';
-            showStep('stepProducts');
+            renderBillersList(_billers);
+            showStep('stepBillers');
         }
 
         lucide.createIcons();
+        loadBillers();
     </script>
 </body>
 </html>

@@ -33,12 +33,12 @@ if (typeof API_CONFIG === "undefined") {
       AIRTIME_PURCHASE: "/telecom/airtime/purchase",
       AIRTIME_SWAP: "/telecom/airtime/swap",
       A2C_NETWORK_LIMITS: "/airtime2cash/network-limits",
-      A2C_GENERATE_OTP: "/airtime2cash/generate-otp",
+      A2C_REQUEST_OTP: "/airtime2cash/request-otp",
       A2C_VERIFY_OTP: "/airtime2cash/verify-otp",
-      A2C_LOGIN_SESSION: "/airtime2cash/login-session",
-      A2C_CHECK_QUOTA: "/airtime2cash/check-quota",
-      A2C_TRANSFER: "/airtime2cash/transfer",
+      A2C_CONVERT: "/airtime2cash/convert",
+      A2C_TRANSACTION_HISTORY: "/airtime2cash/transaction-history",
       A2C_CONVERSIONS: "/airtime2cash/conversions",
+      REMITA_BILLERS: "/remita/billers",
       REMITA_BILLER_PRODUCTS: "/remita/biller",  // append /:billerId/products
       REMITA_VALIDATE_CUSTOMER: "/remita/validate-customer",
       REMITA_INITIATE: "/remita/biller/initiate",
@@ -311,6 +311,63 @@ if (typeof API === "undefined") {
 
     async delete(endpoint) {
       return this.request(endpoint, { method: "DELETE" });
+    },
+
+    // Airtime-to-Cash compatibility aliases for older frontend flows.
+    async requestAirtimeToCashOTP(network, phoneNumber) {
+      return this.post(API_CONFIG.ENDPOINTS.A2C_REQUEST_OTP, {
+        network: String(network || "").toLowerCase(),
+        phoneNumber,
+      });
+    },
+
+    async generateAirtimeToCashOTP(network, phoneNumber) {
+      return this.requestAirtimeToCashOTP(network, phoneNumber);
+    },
+
+    async verifyAirtimeToCashOTP(network, phoneNumber, otp) {
+      return this.post(API_CONFIG.ENDPOINTS.A2C_VERIFY_OTP, {
+        network: String(network || "").toLowerCase(),
+        phoneNumber,
+        otp,
+      });
+    },
+
+    async loginAirtimeToCashSession(network, phoneNumber, sessionId) {
+      return this.post("/airtime2cash/login-session", {
+        networkName: String(network || "").toUpperCase(),
+        sender: phoneNumber,
+        sessionId,
+      });
+    },
+
+    async checkAirtimeToCashQuota(network, amount) {
+      return this.post("/airtime2cash/check-quota", {
+        networkName: String(network || "").toUpperCase(),
+        amount,
+      });
+    },
+
+    async transferAirtimeToCash(network, phoneNumber, amount, transactionPin, sessionId) {
+      return this.post("/airtime2cash/transfer", {
+        networkName: String(network || "").toUpperCase(),
+        sender: phoneNumber,
+        amount,
+        pin: transactionPin,
+        sessionId,
+        transactionPin,
+      });
+    },
+
+    async convertAirtimeToCash(network, identifier, amount, simPin, phoneNumber, transactionPin) {
+      return this.post(API_CONFIG.ENDPOINTS.A2C_CONVERT, {
+        network: String(network || "").toLowerCase(),
+        identifier,
+        amount,
+        pin: simPin,
+        phoneNumber,
+        transactionPin,
+      });
     },
   }; // end API
 } // end if (typeof API === 'undefined')

@@ -304,24 +304,32 @@ class YareemaUserAPI {
         });
     }
 
-    // ==================== AIRTIME2CASH ====================
+    // ==================== AIRTIME2CASH (3-step: OTP -> verify -> convert) ====================
+    // Networks: mtn, airtel only (per current spec).
 
     async getAirtimeToCashLimits() {
         return await this.request('/api/v1/airtime2cash/network-limits');
     }
 
-    async generateAirtimeToCashOTP(networkName, sender) {
-        return await this.request('/api/v1/airtime2cash/generate-otp', {
+    async requestAirtimeToCashOTP(network, phoneNumber) {
+        return await this.request('/api/v1/airtime2cash/request-otp', {
             method: 'POST',
-            body: { networkName: networkName.toUpperCase(), sender }
+            body: { network: network.toLowerCase(), phoneNumber }
         });
     }
 
-    async verifyAirtimeToCashOTP(networkName, sender, otp) {
+    async verifyAirtimeToCashOTP(network, phoneNumber, otp) {
         return await this.request('/api/v1/airtime2cash/verify-otp', {
             method: 'POST',
-            body: { networkName: networkName.toUpperCase(), sender, otp }
+            body: { network: network.toLowerCase(), phoneNumber, otp }
         });
+    }
+
+    // Compatibility aliases for older/newer Airtime-to-Cash flows that were
+    // implemented in different versions of the frontend. These keep both call
+    // styles working against the same backend contract.
+    async generateAirtimeToCashOTP(network, sender) {
+        return await this.requestAirtimeToCashOTP(network, sender);
     }
 
     async loginAirtimeToCashSession(networkName, sender, sessionId) {
@@ -349,6 +357,30 @@ class YareemaUserAPI {
                 sessionId,
                 transactionPin
             }
+        });
+    }
+
+    // simPin = the SIM PIN that authorizes the airtime share (required by the
+    // network, NOT the wallet PIN). transactionPin = the user's own wallet PIN.
+    // These are two different secrets and both are required.
+    async convertAirtimeToCash(network, identifier, amount, simPin, phoneNumber, transactionPin) {
+        return await this.request('/api/v1/airtime2cash/convert', {
+            method: 'POST',
+            body: {
+                network: network.toLowerCase(),
+                identifier,
+                amount,
+                pin: simPin,
+                phoneNumber,
+                transactionPin
+            }
+        });
+    }
+
+    async getAirtimeToCashTransaction(reference) {
+        return await this.request('/api/v1/airtime2cash/transaction-history', {
+            method: 'POST',
+            body: { reference }
         });
     }
 
@@ -400,8 +432,13 @@ class YareemaUserAPI {
 
     // ==================== REMITA (biller bill-payment flow) ====================
     // Replaces the old validateRRR/processRRRPayment "pay an existing RRR"
-    // flow. This one generates its own RRR internally: browse a biller's
-    // products, validate the customer, generate an RRR, then pay it.
+    // flow. This one generates its own RRR internally: browse billers,
+    // browse a biller's products, validate the customer, generate an RRR,
+    // then pay it.
+
+    async getRemitaBillers(page = 0, size = 2000) {
+        return await this.request(`/api/v1/remita/billers?page=${page}&size=${size}`);
+    }
 
     async getRemitaBillerProducts(billerId) {
         return await this.request(`/api/v1/remita/biller/${billerId}/products`);
