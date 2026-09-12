@@ -483,11 +483,12 @@
         function copyReferralCode() {
             const code = window._referralCode || document.getElementById('refCode').textContent;
             if (code && code !== '—') {
-                navigator.clipboard.writeText(code).then(() => {
+                const message = `Join Yareema Data Hub for cheap data, airtime & bills! Use my referral code: ${code} to sign up and we both earn! Download: iOS: https://apps.apple.com/ng/app/yareema-datahub/id6803146692 | Android: https://play.google.com/store/apps/details?id=com.yareema.datahub`;
+                navigator.clipboard.writeText(message).then(() => {
                     Swal.fire({ 
                         icon: 'success', 
-                        title: 'Copied!', 
-                        text: `Referral code ${code} copied.`, 
+                        title: 'Invite Copied!', 
+                        text: `Invite message copied to clipboard.`, 
                         timer: 1500, 
                         showConfirmButton: false 
                     });

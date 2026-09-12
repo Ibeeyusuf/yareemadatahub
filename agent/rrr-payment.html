@@ -369,7 +369,7 @@ async function processPayment() {
 async function checkStatus() {
     if (!_rrr) return;
     try {
-        const res = await API.get(`${API_CONFIG.ENDPOINTS.REMITA_STATUS}/${_rrr}`);
+        const res = await API.get(`${API_CONFIG.ENDPOINTS.REMITA_LOOKUP}/${_rrr}`);
         const data = res.data || res;
         const status = (data.status || '').toLowerCase();
         if (status === 'successful' || status === 'success') {

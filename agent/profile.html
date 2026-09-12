@@ -40,7 +40,10 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-500 mb-1">Referral Code</label>
-                            <p id="profile-referral-code" class="text-base font-semibold text-green-600">Loading...</p>
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                <p id="profile-referral-code" class="text-base font-semibold text-green-600">Loading...</p>
+                                <button onclick="copyAgentReferral()" class="px-3 py-1 bg-yareema-primary text-white rounded-md text-sm">Share</button>
+                            </div>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-500 mb-1">KYC Status</label>
@@ -160,6 +163,25 @@
         document.addEventListener('DOMContentLoaded', async () => {
             await AgentProfile.populateProfile();
         });
+        
+        function copyAgentReferral() {
+            try {
+                const codeEl = document.getElementById('profile-referral-code');
+                const code = codeEl ? codeEl.textContent.trim() : '';
+                if (!code || code === 'Loading...') {
+                    UI.showToast('No referral code available', 'info');
+                    return;
+                }
+                const message = `Join Yareema Data Hub for cheap data, airtime & bills! Use my referral code: ${code} to sign up and we both earn! Download: iOS: https://apps.apple.com/ng/app/yareema-datahub/id6803146692 | Android: https://play.google.com/store/apps/details?id=com.yareema.datahub`;
+                navigator.clipboard.writeText(message).then(() => {
+                    UI.showToast('Invite message copied to clipboard!', 'success');
+                }).catch(() => {
+                    UI.showToast('Failed to copy invite message', 'error');
+                });
+            } catch (e) {
+                UI.showToast('Failed to copy invite message', 'error');
+            }
+        }
     </script>
 </body>
 </html>

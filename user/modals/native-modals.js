@@ -2573,9 +2573,10 @@ function showReferralModal() {
 }
 
 function copyReferralCode(code) {
-    navigator.clipboard.writeText(code)
-        .then(() => showSuccess('Referral code copied to clipboard!'))
-        .catch(() => showError('Failed to copy code'));
+    const message = `Join Yareema Data Hub for cheap data, airtime & bills! Use my referral code: ${code} to sign up and we both earn! Download: iOS: https://apps.apple.com/ng/app/yareema-datahub/id6803146692 | Android: https://play.google.com/store/apps/details?id=com.yareema.datahub`;
+    navigator.clipboard.writeText(message)
+        .then(() => showSuccess('Invite message copied to clipboard!'))
+        .catch(() => showError('Failed to copy invite message'));
 }
 
 function showHelpModal() {

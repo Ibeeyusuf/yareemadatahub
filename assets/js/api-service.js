@@ -466,11 +466,20 @@ class YareemaUserAPI {
     }
 
     async checkRemitaStatus(rrr) {
-        return await this.request(`/api/v1/remita/status/${rrr}`);
+        // The newer Remita endpoint exposes lookup which contains status
+        return await this.request(`/api/v1/remita/lookup/${rrr}`);
     }
 
     async lookupRemitaTransaction(rrr) {
         return await this.request(`/api/v1/remita/lookup/${rrr}`);
+    }
+
+    async generateRemitaInvoice(payload = {}) {
+        // payload should follow Remita First Gen API shape (serviceTypeId, amount, orderId, payerName, ...)
+        return await this.request('/api/v1/remita/invoice/generate', {
+            method: 'POST',
+            body: payload
+        });
     }
 
     // ==================== LOGOUT ====================

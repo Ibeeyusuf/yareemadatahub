@@ -1035,7 +1035,8 @@ const AgentNotifications = {
 const AgentRemita = {
     async validate(rrr) {
         try {
-            const response = await API.post('/api/v1/remita/validate', { rrr });
+            // Use Remita lookup endpoint (GET) to retrieve status/details for RRR
+            const response = await API.get(`/api/v1/remita/lookup/${encodeURIComponent(rrr)}`);
             if (response.success || response.status === 'success') {
                 return { success: true, data: response.data };
             }
@@ -1047,7 +1048,8 @@ const AgentRemita = {
 
     async processPayment(rrr, transactionPin) {
         try {
-            const response = await API.post('/api/v1/remita/payment', { rrr, transactionPin });
+            // Process an existing RRR using backend /remita/process endpoint
+            const response = await API.post('/api/v1/remita/process', { rrr, transactionPin });
             if (response.success || response.status === 'success') {
                 return { success: true, message: response.message || 'RRR payment successful', data: response.data };
             }
