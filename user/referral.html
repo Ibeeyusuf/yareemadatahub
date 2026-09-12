@@ -369,14 +369,23 @@
         });
     }
 
+    // Builds a signup link with the referral code baked in, so the recipient's
+    // registration form fills itself in automatically — no manual code entry needed.
+    function buildReferralLink(code) {
+        const url = new URL('../signup.html', window.location.href);
+        url.searchParams.set('ref', code);
+        return url.toString();
+    }
+
     function shareReferral() {
         const code = document.getElementById('refCodeDisplay').textContent;
         if (!code || code === 'Loading...') return;
-        const text = `Join Yareema Data Hub for cheap data, airtime & bills! Use my referral code: ${code} to sign up and we both earn!`;
+        const link = buildReferralLink(code);
+        const text = `Join Yareema Data Hub for cheap data, airtime & bills! Sign up with my link and we both earn:`;
         if (navigator.share) {
-            navigator.share({ title: 'Join Yareema Data Hub', text });
+            navigator.share({ title: 'Join Yareema Data Hub', text, url: link });
         } else {
-            navigator.clipboard.writeText(text).then(() => showToast('✓ Invite message copied!'));
+            navigator.clipboard.writeText(`${text} ${link}`).then(() => showToast('✓ Invite link copied!'));
         }
     }
 

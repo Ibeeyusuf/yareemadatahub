@@ -322,6 +322,10 @@
                                 placeholder="Enter referral code (if any)"
                             >
                         </div>
+                        <div id="referral-code-applied" class="hidden mt-2 flex items-center gap-1.5 text-xs font-medium text-green-600">
+                            <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+                            <span>Referral code applied from your invite link</span>
+                        </div>
                     </div>
 
                     <!-- Password -->
@@ -441,7 +445,44 @@
         
         // Redirect if already authenticated
         AuthGuard.redirectIfAuthenticated('user/index.html');
-        
+
+        // ========== AUTO-APPLY REFERRAL CODE FROM LINK ==========
+        // Supports links like signup.html?ref=CODE (also accepts ?referralCode= / ?referral_code=
+        // / ?code= for compatibility with older shared links).
+        (function applyReferralFromLink() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const codeFromLink = (
+                    params.get('ref') ||
+                    params.get('referralCode') ||
+                    params.get('referral_code') ||
+                    params.get('code') ||
+                    ''
+                ).trim();
+
+                if (codeFromLink) {
+                    const input = document.getElementById('referral-code');
+                    input.value = codeFromLink;
+                    document.getElementById('referral-code-applied').classList.remove('hidden');
+                    // Persist in case the user navigates through the terms modal, back/forward, etc.
+                    try { sessionStorage.setItem('pending_referral_code', codeFromLink); } catch (e) {}
+                } else {
+                    // Fall back to a code captured earlier in this session (e.g. the app deep-linked
+                    // straight into signup and the query string got dropped along the way).
+                    try {
+                        const saved = (sessionStorage.getItem('pending_referral_code') || '').trim();
+                        if (saved) {
+                            const input = document.getElementById('referral-code');
+                            input.value = saved;
+                            document.getElementById('referral-code-applied').classList.remove('hidden');
+                        }
+                    } catch (e) {}
+                }
+            } catch (e) {
+                console.error('Referral auto-apply error:', e);
+            }
+        })();
+
         // ========== MODAL CONTROLS ==========
         const termsModal = document.getElementById('termsModal');
         const viewTermsBtn = document.getElementById('view-terms-btn');

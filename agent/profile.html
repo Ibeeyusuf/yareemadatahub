@@ -172,7 +172,9 @@
                     UI.showToast('No referral code available', 'info');
                     return;
                 }
-                const message = `Join Yareema Data Hub for cheap data, airtime & bills! Use my referral code: ${code} to sign up and we both earn! Download: iOS: https://apps.apple.com/ng/app/yareema-datahub/id6803146692 | Android: https://play.google.com/store/apps/details?id=com.yareema.datahub`;
+                const link = new URL('../signup.html', window.location.href);
+                link.searchParams.set('ref', code);
+                const message = `Join Yareema Data Hub for cheap data, airtime & bills! Sign up with my link and we both earn: ${link.toString()}\n\nDownload the app — iOS: https://apps.apple.com/ng/app/yareema-datahub/id6803146692 | Android: https://play.google.com/store/apps/details?id=com.yareema.datahub`;
                 navigator.clipboard.writeText(message).then(() => {
                     UI.showToast('Invite message copied to clipboard!', 'success');
                 }).catch(() => {
