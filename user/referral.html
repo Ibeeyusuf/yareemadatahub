@@ -381,11 +381,15 @@
         const code = document.getElementById('refCodeDisplay').textContent;
         if (!code || code === 'Loading...') return;
         const link = buildReferralLink(code);
-        const text = `Join Yareema Data Hub for cheap data, airtime & bills! Sign up with my link and we both earn:`;
+        const message = `Join Yareema Data Hub for cheap data, airtime & bills! Sign up with my link and we both earn: ${link}\n\nDownload the app — iOS: https://apps.apple.com/ng/app/yareema-datahub/id6803146692 | Android: https://play.google.com/store/apps/details?id=com.yareema.datahub`;
         if (navigator.share) {
-            navigator.share({ title: 'Join Yareema Data Hub', text, url: link });
+            // Everything (link + app store links) lives in `text`. We deliberately do NOT
+            // also pass a separate `url` field: on some platforms, navigator.share({text, url})
+            // shows the recipient app ONLY the url and drops the text — which is how the
+            // App Store/Play Store links were disappearing.
+            navigator.share({ title: 'Join Yareema Data Hub', text: message });
         } else {
-            navigator.clipboard.writeText(`${text} ${link}`).then(() => showToast('✓ Invite link copied!'));
+            navigator.clipboard.writeText(message).then(() => showToast('✓ Invite message copied!'));
         }
     }
 
