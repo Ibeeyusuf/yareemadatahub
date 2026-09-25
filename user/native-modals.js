@@ -1082,36 +1082,43 @@ async function submitTVSubscription() {
 
 // ==================== EDUCATION MODAL ====================
 
-function showEducationModal() {
+let _eduPlans = [];
+
+async function showEducationModal() {
     showModal('Education PIN', `
         <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;
                     padding:12px 14px;margin-bottom:16px;">
             <p style="color:#1d4ed8;font-size:13px;margin:0;">
-                📚 Scratch cards will be sent to your registered email address after purchase.
+                📚 Verify a JAMB profile first for DE/UTME types; others can be bought directly.
             </p>
         </div>
         <div class="form-group">
             <label>Exam Type</label>
-            <select id="examType" class="form-input" onchange="updateEduPrice()">
-                <option value="waecdirect">WAEC Result Checker</option>
-                <option value="neco">NECO Result Checker</option>
-                <option value="jamb">JAMB E-PIN</option>
-                <option value="nabteb">NABTEB Result Checker</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Quantity</label>
-            <select id="eduQuantity" class="form-input" onchange="updateEduPrice()">
-                <option value="1">1 PIN</option>
-                <option value="2">2 PINs</option>
-                <option value="3">3 PINs</option>
-                <option value="5">5 PINs</option>
-                <option value="10">10 PINs</option>
+            <select id="examType" class="form-input" onchange="onEduExamTypeChange()">
+                <option value="">Loading exam types…</option>
             </select>
         </div>
         <div id="eduPriceTag"
              style="display:none;padding:10px 14px;background:#f0fdf4;border-radius:8px;
-                    margin-bottom:4px;color:#15803d;font-size:13px;font-weight:600;"></div>
+                    margin-bottom:12px;color:#15803d;font-size:13px;font-weight:600;"></div>
+
+        <div id="eduJambBlock" style="display:none;">
+            <div class="form-group">
+                <label>Candidate Profile ID</label>
+                <input type="text" id="eduProfileId" placeholder="Enter profile ID" class="form-input">
+            </div>
+            <button type="button" onclick="verifyEduProfile()" id="eduVerifyBtn" class="btn-secondary" style="width:100%;margin-bottom:14px;">Verify Profile</button>
+            <div id="eduVerifiedBox" style="display:none;padding:10px 14px;background:#f0fdf4;border-radius:8px;margin-bottom:14px;color:#15803d;font-size:13px;font-weight:600;"></div>
+        </div>
+
+        <div class="form-group">
+            <label>Phone Number (optional)</label>
+            <input type="tel" id="eduPhone" placeholder="Defaults to your account phone" class="form-input" maxlength="11">
+        </div>
+        <div class="form-group">
+            <label>Exam / Card Number (if required)</label>
+            <input type="text" id="eduExamNumber" placeholder="Optional" class="form-input">
+        </div>
         <div class="form-group">
             <label>Transaction PIN</label>
             <input type="password" id="eduPin" placeholder="Enter 4-digit PIN"
@@ -1121,50 +1128,118 @@ function showEducationModal() {
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
         <button onclick="submitEducationPurchase()" class="btn-primary">Purchase</button>
     `);
+
+    try {
+        const res = await api.getEducationPlans();
+        _eduPlans = res?.data?.examTypes || res?.examTypes || [];
+        const select = document.getElementById('examType');
+        if (select) {
+            select.innerHTML = _eduPlans.map(p => `<option value="${p.code}">${p.name}</option>`).join('');
+            onEduExamTypeChange();
+        }
+    } catch (error) {
+        const select = document.getElementById('examType');
+        if (select) select.innerHTML = '<option value="">Could not load exam types</option>';
+        showInlineError(error.message || 'Could not load exam types');
+    }
 }
 
-const EDU_PRICES = { waecdirect: 3800, neco: 1000, jamb: 700, nabteb: 900 };
+const EDU_JAMB_TYPES = ['de', 'utme-mock', 'utme-no-mock'];
+let _eduVerified = null;
 
-function updateEduPrice() {
+function onEduExamTypeChange() {
     const examType = document.getElementById('examType')?.value;
-    const quantity = parseInt(document.getElementById('eduQuantity')?.value || 1);
+    const plan = _eduPlans.find(p => p.code === examType);
+    _eduVerified = null;
+
+    const jambBlock = document.getElementById('eduJambBlock');
+    const verifiedBox = document.getElementById('eduVerifiedBox');
+    if (verifiedBox) verifiedBox.style.display = 'none';
+    if (jambBlock) jambBlock.style.display = EDU_JAMB_TYPES.includes(examType) ? 'block' : 'none';
+
     const priceTag = document.getElementById('eduPriceTag');
-    if (!priceTag || !examType) return;
-    const unitPrice = EDU_PRICES[examType];
-    if (unitPrice) {
+    if (priceTag && plan) {
         priceTag.style.display = 'block';
-        priceTag.textContent = `Estimated Total: ₦${(unitPrice * quantity).toLocaleString()} (${quantity} × ₦${unitPrice.toLocaleString()})`;
-    } else {
+        priceTag.textContent = `Price: ₦${Number(plan.amount).toLocaleString()}`;
+    } else if (priceTag) {
         priceTag.style.display = 'none';
     }
 }
 
+async function verifyEduProfile() {
+    const examType = document.getElementById('examType')?.value;
+    const profileId = document.getElementById('eduProfileId')?.value.trim();
+    if (!profileId) { showInlineError('Enter the candidate profile ID'); return; }
+
+    const btn = document.getElementById('eduVerifyBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Verifying...'; }
+    try {
+        const res = await api.verifyEducationProfile(examType, profileId);
+        const data = res?.data || res || {};
+        if (data.verified === false) {
+            showInlineError(res.message || 'Verification failed');
+            return;
+        }
+        _eduVerified = { customerName: data.customerName, price: data.price ?? data.unitPrice };
+        const box = document.getElementById('eduVerifiedBox');
+        if (box) {
+            box.style.display = 'block';
+            box.textContent = `✓ ${data.customerName || 'Verified'}`;
+        }
+        const priceTag = document.getElementById('eduPriceTag');
+        if (priceTag && _eduVerified.price != null) {
+            priceTag.style.display = 'block';
+            priceTag.textContent = `Price: ₦${Number(_eduVerified.price).toLocaleString()}`;
+        }
+    } catch (error) {
+        showInlineError(error.message || 'Verification failed');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Verify Profile'; }
+    }
+}
+
 async function submitEducationPurchase() {
-    const examType = document.getElementById('examType').value;
-    const quantity = parseInt(document.getElementById('eduQuantity').value);
-    const pin      = document.getElementById('eduPin').value.trim();
+    const examType    = document.getElementById('examType').value;
+    const phoneNumber = document.getElementById('eduPhone').value.trim();
+    const examNumber  = document.getElementById('eduExamNumber').value.trim();
+    const pin         = document.getElementById('eduPin').value.trim();
 
-    if (!pin || !/^\d{4}$/.test(pin)) { showInlineError('Please enter your 4-digit transaction PIN'); return; }
-    if (!quantity || quantity < 1)    { showInlineError('Please select a valid quantity'); return; }
+    if (!examType)                     { showInlineError('Select an exam type'); return; }
+    if (EDU_JAMB_TYPES.includes(examType) && !_eduVerified) { showInlineError('Verify the candidate profile first'); return; }
+    if (!pin || !/^\d{4}$/.test(pin))  { showInlineError('Please enter your 4-digit transaction PIN'); return; }
 
-    const examLabels = { waecdirect: 'WAEC', neco: 'NECO', jamb: 'JAMB', nabteb: 'NABTEB' };
-    const label = examLabels[examType] || examType.toUpperCase();
+    const plan = _eduPlans.find(p => p.code === examType);
+    const label = plan?.name || examType.toUpperCase();
 
     setSubmitLoading(true, 'Purchasing...');
     try {
-        await api.purchaseEducationPIN(examType, quantity, pin);
+        const res = await api.purchaseEducationPIN(examType, pin, { phoneNumber: phoneNumber || undefined, examNumber: examNumber || undefined });
+        const data = res?.data || res || {};
         closeModal();
-        setTimeout(() => showSuccess(`
-            <div style="text-align:center;">
-                <p style="font-size:16px;margin-bottom:6px;">Purchase Successful! 📚</p>
-                <p style="font-size:14px;color:#64748b;">
-                    ${quantity} × ${label} PIN${quantity > 1 ? 's' : ''} purchased
-                </p>
-                <p style="font-size:13px;color:#94a3b8;margin-top:6px;">
-                    Check your email for the scratch card(s)
-                </p>
-            </div>
-        `), 300);
+
+        if (data.status === 'pending') {
+            setTimeout(() => showSuccess(`
+                <div style="text-align:center;">
+                    <p style="font-size:16px;margin-bottom:6px;">Purchase initiated ⏳</p>
+                    <p style="font-size:14px;color:#64748b;">
+                        Your ${label} order is still processing with the provider.
+                    </p>
+                    <p style="font-size:13px;color:#94a3b8;margin-top:6px;">
+                        Check your transaction history shortly for the result.
+                    </p>
+                </div>
+            `), 300);
+        } else {
+            setTimeout(() => showSuccess(`
+                <div style="text-align:center;">
+                    <p style="font-size:16px;margin-bottom:6px;">Purchase Successful! 📚</p>
+                    <p style="font-size:14px;color:#64748b;">${label} PIN purchased</p>
+                    <p style="font-size:13px;color:#94a3b8;margin-top:6px;">
+                        Check your transaction history for the PIN/serial details
+                    </p>
+                </div>
+            `), 300);
+        }
     } catch (error) {
         setSubmitLoading(false, '', 'Purchase');
         showInlineError(error.message || 'Purchase failed. Please try again.');
@@ -1298,13 +1373,12 @@ function copyPinToClipboard(elemId, btn) {
     });
 }
 
-// ==================== AIRTIME2CASH MODAL (3-step: OTP -> verify -> convert) ====================
-// Networks: MTN and Airtel only.
+// ==================== AIRTIME2CASH MODAL (multi-step: details -> OTP -> confirm) ====================
 
-let _a2c = { network: 'mtn', phone: '', amount: 0, identifier: null, balance: null, limits: null, skipOtp: false };
+let _a2c = { network: 'mtn', phone: '', amount: 0, sessionId: null, balance: null, tariff: null, limits: null };
 
 async function showSwapModal() {
-    _a2c = { network: 'mtn', phone: '', amount: 0, identifier: null, balance: null, limits: null, skipOtp: false };
+    _a2c = { network: 'mtn', phone: '', amount: 0, sessionId: null, balance: null, tariff: null, limits: null };
     showModal('Airtime to Cash', `
         <div style="text-align:center;padding:32px 0;">
             <p style="font-size:13px;color:#64748b;">Loading network limits...</p>
@@ -1316,7 +1390,7 @@ async function showSwapModal() {
     } catch (e) {
         _a2c.limits = null; // still let them try even if this call fails
     }
-    renderA2CStepDetails();
+    renderA2CStepAmount();
 }
 
 function a2cLimitFor(network) {
@@ -1330,7 +1404,7 @@ function a2cLimitHint(network) {
     return lim ? `Min ₦${lim.min.toLocaleString()} — Max ₦${lim.max.toLocaleString()}` : 'Enter amount';
 }
 
-function renderA2CStepDetails() {
+function renderA2CStepAmount() {
     showModal('Airtime to Cash', `
         <p style="font-size:12px;color:#94a3b8;margin:-4px 0 16px;">Step 1 of 3 — Details</p>
         <div class="form-group">
@@ -1338,6 +1412,8 @@ function renderA2CStepDetails() {
             <select id="a2cNetwork" class="form-input" onchange="onA2CNetworkChange()">
                 <option value="mtn">MTN</option>
                 <option value="airtel">Airtel</option>
+                <option value="glo">Glo</option>
+                <option value="9mobile">9mobile</option>
             </select>
         </div>
         <div class="form-group">
@@ -1383,22 +1459,14 @@ async function submitA2CDetails() {
     _a2c.phone   = phone;
     _a2c.amount  = amount;
 
-    setSubmitLoading(true, 'Requesting OTP...');
+    setSubmitLoading(true, 'Sending OTP...');
     try {
-        const res = await api.requestAirtimeToCashOTP(network, phone);
-        const data = res.data || res;
+        const res = await api.generateAirtimeToCashOTP(network, phone);
         setSubmitLoading(false);
-
-        if (data.skipOtp) {
-            // SIM already active — identifier is already usable, skip straight to convert.
-            _a2c.identifier = data.identifier;
-            renderA2CStepConvert();
-        } else {
-            renderA2CStepOTP(res.message);
-        }
+        renderA2CStepOTP(res.message);
     } catch (error) {
         setSubmitLoading(false, '', 'Send OTP');
-        showInlineError(error.message || 'Unable to request OTP. Please try again.');
+        showInlineError(error.message || 'Unable to send OTP. Please try again.');
     }
 }
 
@@ -1417,14 +1485,14 @@ function renderA2CStepOTP(sentMessage) {
             <a href="#" onclick="resendA2COTP();return false;" style="color:#1e3d5c;font-weight:600;">Resend OTP</a>
         </p>
     `, `
-        <button onclick="renderA2CStepDetails()" class="btn-secondary">Back</button>
+        <button onclick="renderA2CStepAmount()" class="btn-secondary">Back</button>
         <button onclick="submitA2COTP()" class="btn-primary">Verify</button>
     `);
 }
 
 async function resendA2COTP() {
     try {
-        await api.requestAirtimeToCashOTP(_a2c.network, _a2c.phone);
+        await api.generateAirtimeToCashOTP(_a2c.network, _a2c.phone);
         showInlineError('A new OTP has been sent.');
     } catch (error) {
         showInlineError(error.message || 'Unable to resend OTP. Please try again.');
@@ -1437,20 +1505,33 @@ async function submitA2COTP() {
 
     setSubmitLoading(true, 'Verifying...');
     try {
-        const res  = await api.verifyAirtimeToCashOTP(_a2c.network, _a2c.phone, otp);
-        const data = res.data || res;
-        _a2c.identifier = data.identifier;
-        _a2c.balance    = data.airtimeBalance;
+        const verifyRes = await api.verifyAirtimeToCashOTP(_a2c.network, _a2c.phone, otp);
+        const verifyData = verifyRes.data || verifyRes;
+        _a2c.sessionId = verifyData.sessionId;
+        _a2c.balance   = verifyData.airtimeBalance;
+        _a2c.tariff    = verifyData.tariff;
+
+        // Establish the authenticated session, then confirm a recipient is
+        // available for this amount before asking for the transaction PIN.
+        await api.loginAirtimeToCashSession(_a2c.network, _a2c.phone, _a2c.sessionId);
+        const quotaRes  = await api.checkAirtimeToCashQuota(_a2c.network, _a2c.amount);
+        const quotaData = quotaRes.data || quotaRes;
+
+        if (quotaData.available === false) {
+            setSubmitLoading(false, '', 'Verify');
+            showInlineError(quotaData.message || 'No recipient is available for this amount right now. Please try a different amount or try again shortly.');
+            return;
+        }
 
         setSubmitLoading(false);
-        renderA2CStepConvert();
+        renderA2CStepConfirm();
     } catch (error) {
         setSubmitLoading(false, '', 'Verify');
         showInlineError(error.message || 'Invalid or expired OTP. Please try again.');
     }
 }
 
-function renderA2CStepConvert() {
+function renderA2CStepConfirm() {
     showModal('Confirm Conversion', `
         <p style="font-size:12px;color:#94a3b8;margin:-4px 0 16px;">Step 3 of 3 — Confirm</p>
         <div style="padding:14px;background:#f8fafc;border-radius:10px;margin-bottom:16px;">
@@ -1460,37 +1541,30 @@ function renderA2CStepConvert() {
             <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;">
                 <span style="color:#64748b;">Phone</span><strong>${_a2c.phone}</strong>
             </div>
-            ${_a2c.balance != null ? `<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;">
-                <span style="color:#64748b;">Airtime Balance</span><strong>₦${Number(_a2c.balance).toLocaleString()}</strong>
-            </div>` : ''}
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;">
+                <span style="color:#64748b;">Airtime Balance</span><strong>${_a2c.balance || '—'}</strong>
+            </div>
             <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;">
                 <span style="color:#64748b;">Amount to Convert</span><strong>₦${_a2c.amount.toLocaleString()}</strong>
             </div>
         </div>
         <div class="form-group">
-            <label>SIM PIN</label>
-            <input type="password" id="a2cSimPin" placeholder="Enter your SIM PIN" maxlength="4" class="form-input">
-            <p style="font-size:12px;color:#94a3b8;margin-top:4px;">The PIN that authorizes sharing airtime from this line — not your app PIN.</p>
-        </div>
-        <div class="form-group">
             <label>Transaction PIN</label>
-            <input type="password" id="a2cTxPin" placeholder="Enter your 4-digit app PIN" maxlength="4" class="form-input">
+            <input type="password" id="a2cPin" placeholder="Enter 4-digit PIN" maxlength="4" class="form-input">
         </div>
     `, `
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
-        <button onclick="submitA2CConvert()" class="btn-primary">Convert to Cash</button>
+        <button onclick="submitA2CTransfer()" class="btn-primary">Convert to Cash</button>
     `);
 }
 
-async function submitA2CConvert() {
-    const simPin = document.getElementById('a2cSimPin').value.trim();
-    const txPin  = document.getElementById('a2cTxPin').value.trim();
-    if (!simPin || !/^\d{4}$/.test(simPin)) { showInlineError('Please enter your 4-digit SIM PIN'); return; }
-    if (!txPin  || !/^\d{4}$/.test(txPin))  { showInlineError('Please enter your 4-digit transaction PIN'); return; }
+async function submitA2CTransfer() {
+    const pin = document.getElementById('a2cPin').value.trim();
+    if (!pin || !/^\d{4}$/.test(pin)) { showInlineError('Please enter your 4-digit transaction PIN'); return; }
 
     setSubmitLoading(true, 'Processing...');
     try {
-        const res  = await api.convertAirtimeToCash(_a2c.network, _a2c.identifier, _a2c.amount, simPin, _a2c.phone, txPin);
+        const res  = await api.transferAirtimeToCash(_a2c.network, _a2c.phone, _a2c.amount, pin, _a2c.sessionId);
         const data = res.data || res;
         closeModal();
 

@@ -34,20 +34,28 @@
                             <option value="">Loading available exams...</option>
                         </select>
                     </div>
+                    <div id="eduJambBlock" class="hidden space-y-3">
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Candidate Profile ID</label>
+                            <input id="eduProfileId" type="text" placeholder="Enter profile ID" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full">
+                        </div>
+                        <button type="button" id="eduVerifyBtn" onclick="verifyEduProfile()" class="w-full py-3 text-yareema-primary font-semibold rounded-xl border border-slate-300 hover:bg-slate-50">Verify Profile</button>
+                        <div id="eduVerifiedBox" class="hidden px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm font-semibold text-green-700"></div>
+                    </div>
                     <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-2">Quantity</label>
-                        <input id="eduQty" type="number" min="1" value="1" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Phone Number (optional)</label>
+                        <input id="eduPhone" type="tel" maxlength="11" placeholder="Defaults to your account phone" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Exam / Card Number (if required)</label>
+                        <input id="eduExamNumber" type="text" placeholder="Optional" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full">
                     </div>
                     <div id="eduPriceBox" class="hidden px-4 py-3 bg-green-50 border border-green-200 rounded-xl">
-                        <div class="flex justify-between items-center">
-                            <span class="text-sm text-slate-600">Estimated Total</span>
-                            <span id="eduPrice" class="text-xl font-bold text-slate-900">₦0</span>
-                        </div>
+                        <span id="eduPrice" class="text-sm font-semibold text-green-700"></span>
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-slate-700 mb-2">Transaction PIN</label>
-                        <input id="eduPin" type="password" maxlength="4" placeholder="Enter 4-digit PIN"
-                            class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
+                        <input id="eduPin" type="password" maxlength="4" placeholder="Enter 4-digit PIN" class="px-4 py-3 border-2 border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yareema-primary w-full" required>
                     </div>
                     <button type="submit" id="eduBtn" class="w-full py-4 text-white font-bold rounded-xl hover:opacity-90 transition-all text-base flex items-center justify-center gap-2" style="background:linear-gradient(135deg,#1E3D5C,#16304a)">
                         <i data-lucide="graduation-cap" class="w-5 h-5"></i> Purchase PIN
@@ -66,43 +74,78 @@ Auth.protectPage();
 fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();initSidebar();});
 fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('education');if(typeof initHeader==='function')initHeader();lucide.createIcons();});
 
-const EDU_P = {};
+const EDU_JAMB_TYPES = ['de', 'utme-mock', 'utme-no-mock'];
+let _eduPlans = [];
+let _eduVerified = null;
 
 async function loadEducationExams() {
     const select = document.getElementById('eduType');
-    const result = await AgentServices.getServices();
-    const data = result.success ? result.data : null;
-    const services = Array.isArray(data) ? data : (data?.services || []);
-    const education = Array.isArray(services) && services.find(service =>
-        String(service.type || service.slug || '').toLowerCase() === 'education'
-    );
-    const exams = Array.isArray(education?.providers) ? education.providers : [];
-
-    if (!exams.length) throw new Error('Education PINs are currently unavailable.');
-    select.innerHTML = '<option value="">Choose exam...</option>' + exams.map(exam => {
-        const value = typeof exam === 'object' ? (exam.id || exam.code || exam.slug || exam.value) : exam;
-        const label = typeof exam === 'object' ? (exam.name || exam.label || value) : exam;
-        return value ? `<option value="${value}">${label}</option>` : '';
-    }).join('');
+    const response = await API.get(API_CONFIG.ENDPOINTS.EDUCATION_PLANS);
+    _eduPlans = response.data?.examTypes || response.examTypes || [];
+    if (!_eduPlans.length) throw new Error('Education PINs are currently unavailable.');
+    select.innerHTML = '<option value="">Choose exam...</option>' + _eduPlans.map(plan =>
+        `<option value="${plan.code}">${plan.name}</option>`
+    ).join('');
     select.disabled = false;
+    select.addEventListener('change', updateEducationSelection);
+    updateEducationSelection();
 }
 
-function updPrice() {
-    const t=document.getElementById('eduType').value, q=+document.getElementById('eduQty').value, box=document.getElementById('eduPriceBox'), pr=document.getElementById('eduPrice');
-    const u=EDU_P[t];
-    if(u){box.classList.remove('hidden');pr.textContent='₦'+(u*q).toLocaleString();}else box.classList.add('hidden');
+function updateEducationSelection() {
+    const examType = document.getElementById('eduType').value;
+    const plan = _eduPlans.find(item => item.code === examType);
+    _eduVerified = null;
+    document.getElementById('eduVerifiedBox').classList.add('hidden');
+    document.getElementById('eduJambBlock').classList.toggle('hidden', !EDU_JAMB_TYPES.includes(examType));
+    const priceBox = document.getElementById('eduPriceBox');
+    const price = document.getElementById('eduPrice');
+    priceBox.classList.toggle('hidden', !plan);
+    if (plan) price.textContent = `Price: ₦${Number(plan.amount).toLocaleString()}`;
+}
+
+async function verifyEduProfile() {
+    const examType = document.getElementById('eduType').value;
+    const profileId = document.getElementById('eduProfileId').value.trim();
+    if (!profileId) { showMsg('Enter the candidate profile ID', 'error'); return; }
+    const button = document.getElementById('eduVerifyBtn');
+    button.disabled = true;
+    button.textContent = 'Verifying...';
+    try {
+        const response = await API.post(API_CONFIG.ENDPOINTS.EDUCATION_VERIFY, { examType, profileId });
+        const data = response.data || response;
+        if (data.verified === false) throw new Error(response.message || 'Verification failed');
+        _eduVerified = data;
+        const verifiedBox = document.getElementById('eduVerifiedBox');
+        verifiedBox.textContent = `Verified: ${data.customerName || 'Candidate'}`;
+        verifiedBox.classList.remove('hidden');
+        if (data.price != null || data.unitPrice != null) {
+            document.getElementById('eduPrice').textContent = `Price: ₦${Number(data.price ?? data.unitPrice).toLocaleString()}`;
+        }
+    } catch (error) {
+        showMsg(error.message || 'Verification failed', 'error');
+    } finally {
+        button.disabled = false;
+        button.textContent = 'Verify Profile';
+    }
 }
 
 async function submitEdu(e) {
     e.preventDefault();
-    const et=document.getElementById('eduType').value, qty=+document.getElementById('eduQty').value, pin=document.getElementById('eduPin').value.trim();
+    const et=document.getElementById('eduType').value, pin=document.getElementById('eduPin').value.trim();
+    const phoneNumber=document.getElementById('eduPhone').value.trim(), examNumber=document.getElementById('eduExamNumber').value.trim();
+    if (!et) { showMsg('Select an exam type', 'error'); return; }
+    if (EDU_JAMB_TYPES.includes(et) && !_eduVerified) { showMsg('Verify the candidate profile first', 'error'); return; }
     if (!pin||!/^\d{4}$/.test(pin)){showMsg('Enter your 4-digit transaction PIN','error');return;}
     const btn=document.getElementById('eduBtn');
     btn.disabled=true; btn.innerHTML='<span class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></span>Processing...';
     try {
-        await API.post(API_CONFIG.ENDPOINTS.EDUCATION_PURCHASE,{examType:et,quantity:qty,transactionPin:pin});
-        const labels={waecdirect:'WAEC',neco:'NECO',jamb:'JAMB',nabteb:'NABTEB'};
-        showMsg(`${qty} × ${labels[et]||et.toUpperCase()} PIN${qty>1?'s':''} purchased! Check your email for scratch cards.`,'success');
+        const response = await API.post(API_CONFIG.ENDPOINTS.EDUCATION_PURCHASE, {
+            examType:et, transactionPin:pin,
+            ...(phoneNumber ? { phoneNumber } : {}),
+            ...(examNumber ? { examNumber } : {})
+        });
+        const data = response.data || response;
+        showMsg(data.status === 'pending' ? 'Education PIN purchase is processing. Check your transaction history shortly.' : 'Education PIN purchased successfully. Check your transaction history for PIN details.', 'success');
         document.getElementById('eduPin').value='';
     } catch(err){showMsg(err.message||'Purchase failed. Please try again.','error');}
     finally{btn.disabled=false;btn.innerHTML='<i data-lucide="graduation-cap" class="w-5 h-5"></i> Purchase PIN';lucide.createIcons();}

@@ -423,10 +423,37 @@ class YareemaUserAPI {
         });
     }
 
-    async purchaseEducationPIN(examType, quantity, transactionPin) {
+    async getEducationPlans() {
+        return await this.request('/api/v1/bills/education/plans');
+    }
+
+    /** JAMB exam types only (de, utme-mock, utme-no-mock). */
+    async verifyEducationProfile(examType, profileId) {
+        return await this.request('/api/v1/bills/education/verify', {
+            method: 'POST',
+            body: { examType, profileId }
+        });
+    }
+
+    async purchaseEducationPIN(examType, transactionPin, opts = {}) {
         return await this.request('/api/v1/bills/education/purchase', {
             method: 'POST',
-            body: { examType, quantity, transactionPin }
+            body: { examType, transactionPin, ...opts }
+        });
+    }
+
+    /** Re-check a pending purchase. Pass at least one of orderId/requestId. */
+    async queryEducationTransaction(orderId, requestId) {
+        return await this.request('/api/v1/bills/education/query', {
+            method: 'POST',
+            body: { orderId, requestId }
+        });
+    }
+
+    async cancelEducationTransaction(orderId) {
+        return await this.request('/api/v1/bills/education/cancel', {
+            method: 'POST',
+            body: { orderId }
         });
     }
 

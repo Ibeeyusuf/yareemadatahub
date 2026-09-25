@@ -27,7 +27,7 @@ const API_CONFIG = {
       ELECTRICITY: "/api/v1/bills/electricity",
       INTERNET: "/api/v1/bills/internet",
     },
-    EDUCATION: "/api/v1/education",
+    EDUCATION: "/api/v1/bills/education",
     REMITA: "/api/v1/remita",
     NOTIFICATIONS: "/api/v1/notifications",
   },

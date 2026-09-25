@@ -1082,36 +1082,44 @@ async function submitTVSubscription() {
 
 // ==================== EDUCATION MODAL ====================
 
-function showEducationModal() {
+let _eduPlans = [];
+let _eduVerified = null;
+const EDU_JAMB_TYPES = ['de', 'utme-mock', 'utme-no-mock'];
+
+async function showEducationModal() {
+    _eduVerified = null;
     showModal('Education PIN', `
         <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;
                     padding:12px 14px;margin-bottom:16px;">
             <p style="color:#1d4ed8;font-size:13px;margin:0;">
-                📚 Scratch cards will be sent to your registered email address after purchase.
+                Verify a JAMB profile first for DE/UTME types; other exam PINs can be purchased directly.
             </p>
         </div>
         <div class="form-group">
             <label>Exam Type</label>
-            <select id="examType" class="form-input" onchange="updateEduPrice()">
-                <option value="waecdirect">WAEC Result Checker</option>
-                <option value="neco">NECO Result Checker</option>
-                <option value="jamb">JAMB E-PIN</option>
-                <option value="nabteb">NABTEB Result Checker</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Quantity</label>
-            <select id="eduQuantity" class="form-input" onchange="updateEduPrice()">
-                <option value="1">1 PIN</option>
-                <option value="2">2 PINs</option>
-                <option value="3">3 PINs</option>
-                <option value="5">5 PINs</option>
-                <option value="10">10 PINs</option>
+            <select id="examType" class="form-input" onchange="onEduExamTypeChange()">
+                <option value="">Loading exam types...</option>
             </select>
         </div>
         <div id="eduPriceTag"
              style="display:none;padding:10px 14px;background:#f0fdf4;border-radius:8px;
-                    margin-bottom:4px;color:#15803d;font-size:13px;font-weight:600;"></div>
+                    margin-bottom:12px;color:#15803d;font-size:13px;font-weight:600;"></div>
+        <div id="eduJambBlock" style="display:none;">
+            <div class="form-group">
+                <label>Candidate Profile ID</label>
+                <input type="text" id="eduProfileId" placeholder="Enter profile ID" class="form-input">
+            </div>
+            <button type="button" onclick="verifyEduProfile()" id="eduVerifyBtn" class="btn-secondary" style="width:100%;margin-bottom:14px;">Verify Profile</button>
+            <div id="eduVerifiedBox" style="display:none;padding:10px 14px;background:#f0fdf4;border-radius:8px;margin-bottom:14px;color:#15803d;font-size:13px;font-weight:600;"></div>
+        </div>
+        <div class="form-group">
+            <label>Phone Number (optional)</label>
+            <input type="tel" id="eduPhone" placeholder="Defaults to your account phone" class="form-input" maxlength="11">
+        </div>
+        <div class="form-group">
+            <label>Exam / Card Number (if required)</label>
+            <input type="text" id="eduExamNumber" placeholder="Optional" class="form-input">
+        </div>
         <div class="form-group">
             <label>Transaction PIN</label>
             <input type="password" id="eduPin" placeholder="Enter 4-digit PIN"
@@ -1121,50 +1129,105 @@ function showEducationModal() {
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
         <button onclick="submitEducationPurchase()" class="btn-primary">Purchase</button>
     `);
+    loadEducationPlans();
 }
 
-const EDU_PRICES = { waecdirect: 3800, neco: 1000, jamb: 700, nabteb: 900 };
+async function loadEducationPlans() {
+    const select = document.getElementById('examType');
+    if (!select) return;
+    try {
+        const response = await api.getEducationPlans();
+        _eduPlans = response?.data?.examTypes || response?.examTypes || [];
+        if (!_eduPlans.length) {
+            select.innerHTML = '<option value="">No exam types available</option>';
+            return;
+        }
+        select.innerHTML = '<option value="">Select exam type</option>' +
+            _eduPlans.map(plan => `<option value="${plan.code}">${plan.name}</option>`).join('');
+        onEduExamTypeChange();
+    } catch (error) {
+        select.innerHTML = '<option value="">Could not load exam types</option>';
+        showInlineError(error.message || 'Could not load exam types');
+    }
+}
 
-function updateEduPrice() {
+function onEduExamTypeChange() {
     const examType = document.getElementById('examType')?.value;
-    const quantity = parseInt(document.getElementById('eduQuantity')?.value || 1);
+    const plan = _eduPlans.find(item => item.code === examType);
+    _eduVerified = null;
+
+    const jambBlock = document.getElementById('eduJambBlock');
+    const verifiedBox = document.getElementById('eduVerifiedBox');
+    if (verifiedBox) verifiedBox.style.display = 'none';
+    if (jambBlock) jambBlock.style.display = EDU_JAMB_TYPES.includes(examType) ? 'block' : 'none';
+
     const priceTag = document.getElementById('eduPriceTag');
-    if (!priceTag || !examType) return;
-    const unitPrice = EDU_PRICES[examType];
-    if (unitPrice) {
+    if (priceTag && plan) {
         priceTag.style.display = 'block';
-        priceTag.textContent = `Estimated Total: ₦${(unitPrice * quantity).toLocaleString()} (${quantity} × ₦${unitPrice.toLocaleString()})`;
-    } else {
+        priceTag.textContent = `Price: ₦${Number(plan.amount).toLocaleString()}`;
+    } else if (priceTag) {
         priceTag.style.display = 'none';
     }
 }
 
+async function verifyEduProfile() {
+    const examType = document.getElementById('examType')?.value;
+    const profileId = document.getElementById('eduProfileId')?.value.trim();
+    if (!profileId) { showInlineError('Enter the candidate profile ID'); return; }
+
+    const button = document.getElementById('eduVerifyBtn');
+    if (button) { button.disabled = true; button.textContent = 'Verifying...'; }
+    try {
+        const response = await api.verifyEducationProfile(examType, profileId);
+        const data = response?.data || response || {};
+        if (data.verified === false) {
+            showInlineError(response.message || 'Verification failed');
+            return;
+        }
+        _eduVerified = { customerName: data.customerName, price: data.price ?? data.unitPrice };
+        const box = document.getElementById('eduVerifiedBox');
+        if (box) {
+            box.style.display = 'block';
+            box.textContent = `Verified: ${data.customerName || 'Candidate'}`;
+        }
+        const priceTag = document.getElementById('eduPriceTag');
+        if (priceTag && _eduVerified.price != null) {
+            priceTag.style.display = 'block';
+            priceTag.textContent = `Price: ₦${Number(_eduVerified.price).toLocaleString()}`;
+        }
+    } catch (error) {
+        showInlineError(error.message || 'Verification failed');
+    } finally {
+        if (button) { button.disabled = false; button.textContent = 'Verify Profile'; }
+    }
+}
+
 async function submitEducationPurchase() {
-    const examType = document.getElementById('examType').value;
-    const quantity = parseInt(document.getElementById('eduQuantity').value);
-    const pin      = document.getElementById('eduPin').value.trim();
+    const examType = document.getElementById('examType')?.value;
+    const phoneNumber = document.getElementById('eduPhone')?.value.trim();
+    const examNumber = document.getElementById('eduExamNumber')?.value.trim();
+    const pin = document.getElementById('eduPin')?.value.trim();
 
+    if (!examType) { showInlineError('Select an exam type'); return; }
+    if (EDU_JAMB_TYPES.includes(examType) && !_eduVerified) { showInlineError('Verify the candidate profile first'); return; }
     if (!pin || !/^\d{4}$/.test(pin)) { showInlineError('Please enter your 4-digit transaction PIN'); return; }
-    if (!quantity || quantity < 1)    { showInlineError('Please select a valid quantity'); return; }
 
-    const examLabels = { waecdirect: 'WAEC', neco: 'NECO', jamb: 'JAMB', nabteb: 'NABTEB' };
-    const label = examLabels[examType] || examType.toUpperCase();
+    const plan = _eduPlans.find(item => item.code === examType);
+    const label = plan?.name || examType.toUpperCase();
 
     setSubmitLoading(true, 'Purchasing...');
     try {
-        await api.purchaseEducationPIN(examType, quantity, pin);
+        const response = await api.purchaseEducationPIN(examType, pin, {
+            ...(phoneNumber ? { phoneNumber } : {}),
+            ...(examNumber ? { examNumber } : {})
+        });
+        const data = response?.data || response || {};
         closeModal();
-        setTimeout(() => showSuccess(`
-            <div style="text-align:center;">
-                <p style="font-size:16px;margin-bottom:6px;">Purchase Successful! 📚</p>
-                <p style="font-size:14px;color:#64748b;">
-                    ${quantity} × ${label} PIN${quantity > 1 ? 's' : ''} purchased
-                </p>
-                <p style="font-size:13px;color:#94a3b8;margin-top:6px;">
-                    Check your email for the scratch card(s)
-                </p>
-            </div>
-        `), 300);
+        if (data.status === 'pending') {
+            setTimeout(() => showSuccess(`<div style="text-align:center;"><p style="font-size:16px;margin-bottom:6px;">Purchase initiated</p><p style="font-size:14px;color:#64748b;">Your ${label} order is still processing. Check transaction history for the result.</p></div>`), 300);
+        } else {
+            setTimeout(() => showSuccess(`<div style="text-align:center;"><p style="font-size:16px;margin-bottom:6px;">Purchase Successful!</p><p style="font-size:14px;color:#64748b;">${label} PIN purchased</p><p style="font-size:13px;color:#94a3b8;margin-top:6px;">Check transaction history for the PIN/serial details</p></div>`), 300);
+        }
     } catch (error) {
         setSubmitLoading(false, '', 'Purchase');
         showInlineError(error.message || 'Purchase failed. Please try again.');

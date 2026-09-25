@@ -51,7 +51,11 @@ if (typeof API_CONFIG === "undefined") {
       CABLE_VERIFY: "/bills/cable/verify",
       ELECTRICITY_VERIFY: "/bills/electricity/verify",
       ELECTRICITY_PURCHASE: "/bills/electricity/purchase",
+      EDUCATION_PLANS: "/bills/education/plans",
+      EDUCATION_VERIFY: "/bills/education/verify",
       EDUCATION_PURCHASE: "/bills/education/purchase",
+      EDUCATION_QUERY: "/bills/education/query",
+      EDUCATION_CANCEL: "/bills/education/cancel",
       SMS_SEND: "/sms/send",
 
       PAYMENT_INITIATE: "/payment/initiate",
