@@ -421,30 +421,81 @@
             }
         }
 
-        // ─── STEP 4: Process payment ─────────────────────────────────────────────
-        async function processPayment() {
-            setBtnLoading('payBtn', true, 'Processing...');
-            try {
-                const res = await api.processRemitaTransaction(_rrr, _paymentIdentifier, _amount);
-                const data = res.data || res;
-                const status = (data.transactionStatus || data.status || '').toLowerCase();
+        // ─── Load the Remita Inline SDK once, on demand ──────────────────────────
+        let _remitaSdkPromise = null;
+        function loadRemitaSdk() {
+            if (_remitaSdkPromise) return _remitaSdkPromise;
+            _remitaSdkPromise = new Promise((resolve, reject) => {
+                if (window.RmPaymentEngine) return resolve();
+                // The RRR was already generated server-side (backend's own
+                // secret key), so we use the demo/test bundle by default —
+                // ask the backend dev to confirm when to switch to the live one.
+                const src = 'https://remitademo.net/payment/v1/remita-pay-inline.bundle.js';
+                const s = document.createElement('script');
+                s.src = src;
+                s.onload = () => resolve();
+                s.onerror = () => reject(new Error('Could not load the Remita payment SDK. Check your connection.'));
+                document.body.appendChild(s);
+            });
+            return _remitaSdkPromise;
+        }
 
-                if (status === 'successful' || status === 'success') {
+        // ─── STEP 4: Process payment (opens Remita's popup for the existing RRR) ─
+        async function processPayment() {
+            setBtnLoading('payBtn', true, 'Loading...');
+            try {
+                await loadRemitaSdk();
+            } catch (error) {
+                document.getElementById('errorMessage').textContent = error.message;
+                showStep('failedState');
+                setBtnLoading('payBtn', false, 'Pay Now');
+                return;
+            }
+            setBtnLoading('payBtn', false, 'Pay Now');
+
+            // No public key here — this RRR was already generated server-side
+            // (with the backend's own secret key), so the widget just needs
+            // to know which existing RRR to collect payment for.
+            const paymentEngine = window.RmPaymentEngine.init({
+                rrr: _rrr,
+                processRrr: true,
+                transactionId: _paymentIdentifier,
+                onSuccess: function () {
+                    confirmRemitaPayment();
+                },
+                onError: function (response) {
+                    document.getElementById('errorMessage').textContent = response?.message || 'Payment could not be completed.';
+                    showStep('failedState');
+                },
+                onClose: function () {
+                    // User closed the widget without finishing — stay on the confirm step.
+                }
+            });
+            paymentEngine.showPaymentWidget();
+        }
+
+        // Remita's onSuccess only confirms the widget flow finished — the real
+        // status still has to come from our backend's lookup call.
+        async function confirmRemitaPayment() {
+            try {
+                const res = await api.lookupRemitaTransaction(_rrr);
+                const data = res.data || res;
+                const status = (data.status || data.transactionStatus || '').toLowerCase();
+
+                if (status === 'successful' || status === 'success' || status === 'approved' || status === 'completed') {
                     document.getElementById('successMessage').textContent = `₦${_amount.toLocaleString()} paid successfully.`;
                     document.getElementById('successTransactionId').textContent = `RRR: ${_rrr}`;
                     showStep('successState');
-                } else if (status === 'pending') {
+                } else if (status === 'failed') {
+                    document.getElementById('errorMessage').textContent = data.message || 'Payment failed.';
+                    showStep('failedState');
+                } else {
                     document.getElementById('pendingRrr').textContent = _rrr;
                     showStep('pendingState');
-                } else {
-                    document.getElementById('errorMessage').textContent = data.message || 'Payment could not be completed.';
-                    showStep('failedState');
                 }
             } catch (error) {
-                document.getElementById('errorMessage').textContent = error.message || 'Payment failed. Please try again.';
-                showStep('failedState');
-            } finally {
-                setBtnLoading('payBtn', false, 'Pay Now');
+                document.getElementById('pendingRrr').textContent = _rrr;
+                showStep('pendingState');
             }
         }
 

@@ -458,10 +458,12 @@ class YareemaUserAPI {
         });
     }
 
-    async processRemitaTransaction(rrr, paymentIdentifier, amount) {
+    async processRemitaTransaction(rrr, orderId, amount) {
+        // Backend processes this server-side with its own secret key — it
+        // just needs the orderId from /invoice/generate, not a frontend SDK.
         return await this.request('/api/v1/remita/process', {
             method: 'POST',
-            body: { rrr, paymentIdentifier, amount }
+            body: { rrr, orderId, amount }
         });
     }
 
