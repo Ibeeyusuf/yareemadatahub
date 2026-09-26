@@ -75,6 +75,13 @@ fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementByI
 fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('education');if(typeof initHeader==='function')initHeader();lucide.createIcons();});
 
 const EDU_JAMB_TYPES = ['de', 'utme-mock', 'utme-no-mock'];
+const EDU_PLAN_LABELS = {
+    waecdirect: 'WAEC Result Checker (Direct)',
+    'waec-registration': 'WAEC Registration PIN',
+    de: 'JAMB Direct Entry (DE)',
+    'utme-mock': 'JAMB UTME (Mock)',
+    'utme-no-mock': 'JAMB UTME (No Mock)'
+};
 let _eduPlans = [];
 let _eduVerified = null;
 
@@ -84,7 +91,7 @@ async function loadEducationExams() {
     _eduPlans = response.data?.examTypes || response.examTypes || [];
     if (!_eduPlans.length) throw new Error('Education PINs are currently unavailable.');
     select.innerHTML = '<option value="">Choose exam...</option>' + _eduPlans.map(plan =>
-        `<option value="${plan.code}">${plan.name}</option>`
+        `<option value="${plan.code}">${EDU_PLAN_LABELS[plan.code] || plan.name}</option>`
     ).join('');
     select.disabled = false;
     select.addEventListener('change', updateEducationSelection);

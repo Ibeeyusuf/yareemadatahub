@@ -712,6 +712,13 @@ async function submitTV() {
 let _eduPlans = [];
 let _eduVerified = null;
 const EDU_JAMB_TYPES = ['de', 'utme-mock', 'utme-no-mock'];
+const EDU_PLAN_LABELS = {
+    waecdirect: 'WAEC Result Checker (Direct)',
+    'waec-registration': 'WAEC Registration PIN',
+    de: 'JAMB Direct Entry (DE)',
+    'utme-mock': 'JAMB UTME (Mock)',
+    'utme-no-mock': 'JAMB UTME (No Mock)'
+};
 
 async function showEdu() {
     _eduVerified = null;
@@ -754,7 +761,7 @@ async function loadEduPlans() {
         const res = await API.get(API_CONFIG.ENDPOINTS.EDUCATION_PLANS);
         _eduPlans = res.data?.examTypes || res.examTypes || [];
         if (!_eduPlans.length) { s.innerHTML = '<option value="">No exam types available</option>'; return; }
-        s.innerHTML = _eduPlans.map(p => `<option value="${p.code}">${_esc(p.name)}</option>`).join('');
+        s.innerHTML = _eduPlans.map(p => `<option value="${p.code}">${_esc(EDU_PLAN_LABELS[p.code] || p.name)}</option>`).join('');
         onEduTypeChange();
     } catch (e) {
         s.innerHTML = '<option value="">Failed to load — please retry</option>';

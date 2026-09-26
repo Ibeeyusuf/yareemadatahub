@@ -1085,6 +1085,13 @@ async function submitTVSubscription() {
 let _eduPlans = [];
 let _eduVerified = null;
 const EDU_JAMB_TYPES = ['de', 'utme-mock', 'utme-no-mock'];
+const EDU_PLAN_LABELS = {
+    waecdirect: 'WAEC Result Checker (Direct)',
+    'waec-registration': 'WAEC Registration PIN',
+    de: 'JAMB Direct Entry (DE)',
+    'utme-mock': 'JAMB UTME (Mock)',
+    'utme-no-mock': 'JAMB UTME (No Mock)'
+};
 
 async function showEducationModal() {
     _eduVerified = null;
@@ -1143,7 +1150,7 @@ async function loadEducationPlans() {
             return;
         }
         select.innerHTML = '<option value="">Select exam type</option>' +
-            _eduPlans.map(plan => `<option value="${plan.code}">${plan.name}</option>`).join('');
+            _eduPlans.map(plan => `<option value="${plan.code}">${EDU_PLAN_LABELS[plan.code] || plan.name}</option>`).join('');
         onEduExamTypeChange();
     } catch (error) {
         select.innerHTML = '<option value="">Could not load exam types</option>';
