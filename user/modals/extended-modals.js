@@ -8,6 +8,7 @@
             'alpha-caller':  showAlphaCallerModal,
             'kirani':        showKiraniModal,
             'giftcards':     showGiftCardsModal,
+            'esim':          showEsimModal,
             'spectranet':       showDataRechargePinModal,
             'data-recharge-pin': showDataRechargePinModal,
             'flights':       showFlightsModal,
@@ -128,7 +129,260 @@ Object.assign(api.__proto__, {
     async getIntlBookingById(orderId) {
         return await this.request(`/api/v1/flights/international/bookings/${orderId}`);
     },
+
+    // eSIM
+    async getEsimPackages() {
+        return await this.request('/api/v1/esims/packages?locale=en');
+    },
+    async getEsimCompatibility(deviceName) {
+        return await this.request(`/api/v1/esims/compatibility?device=${encodeURIComponent(deviceName)}`);
+    },
+    async getEsimQuote(payload) {
+        return await this.request('/api/v1/esims/quote', { method: 'POST', body: payload });
+    },
+    async buyEsim(payload) {
+        return await this.request('/api/v1/esims/order', { method: 'POST', body: payload });
+    },
+    async getEsimTopups() {
+        return await this.request('/api/v1/esims/topups');
+    },
+    async getEsimOrderStatus(orderId) {
+        return await this.request(`/api/v1/esims/orders/${orderId}`);
+    },
 });
+
+
+// ============================================================
+// eSIM
+// ============================================================
+let esimPackages = [];
+let selectedEsimPackage = null;
+let esimPackageFilter = 'All';
+let esimPackageQuery = '';
+let esimVisibleLimit = 6;
+
+function showEsimModal() {
+    esimPackages = [];
+    selectedEsimPackage = null;
+    esimPackageFilter = 'All';
+    esimPackageQuery = '';
+    esimVisibleLimit = 6;
+
+    showModal('eSIM Packages', `
+        <div class="form-group">
+            <label for="esimPackageSearch">Find a destination or plan</label>
+            <input type="search" id="esimPackageSearch" class="form-input" placeholder="Search countries, regions or data size" oninput="filterEsimPackages(this.value)" />
+        </div>
+        <div id="esimPackageFilters" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:8px;white-space:nowrap;"></div>
+        <div class="form-group">
+            <label>Select Package</label>
+            <div id="esimPackageList" style="display:flex;flex-direction:column;gap:8px;">
+                <div style="padding:18px 12px;text-align:center;color:#94a3b8;font-size:13px;">Loading eSIM packages…</div>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Device Compatibility</label>
+            <input type="text" id="esimDevice" class="form-input" placeholder="e.g. iPhone 15, Samsung S23" />
+        </div>
+        <div class="form-group">
+            <label>Traveler Name</label>
+            <input type="text" id="esimTravelerName" class="form-input" placeholder="Full name" />
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="esimEmail" class="form-input" placeholder="traveler@example.com" />
+        </div>
+        <div class="form-group">
+            <label>Phone Number</label>
+            <input type="tel" id="esimPhone" class="form-input" placeholder="+2348012345678" />
+        </div>
+        <div class="form-group">
+            <label>Transaction PIN</label>
+            <input type="password" id="esimPin" class="form-input" placeholder="Enter 4-digit PIN" maxlength="4" inputmode="numeric" />
+        </div>
+    `, `
+        <button onclick="closeModal()" class="btn-secondary">Cancel</button>
+        <button id="esimSubmitBtn" onclick="submitEsimOrder()" class="btn-primary">Buy eSIM</button>
+    `);
+
+    loadEsimPackages();
+}
+
+async function loadEsimPackages() {
+    const container = document.getElementById('esimPackageList');
+    if (!container) return;
+
+    try {
+        const res = await api.getEsimPackages();
+        const data = res?.data?.data || res?.data || res?.items || [];
+        esimPackages = Array.isArray(data) ? data : [];
+
+        if (!esimPackages.length) {
+            container.innerHTML = '<div style="padding:18px 12px;text-align:center;color:#94a3b8;font-size:13px;">No eSIM packages available right now.</div>';
+            return;
+        }
+
+        renderEsimPackageFilters();
+        renderEsimPackages();
+    } catch (e) {
+        container.innerHTML = `<div style="padding:18px 12px;text-align:center;color:#dc2626;font-size:13px;">${e.message || 'Failed to load eSIM packages.'}</div>`;
+    }
+}
+
+function esimPackageCategory(pkg) {
+    const coverage = pkg.coverage || pkg.coverageType || pkg.region || pkg.regionName || '';
+    const coverageText = typeof coverage === 'string' ? coverage : JSON.stringify(coverage);
+    const searchable = `${coverageText} ${pkg.title || ''} ${pkg.name || ''} ${pkg.description || ''}`.toLowerCase();
+    const countries = Array.isArray(pkg.countries) ? pkg.countries : [];
+
+    if (/global|worldwide/.test(searchable)) return 'Global';
+    if (/regional|region/.test(searchable) || countries.length > 1) return 'Regional';
+    return 'Country';
+}
+
+function renderEsimPackageFilters() {
+    const container = document.getElementById('esimPackageFilters');
+    if (!container) return;
+    const categories = ['All', ...new Set(esimPackages.map(esimPackageCategory))];
+    container.innerHTML = categories.map(category => {
+        const active = category === esimPackageFilter;
+        return `<button type="button" onclick="setEsimPackageFilter('${category}')" style="flex:0 0 auto;padding:7px 12px;border:1px solid ${active ? '#0e7490' : '#e2e8f0'};border-radius:999px;background:${active ? '#ecfeff' : '#fff'};color:${active ? '#0e7490' : '#475569'};font-size:12px;font-weight:600;cursor:pointer;">${category}</button>`;
+    }).join('');
+}
+
+function setEsimPackageFilter(category) {
+    esimPackageFilter = category;
+    esimVisibleLimit = 6;
+    renderEsimPackageFilters();
+    renderEsimPackages();
+}
+
+function filterEsimPackages(query) {
+    esimPackageQuery = (query || '').trim().toLowerCase();
+    esimVisibleLimit = 6;
+    renderEsimPackages();
+}
+
+function escapeEsimHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[character]);
+}
+
+function renderEsimPackages() {
+    const container = document.getElementById('esimPackageList');
+    if (!container) return;
+
+    const matches = esimPackages.map((pkg, index) => ({ pkg, index })).filter(({ pkg }) => {
+        const matchesCategory = esimPackageFilter === 'All' || esimPackageCategory(pkg) === esimPackageFilter;
+        const text = [pkg.title, pkg.name, pkg.description, pkg.country, pkg.countryName, pkg.region, pkg.regionName, pkg.data, pkg.benefit, pkg.amount]
+            .map(value => typeof value === 'string' ? value : '')
+            .join(' ').toLowerCase();
+        return matchesCategory && (!esimPackageQuery || text.includes(esimPackageQuery));
+    });
+
+    if (!matches.length) {
+        container.innerHTML = '<div style="padding:18px 12px;text-align:center;color:#64748b;font-size:13px;">No plans match those filters. Try another search or category.</div>';
+        return;
+    }
+
+    const visible = matches.slice(0, esimVisibleLimit);
+    const cards = visible.map(({ pkg, index }) => {
+        const title = escapeEsimHtml(pkg.title || pkg.name || `Package ${index + 1}`);
+        const dataLabel = escapeEsimHtml(pkg.data || pkg.benefit || pkg.amount || 'Data plan');
+        const destination = escapeEsimHtml(pkg.countryName || pkg.country || pkg.regionName || pkg.region || esimPackageCategory(pkg));
+        const price = pkg.retail_price ?? pkg.total_price ?? pkg.price ?? pkg.amount ?? 0;
+        return `
+            <button type="button" onclick="selectEsimPackage(${index}, this)" data-esim-index="${index}" style="width:100%;padding:12px 14px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+                <span style="min-width:0;">
+                    <span style="display:block;font-size:13px;font-weight:700;color:#0f172a;">${title}</span>
+                    <span style="display:block;font-size:11px;color:#64748b;margin-top:3px;">${destination} · ${dataLabel}</span>
+                </span>
+                <span style="flex:0 0 auto;font-size:13px;font-weight:700;color:#0e7490;">₦${Number(price).toLocaleString()}</span>
+            </button>
+        `;
+    }).join('');
+
+    const moreButton = matches.length > esimVisibleLimit
+        ? `<button type="button" onclick="showMoreEsimPackages()" style="padding:9px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#334155;font-size:12px;font-weight:600;cursor:pointer;">Show ${Math.min(6, matches.length - esimVisibleLimit)} more (${matches.length - esimVisibleLimit} remaining)</button>`
+        : '';
+    container.innerHTML = `<div style="font-size:11px;color:#64748b;margin:0 0 2px;">Showing ${visible.length} of ${matches.length} plans</div>${cards}${moreButton}`;
+}
+
+function showMoreEsimPackages() {
+    esimVisibleLimit += 6;
+    renderEsimPackages();
+}
+
+function selectEsimPackage(index, el) {
+    selectedEsimPackage = esimPackages[index] || null;
+    document.querySelectorAll('[data-esim-id]').forEach(node => {
+        node.style.borderColor = '#e2e8f0';
+        node.style.background = '#fff';
+    });
+    document.querySelectorAll('[data-esim-index]').forEach(node => {
+        node.style.borderColor = '#e2e8f0';
+        node.style.background = '#fff';
+    });
+    if (el) {
+        el.style.borderColor = '#0e7490';
+        el.style.background = '#ecfeff';
+    }
+}
+
+async function submitEsimOrder() {
+    const pkg = selectedEsimPackage;
+    const device = document.getElementById('esimDevice')?.value.trim();
+    const travelerName = document.getElementById('esimTravelerName')?.value.trim();
+    const email = document.getElementById('esimEmail')?.value.trim();
+    const phone = document.getElementById('esimPhone')?.value.trim();
+    const pin = document.getElementById('esimPin')?.value.trim();
+
+    if (!pkg) {
+        showInlineError('Please select an eSIM package');
+        return;
+    }
+    if (!device) {
+        showInlineError('Please enter the device name or model');
+        return;
+    }
+    if (!travelerName) {
+        showInlineError('Please enter the traveler name');
+        return;
+    }
+    if (!email || !email.includes('@')) {
+        showInlineError('Please enter a valid email address');
+        return;
+    }
+    if (!phone) {
+        showInlineError('Please enter a phone number');
+        return;
+    }
+    if (!pin || !/^\d{4}$/.test(pin)) {
+        showInlineError('Please enter your 4-digit PIN');
+        return;
+    }
+
+    setSubmitLoading(true, 'Processing…');
+
+    try {
+        const payload = {
+            packageId: pkg.id || pkg.package_id || pkg.slug,
+            deviceName: device,
+            travelerName,
+            email,
+            phone,
+            transactionPin: pin,
+            notes: 'eSIM purchase request'
+        };
+        await api.buyEsim(payload);
+        closeModal();
+        setTimeout(() => showSuccess('eSIM order placed successfully!'), 300);
+    } catch (e) {
+        setSubmitLoading(false, '', 'Buy eSIM');
+        showInlineError(e.message || 'eSIM purchase failed. Please try again.');
+    }
+}
 
 
 // ============================================================

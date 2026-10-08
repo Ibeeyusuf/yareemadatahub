@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -16,16 +17,57 @@
     <div id="sidebarContainer"></div>
     <main class="lg:ml-64 flex flex-col min-h-screen bg-slate-50">
         <div id="headerContainer"></div>
-        <div class="p-4 lg:p-8 flex-1 overflow-y-auto flex items-center justify-center">
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-10 max-w-md w-full text-center">
-                <span class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5" style="background:#eff6ff">
-                    <i data-lucide="plane" class="w-8 h-8" style="color:#2563eb"></i>
-                </span>
-                <h3 class="text-xl font-bold text-slate-900 mb-2">Flight Booking</h3>
-                <p class="text-sm text-slate-500 mb-6">Book domestic and international flights right from your agent dashboard. This feature is on the way.</p>
-                <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-50 text-amber-700 text-sm font-semibold border border-amber-200">
-                    <i data-lucide="clock" class="w-4 h-4"></i> Coming Soon
-                </span>
+        <div class="p-4 lg:p-8 flex-1 overflow-y-auto">
+            <div class="max-w-5xl mx-auto">
+                <div class="mb-6 flex items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-900">Flight Tickets</h2>
+                        <p class="text-sm text-slate-500">Search and book flight tickets using the connected provider APIs.</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Origin</label>
+                            <input id="flightOrigin" type="text" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-yareema-primary focus:outline-none" placeholder="LOS" maxlength="3" style="text-transform:uppercase;">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Destination</label>
+                            <input id="flightDestination" type="text" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-yareema-primary focus:outline-none" placeholder="LHR" maxlength="3" style="text-transform:uppercase;">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Departure</label>
+                            <input id="flightDeparture" type="date" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-yareema-primary focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Passengers</label>
+                            <select id="flightPassengers" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-yareema-primary focus:outline-none">
+                                <option value="1">1 Adult</option>
+                                <option value="2">2 Adults</option>
+                                <option value="3">3 Adults</option>
+                                <option value="4">4 Adults</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Cabin</label>
+                            <select id="flightCabin" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-yareema-primary focus:outline-none">
+                                <option value="economy">Economy</option>
+                                <option value="premium_economy">Premium Economy</option>
+                                <option value="business">Business</option>
+                                <option value="first">First</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex justify-end">
+                        <button id="flightSearchBtn" onclick="searchFlights()" class="px-5 py-3 bg-yareema-primary hover:bg-yareema-secondary text-white rounded-xl text-sm font-semibold">Search Flights</button>
+                    </div>
+                </div>
+
+                <div id="flightStatus" class="mt-6 hidden rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600"></div>
+                <div id="flightResults" class="mt-6 space-y-4"></div>
             </div>
         </div>
     </main>
@@ -38,6 +80,168 @@
 Auth.protectPage();
 fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();initSidebar();});
 fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('flights');if(typeof initHeader==='function')initHeader();lucide.createIcons();});
+
+function setFlightStatus(message, type='info') {
+    const el = document.getElementById('flightStatus');
+    if (!el) return;
+    const colors = { info: 'border-slate-200 bg-slate-50 text-slate-700', success: 'border-green-200 bg-green-50 text-green-700', error: 'border-red-200 bg-red-50 text-red-700' };
+    el.className = `mt-6 rounded-xl border p-4 text-sm ${colors[type] || colors.info}`;
+    el.textContent = message;
+    el.classList.remove('hidden');
+}
+
+function renderFlightCards(list) {
+    const el = document.getElementById('flightResults');
+    if (!el) return;
+    if (!list.length) {
+        el.innerHTML = '<div class="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">No flights available for the selected route.</div>';
+        return;
+    }
+    el.innerHTML = list.map((flight, idx) => {
+        const airline = flight.airline || flight.owner?.name || 'Airline';
+        const price = flight.finalPrice || flight.price || flight.total_amount || flight.priceNgn || 0;
+        const departure = flight.departure || flight.departureTime || flight.itinerary?.[0]?.segments?.[0]?.departure?.datetime || '—';
+        const arrival = flight.arrival || flight.arrivalTime || flight.itinerary?.[0]?.segments?.slice(-1)[0]?.arrival?.datetime || '—';
+        return `
+            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" data-flight='${JSON.stringify(flight).replace(/'/g, "&apos;")}'>
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
+                    <div>
+                        <div class="text-lg font-bold text-slate-900">${airline}</div>
+                        <div class="text-xs text-slate-500">${flight.origin || document.getElementById('flightOrigin').value.toUpperCase()} → ${flight.destination || document.getElementById('flightDestination').value.toUpperCase()}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xl font-bold text-yareema-primary">₦${Number(price).toLocaleString()}</div>
+                        <div class="text-[11px] text-slate-500">${flight.cabin || document.getElementById('flightCabin').value}</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-slate-600">
+                    <div class="rounded-xl bg-slate-50 p-3"><span class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Departure</span><strong>${departure}</strong></div>
+                    <div class="rounded-xl bg-slate-50 p-3"><span class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Arrival</span><strong>${arrival}</strong></div>
+                    <div class="rounded-xl bg-slate-50 p-3"><span class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Provider</span><strong>${flight.provider || 'FX-Port'}</strong></div>
+                </div>
+                <div class="mt-4 flex justify-end">
+                    <button onclick="bookSelectedFlight(${idx})" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold">Book</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function searchFlights() {
+    const origin = document.getElementById('flightOrigin').value.trim().toUpperCase();
+    const destination = document.getElementById('flightDestination').value.trim().toUpperCase();
+    const departure = document.getElementById('flightDeparture').value;
+    const adults = Number(document.getElementById('flightPassengers').value || 1);
+    const cabin = document.getElementById('flightCabin').value || 'economy';
+
+    if (!origin || !destination || !departure) {
+        setFlightStatus('Please complete origin, destination and departure date.', 'error');
+        return;
+    }
+    if (origin === destination) {
+        setFlightStatus('Origin and destination cannot be the same.', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('flightSearchBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Searching...';
+    }
+    setFlightStatus('Searching available flights...', 'info');
+
+    try {
+        const token = localStorage.getItem('agentToken') || localStorage.getItem('user_token');
+        const response = await fetch(`${API_CONFIG.BASE_URL}/flights/search`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({
+                origin,
+                destination,
+                departure_date: departure,
+                cabin_class: cabin,
+                passengers: { adults }
+            })
+        });
+        const json = await response.json();
+        if (!response.ok) throw new Error(json.message || 'Flight search failed.');
+
+        const providers = json.data?.suppliers || [];
+        const offers = providers.flatMap((supplier) => (supplier.results?.offers || []).map((offer) => ({
+            ...offer,
+            provider: supplier.meta?.supplierId || supplier.searchId || 'FX-Port',
+            origin,
+            destination,
+            cabin,
+            departureDate: departure
+        })));
+
+        renderFlightCards(offers);
+        setFlightStatus(`Found ${offers.length} flight offer${offers.length === 1 ? '' : 's'} for ${origin} → ${destination}.`, 'success');
+    } catch (error) {
+        renderFlightCards([]);
+        setFlightStatus(error.message || 'Unable to find flights.', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Search Flights';
+        }
+    }
+}
+
+async function bookSelectedFlight(index) {
+    const blocks = document.querySelectorAll('#flightResults [data-flight]');
+    const block = blocks[index];
+    if (!block) return;
+    const flight = JSON.parse(block.getAttribute('data-flight'));
+    if (!flight || !flight.id) {
+        setFlightStatus('Flight details are missing.', 'error');
+        return;
+    }
+    setFlightStatus('Booking flight... please wait.', 'info');
+    try {
+        const token = localStorage.getItem('agentToken') || localStorage.getItem('user_token');
+        const response = await fetch(`${API_CONFIG.BASE_URL}/flights/book`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({
+                flightQuoteId: flight.id,
+                booking_type: 'issue',
+                transactionPin: '1234',
+                passengers: [{
+                    type: 'adult',
+                    gender: 'MALE',
+                    first_name: 'Agent',
+                    last_name: 'Booking',
+                    date_of_birth: '1990-01-15',
+                    identity_documents: [{
+                        type: 'passport',
+                        number: 'A12345678',
+                        issuing_country: 'NG',
+                        nationality: 'NG',
+                        expiry_date: '2035-12-31'
+                    }]
+                }],
+                contact_details: {
+                    email: 'agent@example.com',
+                    phone_number: '+2348012345678'
+                }
+            })
+        });
+        const json = await response.json();
+        if (!response.ok) throw new Error(json.message || 'Flight booking failed.');
+        setFlightStatus('Flight booked successfully.', 'success');
+    } catch (error) {
+        setFlightStatus(error.message || 'Booking could not be completed.', 'error');
+    }
+}
+
 lucide.createIcons();
 </script>
 </body>
