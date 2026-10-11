@@ -117,6 +117,18 @@ Object.assign(api.__proto__, {
     },
 
     // Flights extra
+    async searchDomesticFlights(data) {
+        return await this.request('/api/v1/flights/domestic/search', { method: 'POST', body: data });
+    },
+    async bookDomesticFlight(data) {
+        return await this.request('/api/v1/flights/domestic/book', { method: 'POST', body: data });
+    },
+    async searchInternationalFlights(data) {
+        return await this.request('/api/v1/flights/international/search', { method: 'POST', body: data });
+    },
+    async bookInternationalFlight(data) {
+        return await this.request('/api/v1/flights/international/book', { method: 'POST', body: data });
+    },
     async getDomesticAirlines() {
         return await this.request('/api/v1/flights/domestic/airlines');
     },
