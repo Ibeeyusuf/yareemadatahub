@@ -1415,29 +1415,26 @@ async function submitKirani() {
 // ============================================================
 // 7. FLIGHTS
 // ============================================================
-const FLT_DOM_AIRPORTS = [
-    { iata: 'LOS', name: 'Lagos (Murtala Muhammed)' },
-    { iata: 'ABV', name: 'Abuja (Nnamdi Azikiwe)' },
-    { iata: 'KAN', name: 'Kano (Mallam Aminu)' },
-    { iata: 'PHC', name: 'Port Harcourt' },
-    { iata: 'ENE', name: 'Enugu (Akanu Ibiam)' },
-    { iata: 'QOW', name: 'Owerri (Sam Mbakwe)' },
-    { iata: 'ILR', name: 'Ilorin' },
-    { iata: 'BNI', name: 'Benin City' },
-    { iata: 'YOL', name: 'Yola' },
-    { iata: 'SKO', name: 'Sokoto' },
-    { iata: 'MIU', name: 'Maiduguri' },
-];
-
-let fltMode          = 'domestic';
 let fltSearchResults = [];
 let fltSelectedOffer = null;
-let fltCurrentStep   = 1;
+let fltOfferSearchId = '';
+let fltOfferId = '';
+let fltAirportSearchState = {
+    origin: { selected: null, requestId: 0, timer: null },
+    destination: { selected: null, requestId: 0, timer: null }
+};
 
 function showFlightsModal() {
-    fltMode = 'domestic'; fltSearchResults = []; fltSelectedOffer = null; fltCurrentStep = 1;
-    const today   = new Date().toISOString().split('T')[0];
-    const domOpts = FLT_DOM_AIRPORTS.map(a => `<option value="${a.iata}">${a.iata} – ${a.name}</option>`).join('');
+    fltSearchResults = [];
+    fltSelectedOffer = null;
+    fltOfferSearchId = '';
+    fltOfferId = '';
+    fltAirportSearchState = {
+        origin: { selected: null, requestId: 0, timer: null },
+        destination: { selected: null, requestId: 0, timer: null }
+    };
+
+    const today = new Date().toISOString().split('T')[0];
     showModal('Flight Tickets', `
         <div style="display:flex;gap:0;background:#f1f5f9;border-radius:10px;padding:4px;margin-bottom:12px;">
             <button type="button" id="fltMainTabSearch" onclick="fltMainTab('search')"
@@ -1446,105 +1443,118 @@ function showFlightsModal() {
                 style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:transparent;color:#64748b;transition:all .2s;">📋 My Bookings</button>
         </div>
 
-        <!-- SEARCH + BOOK FLOW -->
         <div id="fltSearchSection">
-            <div id="fltStep1">
-                <div style="display:flex;gap:0;background:#f1f5f9;border-radius:10px;padding:4px;margin-bottom:16px;">
-                    <button type="button" id="fltTabDom" onclick="fltSwitchMode('domestic')"
-                        style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:#0284c7;color:#fff;transition:all .2s;">🇳🇬 Domestic</button>
-                    <button type="button" id="fltTabIntl" onclick="fltSwitchMode('international')"
-                        style="flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:transparent;color:#64748b;transition:all .2s;">🌍 International</button>
+            <div class="form-group">
+                <label>From</label>
+                <div style="position:relative;">
+                    <input id="fltOrigin" class="form-input" placeholder="Search airport or IATA code" autocomplete="off" spellcheck="false" autocapitalize="characters" oninput="fltSearchAirports(this, 'origin')" aria-autocomplete="list" aria-controls="fltOriginSuggestions">
+                    <div id="fltOriginSuggestions" role="listbox" style="display:none;position:absolute;z-index:20;top:calc(100% + 4px);left:0;right:0;max-height:220px;overflow-y:auto;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 10px 24px rgba(15,23,42,.12);"></div>
                 </div>
-                <div id="fltDomFields">
-                    <div class="form-group"><label>From</label>
-                        <select id="fltDomFrom" class="form-input"><option value="">— Select departure —</option>${domOpts}</select></div>
-                    <div class="form-group"><label>To</label>
-                        <select id="fltDomTo" class="form-input"><option value="">— Select destination —</option>${domOpts}</select></div>
-                </div>
-                <div id="fltIntlFields" style="display:none;">
-                    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:#1d4ed8;">
-                        Enter IATA airport codes (e.g. LOS, LHR, JFK, DXB)
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                        <div class="form-group" style="margin:0;"><label>From (IATA)</label>
-                            <input type="text" id="fltIntlFrom" class="form-input" placeholder="e.g. LOS" maxlength="3" style="text-transform:uppercase;"></div>
-                        <div class="form-group" style="margin:0;"><label>To (IATA)</label>
-                            <input type="text" id="fltIntlTo" class="form-input" placeholder="e.g. LHR" maxlength="3" style="text-transform:uppercase;"></div>
-                    </div>
-                </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
-                    <div class="form-group" style="margin:0;"><label>Departure Date</label>
-                        <input type="date" id="fltDate" class="form-input" min="${today}"></div>
-                    <div class="form-group" style="margin:0;"><label>Adults</label>
-                        <select id="fltAdults" class="form-input">
-                            ${[1,2,3,4,5,6].map(n=>`<option value="${n}">${n} Adult${n>1?'s':''}</option>`).join('')}
-                        </select></div>
-                </div>
-                <div class="form-group" style="margin-top:12px;"><label>Cabin Class</label>
-                    <select id="fltCabin" class="form-input">
-                        <option value="economy">Economy</option>
-                        <option value="premium_economy">Premium Economy</option>
-                        <option value="business">Business</option>
-                        <option value="first">First Class</option>
-                    </select></div>
             </div>
-            <div id="fltStep2" style="display:none;">
-                <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;cursor:pointer;" onclick="fltBackToSearch()">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-                    <span style="font-size:13px;color:#64748b;">New search</span>
+            <div class="form-group">
+                <label>To</label>
+                <div style="position:relative;">
+                    <input id="fltDestination" class="form-input" placeholder="Search airport or IATA code" autocomplete="off" spellcheck="false" autocapitalize="characters" oninput="fltSearchAirports(this, 'destination')" aria-autocomplete="list" aria-controls="fltDestinationSuggestions">
+                    <div id="fltDestinationSuggestions" role="listbox" style="display:none;position:absolute;z-index:20;top:calc(100% + 4px);left:0;right:0;max-height:220px;overflow-y:auto;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 10px 24px rgba(15,23,42,.12);"></div>
                 </div>
-                <div id="fltResultsBox"></div>
-                <div id="fltPassengerSection" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid #f1f5f9;">
-                    <div id="fltBookingSummary" style="padding:10px 14px;background:#f0f9ff;border-radius:8px;margin-bottom:14px;font-size:13px;"></div>
-                    <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:10px;">Passenger Details</div>
-                    <div id="fltDomPax">
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">First Name</label><input type="text" id="paxFirst" class="form-input" placeholder="First name"></div>
-                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Last Name</label><input type="text" id="paxLast" class="form-input" placeholder="Last name"></div>
-                        </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
-                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Date of Birth</label><input type="date" id="paxDob" class="form-input"></div>
-                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Gender</label><select id="paxGender" class="form-input"><option value="male">Male</option><option value="female">Female</option></select></div>
-                        </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
-                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Email</label><input type="email" id="paxEmail" class="form-input" placeholder="email@example.com"></div>
-                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Phone</label><input type="tel" id="paxPhone" class="form-input" placeholder="+2348012345678"></div>
-                        </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
-                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Document Type</label>
-                                <select id="paxDocType" class="form-input"><option value="passport">Passport</option><option value="nin">NIN</option><option value="drivers_license">Driver's License</option></select></div>
-                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Document No.</label><input type="text" id="paxDocNum" class="form-input" placeholder="Document number"></div>
-                        </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="form-group" style="margin:0;">
+                    <label>Departure Date</label>
+                    <input type="date" id="fltDate" class="form-input" min="${today}">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label>Adults</label>
+                    <select id="fltAdults" class="form-input">
+                        ${[1,2,3,4,5,6].map(n => `<option value="${n}">${n} Adult${n > 1 ? 's' : ''}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Cabin Class</label>
+                <select id="fltCabin" class="form-input">
+                    <option value="economy">Economy</option>
+                    <option value="premium_economy">Premium Economy</option>
+                    <option value="business">Business</option>
+                    <option value="first">First Class</option>
+                </select>
+            </div>
+            <div id="fltResultsBox" style="margin-top:14px;"></div>
+            <div id="fltPassengerSection" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid #f1f5f9;">
+                <div id="fltBookingSummary" style="padding:10px 14px;background:#f0f9ff;border-radius:8px;margin-bottom:12px;font-size:13px;"></div>
+                <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:10px;">Passenger Details</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:11px;">First Name</label>
+                        <input type="text" id="paxFirst" class="form-input" placeholder="First name">
                     </div>
-                    <div id="fltIntlPax" style="display:none;">
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Given Name</label><input type="text" id="paxGiven" class="form-input" placeholder="Given name"></div>
-                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Family Name</label><input type="text" id="paxFamily" class="form-input" placeholder="Family name"></div>
-                        </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px;">
-                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Title</label>
-                                <select id="paxTitle" class="form-input"><option value="mr">Mr</option><option value="ms">Ms</option><option value="mrs">Mrs</option><option value="dr">Dr</option></select></div>
-                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Gender</label>
-                                <select id="paxGenderIntl" class="form-input"><option value="male">Male</option><option value="female">Female</option></select></div>
-                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Date of Birth</label><input type="date" id="paxDobIntl" class="form-input"></div>
-                        </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
-                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Email</label><input type="email" id="paxEmailIntl" class="form-input" placeholder="email@example.com"></div>
-                            <div class="form-group" style="margin:0;"><label style="font-size:11px;">Phone</label><input type="tel" id="paxPhoneIntl" class="form-input" placeholder="+2348012345678"></div>
-                        </div>
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:11px;">Last Name</label>
+                        <input type="text" id="paxLast" class="form-input" placeholder="Last name">
                     </div>
-                    <div class="form-group" style="margin-top:12px;"><label>Transaction PIN</label>
-                        <input type="password" id="fltPin" class="form-input" placeholder="Enter 4-digit PIN" maxlength="4" inputmode="numeric"></div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:11px;">Date of Birth</label>
+                        <input type="date" id="paxDob" class="form-input">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:11px;">Gender</label>
+                        <select id="paxGender" class="form-input">
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:11px;">Email</label>
+                        <input type="email" id="paxEmail" class="form-input" placeholder="email@example.com">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:11px;">Phone</label>
+                        <input type="tel" id="paxPhone" class="form-input" placeholder="+2348012345678">
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:11px;">Passport No.</label>
+                        <input type="text" id="paxPassportNumber" class="form-input" placeholder="A12345678">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:11px;">Expiry</label>
+                        <input type="date" id="paxPassportExpiry" class="form-input">
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:11px;">Issuing Country</label>
+                        <input type="text" id="paxIssuingCountry" class="form-input" placeholder="NG" maxlength="2" style="text-transform:uppercase;">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:11px;">Nationality</label>
+                        <input type="text" id="paxNationality" class="form-input" placeholder="NG" maxlength="2" style="text-transform:uppercase;">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:12px;">
+                    <label>Booking Type</label>
+                    <select id="fltBookingChoice" class="form-input">
+                        <option value="issue">Book now</option>
+                        <option value="hold">Hold booking</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-top:12px;">
+                    <label>Transaction PIN</label>
+                    <input type="password" id="fltPin" class="form-input" placeholder="Enter 4-digit PIN" maxlength="4" inputmode="numeric">
                 </div>
             </div>
         </div>
 
-        <!-- MY BOOKINGS -->
         <div id="fltBookingsSection" style="display:none;">
             <div id="fltBookingsList" style="display:flex;flex-direction:column;gap:8px;">
                 <div style="text-align:center;padding:24px 0;color:#94a3b8;font-size:13px;">
                     <div style="width:28px;height:28px;border:3px solid #e2e8f0;border-top-color:#0284c7;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 10px;"></div>
-                    Loading bookings…
+                    Loading bookings�
                 </div>
             </div>
         </div>
@@ -1555,166 +1565,126 @@ function showFlightsModal() {
 }
 
 function fltMainTab(tab) {
-    const ACTIVE   = 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:#0284c7;color:#fff;transition:all .2s;';
+    const ACTIVE = 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:#0284c7;color:#fff;transition:all .2s;';
     const INACTIVE = 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:transparent;color:#64748b;transition:all .2s;';
-    document.getElementById('fltMainTabSearch').style.cssText   = tab === 'search'   ? ACTIVE : INACTIVE;
-    document.getElementById('fltMainTabBookings').style.cssText = tab === 'bookings' ? ACTIVE : INACTIVE;
-    document.getElementById('fltSearchSection').style.display   = tab === 'search'   ? '' : 'none';
-    document.getElementById('fltBookingsSection').style.display = tab === 'bookings' ? '' : 'none';
+    const searchTab = document.getElementById('fltMainTabSearch');
+    const bookingsTab = document.getElementById('fltMainTabBookings');
+    const searchSection = document.getElementById('fltSearchSection');
+    const bookingsSection = document.getElementById('fltBookingsSection');
     const btn = document.getElementById('fltPrimaryBtn');
+
+    if (searchTab) searchTab.style.cssText = tab === 'search' ? ACTIVE : INACTIVE;
+    if (bookingsTab) bookingsTab.style.cssText = tab === 'bookings' ? ACTIVE : INACTIVE;
+    if (searchSection) searchSection.style.display = tab === 'search' ? '' : 'none';
+    if (bookingsSection) bookingsSection.style.display = tab === 'bookings' ? '' : 'none';
     if (btn) btn.style.display = tab === 'search' ? '' : 'none';
+
     if (tab === 'bookings') _loadFltBookings();
 }
 
-async function _loadFltBookings() {
-    const container = document.getElementById('fltBookingsList');
-    if (!container) return;
-    try {
-        const [domRes, intlRes] = await Promise.allSettled([
-            api.getDomesticBookings(),
-            api.getIntlBookings(20, 0)
-        ]);
-        const domBookings  = domRes.status  === 'fulfilled' ? (domRes.value.data?.bookings  || domRes.value.data  || []) : [];
-        const intlBookings = intlRes.status === 'fulfilled' ? (intlRes.value.data?.bookings || intlRes.value.data || []) : [];
-        const all = [
-            ...domBookings.map(b => ({ ...b, _type: 'domestic' })),
-            ...intlBookings.map(b => ({ ...b, _type: 'international' }))
-        ];
-        if (!all.length) { container.innerHTML = '<div style="text-align:center;padding:20px 0;color:#94a3b8;font-size:13px;">No bookings found.</div>'; return; }
-        container.innerHTML = all.map(b => {
-            const status = (b.status || b.bookingStatus || '').toLowerCase();
-            const statusColor = status === 'confirmed' || status === 'success' ? '#16a34a' : status === 'cancelled' ? '#dc2626' : '#f59e0b';
-            const route = b.origin && b.destination ? `${b.origin} → ${b.destination}` : (b.flightNumber || b.orderId || '—');
-            const date  = b.departureDate || b.departing_at || b.createdAt || '';
-            return `<div style="padding:12px 14px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <div>
-                        <div style="font-size:13px;font-weight:600;color:#0f172a;">${route}</div>
-                        <div style="font-size:11px;color:#94a3b8;margin-top:2px;">${b._type} · ${date ? new Date(date).toLocaleDateString() : ''}</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <div style="font-size:13px;font-weight:700;color:#0f172a;">₦${Number(b.amountNgn || b.totalAmount || b.amount || 0).toLocaleString()}</div>
-                        <div style="font-size:11px;font-weight:600;color:${statusColor};margin-top:2px;">${status || 'pending'}</div>
-                    </div>
-                </div>
-            </div>`;
-        }).join('');
-    } catch (e) {
-        container.innerHTML = `<div style="text-align:center;padding:16px;color:#dc2626;font-size:13px;">${e.message || 'Failed to load bookings.'}</div>`;
-    }
-}
-
-function fltSwitchMode(mode) {
-    fltMode = mode;
-    const ACTIVE   = 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:#0284c7;color:#fff;transition:all .2s;';
-    const INACTIVE = 'flex:1;padding:9px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:transparent;color:#64748b;transition:all .2s;';
-    document.getElementById('fltTabDom').style.cssText  = mode === 'domestic'      ? ACTIVE : INACTIVE;
-    document.getElementById('fltTabIntl').style.cssText = mode === 'international' ? ACTIVE : INACTIVE;
-    document.getElementById('fltDomFields').style.display  = mode === 'domestic'      ? '' : 'none';
-    document.getElementById('fltIntlFields').style.display = mode === 'international' ? '' : 'none';
-}
-
-function fltHandlePrimary() {
-    if (fltCurrentStep === 1) fltDoSearch(); else fltDoBook();
-}
-
-function fltBackToSearch() {
-    fltCurrentStep = 1; fltSelectedOffer = null;
-    document.getElementById('fltStep1').style.display = '';
-    document.getElementById('fltStep2').style.display = 'none';
-    document.getElementById('fltPassengerSection').style.display = 'none';
-    const btn = document.getElementById('fltPrimaryBtn');
-    if (btn) { btn.textContent = 'Search Flights'; btn.disabled = false; }
-}
-
 async function fltDoSearch() {
-    let origin, destination;
-    if (fltMode === 'domestic') {
-        origin      = document.getElementById('fltDomFrom')?.value;
-        destination = document.getElementById('fltDomTo')?.value;
-        if (!origin)      { showInlineError('Please select a departure airport'); return; }
-        if (!destination) { showInlineError('Please select a destination airport'); return; }
-    } else {
-        origin      = (document.getElementById('fltIntlFrom')?.value || '').trim().toUpperCase();
-        destination = (document.getElementById('fltIntlTo')?.value   || '').trim().toUpperCase();
-        if (!origin      || origin.length      !== 3) { showInlineError('Please enter a valid 3-letter departure code'); return; }
-        if (!destination || destination.length !== 3) { showInlineError('Please enter a valid 3-letter destination code'); return; }
-    }
-    if (origin === destination) { showInlineError('Departure and destination cannot be the same'); return; }
+    const origin = fltAirportSearchState.origin.selected?.code || '';
+    const destination = fltAirportSearchState.destination.selected?.code || '';
     const departureDate = document.getElementById('fltDate')?.value;
-    if (!departureDate) { showInlineError('Please select a departure date'); return; }
-    const adults     = parseInt(document.getElementById('fltAdults')?.value) || 1;
+    const adults = parseInt(document.getElementById('fltAdults')?.value, 10) || 1;
     const cabinClass = document.getElementById('fltCabin')?.value || 'economy';
 
-    document.getElementById('fltStep1').style.display = 'none';
-    document.getElementById('fltStep2').style.display = '';
-    document.getElementById('fltPassengerSection').style.display = 'none';
-    document.getElementById('fltResultsBox').innerHTML = `<div style="text-align:center;padding:32px 0;color:#94a3b8;font-size:13px;">
-        <div style="width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:#0284c7;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px;"></div>
-        Searching ${origin} → ${destination}…
-    </div>`;
-    const btn = document.getElementById('fltPrimaryBtn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Searching…'; }
-    try {
-        const payload = { origin, destination, departureDate, returnDate: null, adults, children: 0, infants: 0, cabinClass };
-        const res = fltMode === 'domestic'
-            ? await api.searchDomesticFlights(payload)
-            : await api.searchInternationalFlights(payload);
-        fltSearchResults = res.data?.offers || res.data?.flights || res.offers || res.flights || (Array.isArray(res.data) ? res.data : []);
-        if (!Array.isArray(fltSearchResults)) fltSearchResults = [];
-        fltCurrentStep = 2;
-        fltRenderResults(origin, destination);
-        if (btn) { btn.textContent = 'Confirm Booking'; btn.disabled = true; }
-    } catch (e) {
-        document.getElementById('fltResultsBox').innerHTML = `<div style="text-align:center;padding:24px 0;">
-            <p style="color:#dc2626;font-size:13px;margin-bottom:12px;">${e.message || 'Search failed. Please try again.'}</p>
-            <button onclick="fltBackToSearch()" style="padding:8px 20px;background:#0284c7;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;">← Back to Search</button>
+    if (!origin) { showInlineError('Please select a departure airport from the suggestions'); return; }
+    if (!destination) { showInlineError('Please select a destination airport from the suggestions'); return; }
+    if (origin === destination) { showInlineError('Origin and destination must be different'); return; }
+    if (!departureDate) { showInlineError('Please select a departure date'); return; }
+
+    const box = document.getElementById('fltResultsBox');
+    if (box) {
+        box.innerHTML = `<div style="text-align:center;padding:32px 0;color:#94a3b8;font-size:13px;">
+            <div style="width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:#0284c7;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px;"></div>
+            Searching flights...
         </div>`;
-        if (btn) { btn.textContent = 'Confirm Booking'; btn.disabled = true; }
+    }
+
+    const btn = document.getElementById('fltPrimaryBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Searching...'; }
+
+    try {
+        const payload = {
+            origin,
+            destination,
+            departure_date: departureDate,
+            cabin_class: cabinClass,
+            passengers: { adults }
+        };
+
+        const res = await api.searchFlights(payload);
+        const suppliers = Array.isArray(res?.data?.suppliers) ? res.data.suppliers : [];
+        fltSearchResults = suppliers.flatMap(supplier => {
+            const offers = Array.isArray(supplier?.results?.offers) ? supplier.results.offers : [];
+            return offers.map(offer => ({
+                ...offer,
+                searchId: supplier.searchId,
+                supportHold: Boolean(supplier.supportHold || offer.supportHold)
+            }));
+        });
+
+        if (!fltSearchResults.length) {
+            if (box) {
+                box.innerHTML = `<div style="text-align:center;padding:30px 0;color:#64748b;font-size:13px;">No flights found for ${origin} to ${destination}. Try another date or route.</div>`;
+            }
+            if (btn) { btn.disabled = false; btn.textContent = 'Search Flights'; }
+            return;
+        }
+
+        fltRenderResults(origin, destination);
+        if (btn) { btn.disabled = false; btn.textContent = 'Book Flight'; }
+    } catch (error) {
+        if (box) {
+            box.innerHTML = `<div style="text-align:center;padding:24px 0;">
+                <p style="color:#dc2626;font-size:13px;margin-bottom:12px;">${error.message || 'Search failed. Please try again.'}</p>
+                <button onclick="showFlightsModal()" style="padding:8px 20px;background:#0284c7;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;">Try again</button>
+            </div>`;
+        }
+        if (btn) { btn.disabled = false; btn.textContent = 'Search Flights'; }
     }
 }
 
 function fltRenderResults(origin, destination) {
     const box = document.getElementById('fltResultsBox');
     if (!box) return;
-    if (!fltSearchResults.length) {
-        box.innerHTML = `<div style="text-align:center;padding:32px 0;font-size:13px;color:#64748b;">
-            No flights found for ${origin} → ${destination}.<br>
-            <span style="cursor:pointer;color:#0284c7;" onclick="fltBackToSearch()">Try different dates.</span>
-        </div>`;
-        return;
-    }
-    box.innerHTML = `<div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:10px;">
-        ${fltSearchResults.length} flight${fltSearchResults.length !== 1 ? 's' : ''} · ${origin} → ${destination}
-    </div>` + fltSearchResults.slice(0, 10).map((f, i) => {
-        const airline  = f.owner?.name || f.airline || f.airlineName || 'Airline';
-        const price    = f.total_amount || f.priceNgn || f.price || f.amount || 0;
-        const segments = f.slices?.[0]?.segments || [];
-        const seg0 = segments[0], segN = segments[segments.length - 1];
-        const d0 = seg0?.departing_at || f.departureTime || '';
-        const dN = segN?.arriving_at  || f.arrivalTime   || '';
-        const dTime = d0 ? new Date(d0).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
-        const aTime = dN ? new Date(dN).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
-        const stops = Math.max(0, segments.length - 1);
-        return `<div onclick="fltSelectOffer(${i}, this)" data-fltidx="${i}"
-            style="padding:14px;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;background:#fff;margin-bottom:8px;transition:all .2s;">
+
+    box.innerHTML = `<div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:10px;">${fltSearchResults.length} flight${fltSearchResults.length !== 1 ? 's' : ''} for ${origin} to ${destination}</div>` + fltSearchResults.slice(0, 10).map((offer, index) => {
+        const itinerary = Array.isArray(offer.itinerary) ? offer.itinerary : [];
+        const firstLeg = itinerary[0] || {};
+        const lastLeg = itinerary[itinerary.length - 1] || {};
+        const firstSegment = (firstLeg.segments || [])[0] || {};
+        const lastSegment = (lastLeg.segments || []).slice(-1)[0] || {};
+        const airline = firstSegment.flight?.carrierName || firstSegment.flight?.carrierCode || 'Airline';
+        const departure = firstSegment.departure?.datetime || '';
+        const arrival = lastSegment.arrival?.datetime || '';
+        const price = Number(offer.pricing?.finalPrice || 0);
+        const departureTime = departure ? new Date(departure).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '�';
+        const arrivalTime = arrival ? new Date(arrival).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '�';
+        const stops = Math.max(0, (itinerary.reduce((count, leg) => count + (Array.isArray(leg.segments) ? leg.segments.length : 0), 0) - 1));
+
+        return `<div onclick="fltSelectOffer(${index}, this)" data-fltidx="${index}" style="padding:14px;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;background:#fff;margin-bottom:8px;transition:all .2s;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-                <span style="font-size:13px;font-weight:700;color:#0f172a;">${airline}</span>
-                <span style="font-size:15px;font-weight:700;color:#0284c7;">₦${Number(price).toLocaleString()}</span>
+                <div>
+                    <span style="font-size:13px;font-weight:700;color:#0f172a;display:block;">${airline}</span>
+                    ${offer.supportHold ? '<span style="font-size:10px;border-radius:9999px;padding:3px 6px;background:#dcfce7;color:#166534;margin-top:4px;display:inline-block;">Hold available</span>' : ''}
+                </div>
+                <span style="font-size:15px;font-weight:700;color:#0284c7;">?${price.toLocaleString()}</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
                 <div style="text-align:center;min-width:48px;">
-                    <div style="font-size:14px;font-weight:700;">${dTime}</div>
+                    <div style="font-size:14px;font-weight:700;">${departureTime}</div>
                     <div style="font-size:10px;color:#94a3b8;">${origin}</div>
                 </div>
                 <div style="flex:1;text-align:center;">
                     <div style="border-top:1.5px solid #e2e8f0;position:relative;">
-                        <span style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-size:12px;">✈️</span>
+                        <span style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-size:12px;">??</span>
                     </div>
                     ${stops > 0 ? `<div style="font-size:10px;color:#f59e0b;margin-top:4px;">${stops} stop${stops > 1 ? 's' : ''}</div>` : ''}
                 </div>
                 <div style="text-align:center;min-width:48px;">
-                    <div style="font-size:14px;font-weight:700;">${aTime}</div>
+                    <div style="font-size:14px;font-weight:700;">${arrivalTime}</div>
                     <div style="font-size:10px;color:#94a3b8;">${destination}</div>
                 </div>
             </div>
@@ -1722,72 +1692,232 @@ function fltRenderResults(origin, destination) {
     }).join('');
 }
 
-function fltSelectOffer(i, el) {
-    fltSelectedOffer = fltSearchResults[i];
-    document.querySelectorAll('[data-fltidx]').forEach(d => { d.style.borderColor = '#e2e8f0'; d.style.background = '#fff'; });
-    el.style.borderColor = '#0284c7'; el.style.background = '#f0f9ff';
-    const price   = fltSelectedOffer.total_amount || fltSelectedOffer.priceNgn || fltSelectedOffer.price || 0;
-    const airline = fltSelectedOffer.owner?.name  || fltSelectedOffer.airline  || 'Selected Flight';
+function fltSelectOffer(index, el) {
+    fltSelectedOffer = fltSearchResults[index];
+    fltOfferSearchId = fltSelectedOffer?.searchId || '';
+    fltOfferId = fltSelectedOffer?.id || '';
+
+    document.querySelectorAll('[data-fltidx]').forEach(d => {
+        d.style.borderColor = '#e2e8f0';
+        d.style.background = '#fff';
+    });
+    if (el) {
+        el.style.borderColor = '#0284c7';
+        el.style.background = '#f0f9ff';
+    }
+
+    const price = Number(fltSelectedOffer?.pricing?.finalPrice || 0);
+    const airline = fltSelectedOffer?.itinerary?.[0]?.segments?.[0]?.flight?.carrierName || 'Selected Flight';
     const summary = document.getElementById('fltBookingSummary');
-    if (summary) summary.innerHTML = `<strong>${airline}</strong><span style="float:right;font-weight:700;color:#0284c7;">₦${Number(price).toLocaleString()}</span>`;
-    document.getElementById('fltDomPax').style.display  = fltMode === 'domestic'      ? '' : 'none';
-    document.getElementById('fltIntlPax').style.display = fltMode === 'international' ? '' : 'none';
-    document.getElementById('fltPassengerSection').style.display = '';
+    if (summary) summary.innerHTML = `<strong>${airline}</strong><span style="float:right;font-weight:700;color:#0284c7;">?${price.toLocaleString()}</span>`;
+
+    const passengerSection = document.getElementById('fltPassengerSection');
+    if (passengerSection) passengerSection.style.display = '';
+
+    const bookingChoice = document.getElementById('fltBookingChoice');
+    if (bookingChoice && !fltSelectedOffer?.supportHold) {
+        bookingChoice.value = 'issue';
+    }
+
     const btn = document.getElementById('fltPrimaryBtn');
-    if (btn) { btn.disabled = false; btn.textContent = 'Confirm Booking'; }
+    if (btn) {
+        btn.disabled = false;
+        btn.textContent = fltSelectedOffer?.supportHold ? 'Hold / Book' : 'Book Flight';
+    }
+}
+
+function fltHandlePrimary() {
+    if (!fltSelectedOffer) {
+        fltDoSearch();
+        return;
+    }
+    const btn = document.getElementById('fltPrimaryBtn');
+    if (btn) { btn.textContent = 'Booking�'; btn.disabled = true; }
+    fltDoBook();
 }
 
 async function fltDoBook() {
     if (!fltSelectedOffer) { showInlineError('Please select a flight first'); return; }
+    if (!fltOfferSearchId || !fltOfferId) { showInlineError('Flight offer is incomplete. Please search again.'); return; }
+
     const pin = document.getElementById('fltPin')?.value.trim();
     if (!pin || !/^\d{4}$/.test(pin)) { showInlineError('Please enter your 4-digit transaction PIN'); return; }
-    const price   = fltSelectedOffer.total_amount || fltSelectedOffer.priceNgn || fltSelectedOffer.price || 0;
-    const offerId = fltSelectedOffer.id || fltSelectedOffer.offerId || fltSelectedOffer._id;
-    setSubmitLoading(true, 'Booking…');
+
+    const bookingChoice = document.getElementById('fltBookingChoice')?.value || 'issue';
+    if (bookingChoice === 'hold' && !fltSelectedOffer.supportHold) {
+        showInlineError('This flight does not support holding. Please book now instead.');
+        return;
+    }
+
+    const firstName = document.getElementById('paxFirst')?.value.trim();
+    const lastName = document.getElementById('paxLast')?.value.trim();
+    const dob = document.getElementById('paxDob')?.value;
+    const email = document.getElementById('paxEmail')?.value.trim();
+    const phone = document.getElementById('paxPhone')?.value.trim();
+    const passportNumber = document.getElementById('paxPassportNumber')?.value.trim();
+    const issuingCountry = (document.getElementById('paxIssuingCountry')?.value || '').trim().toUpperCase();
+    const nationality = (document.getElementById('paxNationality')?.value || '').trim().toUpperCase();
+    const passportExpiry = document.getElementById('paxPassportExpiry')?.value;
+
+    if (!firstName || !lastName) { showInlineError('Please enter passenger name'); return; }
+    if (!dob) { showInlineError('Please enter passenger date of birth'); return; }
+    if (!email || !email.includes('@')) { showInlineError('Please enter a valid email'); return; }
+    if (!phone) { showInlineError('Please enter contact phone number'); return; }
+    if (!passportNumber) { showInlineError('Please enter passport number'); return; }
+    if (!issuingCountry || issuingCountry.length !== 2) { showInlineError('Please enter issuing country as a 2-letter code'); return; }
+    if (!nationality || nationality.length !== 2) { showInlineError('Please enter nationality as a 2-letter code'); return; }
+    if (!passportExpiry) { showInlineError('Please enter passport expiry date'); return; }
+
+    setSubmitLoading(true, bookingChoice === 'hold' ? 'Holding booking�' : 'Booking�');
+
     try {
-        if (fltMode === 'domestic') {
-            const firstName = document.getElementById('paxFirst')?.value.trim();
-            const lastName  = document.getElementById('paxLast')?.value.trim();
-            const dob       = document.getElementById('paxDob')?.value;
-            const gender    = document.getElementById('paxGender')?.value;
-            const email     = document.getElementById('paxEmail')?.value.trim();
-            const phone     = document.getElementById('paxPhone')?.value.trim();
-            const docType   = document.getElementById('paxDocType')?.value;
-            const docNum    = document.getElementById('paxDocNum')?.value.trim();
-            if (!firstName || !lastName) { setSubmitLoading(false,'','Confirm Booking'); showInlineError('Please enter passenger name'); return; }
-            if (!dob)                    { setSubmitLoading(false,'','Confirm Booking'); showInlineError('Please enter date of birth'); return; }
-            if (!email || !email.includes('@')) { setSubmitLoading(false,'','Confirm Booking'); showInlineError('Please enter a valid email'); return; }
-            if (!phone)  { setSubmitLoading(false,'','Confirm Booking'); showInlineError('Please enter a phone number'); return; }
-            if (!docNum) { setSubmitLoading(false,'','Confirm Booking'); showInlineError('Please enter document number'); return; }
-            await api.bookDomesticFlight({
-                offerId, amountNgn: Number(price), contactEmail: email, contactPhone: phone, transactionPin: pin,
-                passengers: [{ firstName, lastName, dateOfBirth: dob, gender,
-                    title: gender === 'female' ? 'Ms' : 'Mr', email, phone, documentType: docType, documentNumber: docNum }]
-            });
-        } else {
-            const givenName  = document.getElementById('paxGiven')?.value.trim();
-            const familyName = document.getElementById('paxFamily')?.value.trim();
-            const title      = document.getElementById('paxTitle')?.value;
-            const gender     = document.getElementById('paxGenderIntl')?.value;
-            const dob        = document.getElementById('paxDobIntl')?.value;
-            const email      = document.getElementById('paxEmailIntl')?.value.trim();
-            const phone      = document.getElementById('paxPhoneIntl')?.value.trim();
-            const passengerId = fltSelectedOffer.passengers?.[0]?.id;
-            if (!givenName || !familyName) { setSubmitLoading(false,'','Confirm Booking'); showInlineError('Please enter passenger name'); return; }
-            if (!dob)  { setSubmitLoading(false,'','Confirm Booking'); showInlineError('Please enter date of birth'); return; }
-            if (!email || !email.includes('@')) { setSubmitLoading(false,'','Confirm Booking'); showInlineError('Please enter a valid email'); return; }
-            if (!phone) { setSubmitLoading(false,'','Confirm Booking'); showInlineError('Please enter phone number'); return; }
-            await api.bookInternationalFlight({
-                offerId, amountNgn: Number(price), transactionPin: pin,
-                passengers: [{ id: passengerId, given_name: givenName, family_name: familyName,
-                    born_on: dob, gender, title, email, phone_number: phone }],
-                services: []
-            });
-        }
+        const quoteResponse = await api.priceFlightQuote({ search_id: fltOfferSearchId, offer_id: fltOfferId });
+        const quote = quoteResponse?.data || quoteResponse;
+        const walletPrice = Number(quote?.walletPrice?.amount ?? quote?.walletPrice?.value ?? 0);
+        const flightQuoteId = quote?.flightQuoteId;
+        if (!flightQuoteId) throw new Error('The quote could not be created for this flight.');
+
+        const payload = {
+            flightQuoteId,
+            booking_type: bookingChoice,
+            transactionPin: pin,
+            send_email: true,
+            passengers: [{
+                type: 'adult',
+                gender: (document.getElementById('paxGender')?.value || 'male').toUpperCase() === 'FEMALE' ? 'FEMALE' : 'MALE',
+                first_name: firstName,
+                last_name: lastName,
+                date_of_birth: dob,
+                identity_documents: [{
+                    type: 'passport',
+                    number: passportNumber,
+                    issuing_country: issuingCountry,
+                    nationality,
+                    expiry_date: passportExpiry
+                }]
+            }],
+            contact_details: {
+                email,
+                phone_number: phone
+            }
+        };
+
+        const idempotencyKey = `flight_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+        await api.bookFlight(payload, idempotencyKey);
+        const amountText = walletPrice ? `?${walletPrice.toLocaleString()}` : 'wallet price';
         closeModal();
-        setTimeout(() => showSuccess('Flight booked successfully! Your e-ticket will be sent to your email.'), 300);
-    } catch (e) {
-        setSubmitLoading(false, '', 'Confirm Booking');
-        showInlineError(e.message || 'Booking failed. Please try again.');
+        setTimeout(() => showSuccess(bookingChoice === 'hold'
+            ? `Flight held successfully. Your wallet will be charged only when you pay. Estimated amount: ${amountText}`
+            : `Flight booked successfully. Wallet charged: ${amountText}`), 300);
+    } catch (error) {
+        setSubmitLoading(false, '', bookingChoice === 'hold' ? 'Hold Booking' : 'Book Flight');
+        showInlineError(error.message || 'Flight booking failed. Please try again.');
+    }
+}
+
+function fltRenderAirportMessage(list, message, color = '#64748b') {
+    list.replaceChildren();
+    const item = document.createElement('div');
+    item.textContent = message;
+    item.style.cssText = `padding:11px 12px;color:${color};font-size:12px;`;
+    list.appendChild(item);
+    list.style.display = 'block';
+}
+
+async function fltSearchAirports(inputEl, field) {
+    const state = fltAirportSearchState[field];
+    const list = document.getElementById(field === 'origin' ? 'fltOriginSuggestions' : 'fltDestinationSuggestions');
+    if (!state || !list) return;
+
+    const value = (inputEl.value || '').trim();
+    if (state.selected?.label === value) return;
+    state.selected = null;
+    const requestId = ++state.requestId;
+    clearTimeout(state.timer);
+
+    if (value.length < 2) {
+        list.style.display = 'none';
+        list.replaceChildren();
+        return;
+    }
+
+    fltRenderAirportMessage(list, 'Searching airports…');
+    state.timer = setTimeout(async () => {
+        try {
+            const response = await api.searchAirports(value);
+            if (requestId !== state.requestId) return;
+
+            const airports = Array.isArray(response?.data) ? response.data : [];
+            if (!airports.length) {
+                fltRenderAirportMessage(list, 'No matching airports found.');
+                return;
+            }
+
+            list.replaceChildren();
+            airports.forEach(airport => {
+                const code = typeof airport?.ap === 'string' ? airport.ap.trim().toUpperCase() : '';
+                const label = String(airport?.displayname || airport?.shortdisplayname || airport?.airportname || code);
+                if (code.length !== 3 || !label) return;
+
+                const option = document.createElement('button');
+                option.type = 'button';
+                option.role = 'option';
+                option.textContent = label;
+                option.style.cssText = 'display:block;width:100%;padding:11px 12px;border:0;border-bottom:1px solid #f1f5f9;background:#fff;text-align:left;color:#0f172a;font-size:13px;cursor:pointer;';
+                option.addEventListener('mouseenter', () => { option.style.background = '#f8fafc'; });
+                option.addEventListener('mouseleave', () => { option.style.background = '#fff'; });
+                option.addEventListener('mousedown', event => { event.preventDefault(); });
+                option.addEventListener('click', () => {
+                    state.selected = { code, label };
+                    inputEl.value = label;
+                    list.style.display = 'none';
+                    list.replaceChildren();
+                });
+                list.appendChild(option);
+            });
+
+            if (!list.childElementCount) {
+                fltRenderAirportMessage(list, 'Airport results did not include a valid 3-letter airport code.', '#b45309');
+            } else {
+                list.style.display = 'block';
+            }
+        } catch (error) {
+            if (requestId !== state.requestId) return;
+            fltRenderAirportMessage(list, error.message || 'Could not load airports. Please try again.', '#dc2626');
+        }
+    }, 250);
+}
+
+async function _loadFltBookings() {
+    const container = document.getElementById('fltBookingsList');
+    if (!container) return;
+    try {
+        const response = await api.getFlightBookings(1, 20);
+        const bookings = response?.data?.bookings || response?.data || (Array.isArray(response) ? response : []);
+        if (!bookings.length) {
+            container.innerHTML = '<div style="text-align:center;padding:20px 0;color:#94a3b8;font-size:13px;">No bookings found.</div>';
+            return;
+        }
+        container.innerHTML = bookings.map(booking => {
+            const status = (booking.status || '').toLowerCase();
+            const statusColor = status === 'confirmed' ? '#16a34a' : status === 'held' ? '#f59e0b' : status === 'failed' ? '#dc2626' : '#64748b';
+            const price = Number(booking.pricing?.finalPrice || booking.amountNgn || booking.totalAmount || 0);
+            const route = booking.origin && booking.destination ? `${booking.origin} ? ${booking.destination}` : (booking.pnr || booking.orderId || 'Flight booking');
+            const date = booking.createdAt || booking.created_at || '';
+            return `<div style="padding:12px 14px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+                    <div>
+                        <div style="font-size:13px;font-weight:600;color:#0f172a;">${route}</div>
+                        <div style="font-size:11px;color:#94a3b8;margin-top:2px;">${date ? new Date(date).toLocaleDateString() : ''}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:13px;font-weight:700;color:#0f172a;">?${price.toLocaleString()}</div>
+                        <div style="font-size:11px;font-weight:600;color:${statusColor};margin-top:2px;">${status || 'pending'}</div>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    } catch (error) {
+        container.innerHTML = `<div style="text-align:center;padding:16px;color:#dc2626;font-size:13px;">${error.message || 'Failed to load bookings.'}</div>`;
     }
 }

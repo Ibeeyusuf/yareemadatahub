@@ -511,6 +511,64 @@ class YareemaUserAPI {
         });
     }
 
+    // ==================== FLIGHTS ====================
+
+    async searchAirports(q) {
+        return await this.request(`/api/v1/flights/airports?q=${encodeURIComponent(q)}`);
+    }
+
+    async searchFlights(data) {
+        return await this.request('/api/v1/flights/search', { method: 'POST', body: data });
+    }
+
+    async flexibleSearchFlights(data) {
+        return await this.request('/api/v1/flights/flexible-search', { method: 'POST', body: data });
+    }
+
+    async priceFlightQuote(data) {
+        return await this.request('/api/v1/flights/price', { method: 'POST', body: data });
+    }
+
+    async bookFlight(data, idempotencyKey) {
+        const headers = idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {};
+        return await this.request('/api/v1/flights/book', {
+            method: 'POST',
+            headers,
+            body: data
+        });
+    }
+
+    async getFlightBookings(page = 1, limit = 20, status = '') {
+        const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+        if (status) params.set('status', status);
+        return await this.request(`/api/v1/flights/bookings?${params.toString()}`);
+    }
+
+    async getFlightBookingById(id) {
+        return await this.request(`/api/v1/flights/bookings/${id}`);
+    }
+
+    async getFlightBookingQuote(id) {
+        return await this.request(`/api/v1/flights/bookings/${id}/quote`);
+    }
+
+    async payFlightBooking(id, data, idempotencyKey) {
+        const headers = idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {};
+        return await this.request(`/api/v1/flights/bookings/${id}/pay`, {
+            method: 'POST',
+            headers,
+            body: data
+        });
+    }
+
+    async cancelFlightBooking(id) {
+        return await this.request(`/api/v1/flights/bookings/${id}/cancel`, { method: 'POST' });
+    }
+
+    async getFlightTicket(id) {
+        return await this.request(`/api/v1/flights/bookings/${id}/ticket`);
+    }
+
     // ==================== LOGOUT ====================
 
     logout() {
