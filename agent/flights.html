@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -26,48 +25,179 @@
                     </div>
                 </div>
 
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Origin</label>
-                            <input id="flightOrigin" type="text" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-yareema-primary focus:outline-none" placeholder="LOS" maxlength="3" style="text-transform:uppercase;">
+                <!-- Tabs -->
+                <div class="flex gap-2 mb-4">
+                    <button id="fltTabSearch" onclick="fltShowTab('search')" class="px-5 py-2.5 bg-yareema-primary text-white rounded-lg text-sm font-semibold">Search</button>
+                    <button id="fltTabBookings" onclick="fltShowTab('bookings')" class="px-5 py-2.5 bg-white text-slate-600 border border-slate-200 rounded-lg text-sm font-semibold">My Bookings</button>
+                </div>
+
+                <!-- Search Section -->
+                <div id="fltSearchSection">
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                        <!-- Trip type -->
+                        <div class="grid grid-cols-3 gap-2 mb-5">
+                            <button id="fltTripOneway" onclick="fltSetTripType('oneway')" class="px-3 py-2.5 bg-yareema-primary text-white rounded-lg text-sm font-semibold border border-yareema-primary">One-way</button>
+                            <button id="fltTripRoundtrip" onclick="fltSetTripType('roundtrip')" class="px-3 py-2.5 bg-white text-slate-600 rounded-lg text-sm font-semibold border border-slate-200">Round-trip</button>
+                            <button id="fltTripMulticity" onclick="fltSetTripType('multicity')" class="px-3 py-2.5 bg-white text-slate-600 rounded-lg text-sm font-semibold border border-slate-200">Multi-city</button>
                         </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Destination</label>
-                            <input id="flightDestination" type="text" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-yareema-primary focus:outline-none" placeholder="LHR" maxlength="3" style="text-transform:uppercase;">
+
+                        <!-- Leg 1 -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">From</label>
+                                <div class="relative">
+                                    <input id="fltInput_origin" type="text" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-yareema-primary focus:outline-none" placeholder="Search airport or IATA code" autocomplete="off" spellcheck="false" oninput="fltSearchAirports(this, 'origin')">
+                                    <div id="fltOriginSuggestions" class="hidden absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">To</label>
+                                <div class="relative">
+                                    <input id="fltInput_destination" type="text" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-yareema-primary focus:outline-none" placeholder="Search airport or IATA code" autocomplete="off" spellcheck="false" oninput="fltSearchAirports(this, 'destination')">
+                                    <div id="fltDestinationSuggestions" class="hidden absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Leg 2 (multi-city) -->
+                        <div id="fltLeg2" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Leg 2 From</label>
+                                <div class="relative">
+                                    <input id="fltInput_leg2Origin" type="text" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-yareema-primary focus:outline-none" placeholder="Search airport or IATA code" autocomplete="off" spellcheck="false" oninput="fltSearchAirports(this, 'leg2Origin')">
+                                    <div id="fltLeg2OriginSuggestions" class="hidden absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Leg 2 To</label>
+                                <div class="relative">
+                                    <input id="fltInput_leg2Destination" type="text" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-yareema-primary focus:outline-none" placeholder="Search airport or IATA code" autocomplete="off" spellcheck="false" oninput="fltSearchAirports(this, 'leg2Destination')">
+                                    <div id="fltLeg2DestinationSuggestions" class="hidden absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dates (simple) -->
+                        <div id="fltDatesSimple" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Departure Date</label>
+                                <input id="fltDate" type="date" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-yareema-primary focus:outline-none">
+                            </div>
+                            <div id="fltReturnDateWrap" class="hidden">
+                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Return Date</label>
+                                <input id="fltReturnDate" type="date" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-yareema-primary focus:outline-none">
+                            </div>
+                        </div>
+
+                        <!-- Dates (multi-city) -->
+                        <div id="fltDatesMulti" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Leg 1 Date</label>
+                                <input id="fltLeg1Date" type="date" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-yareema-primary focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Leg 2 Date</label>
+                                <input id="fltLeg2Date" type="date" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-yareema-primary focus:outline-none">
+                            </div>
+                        </div>
+
+                        <div id="fltFlexWrap" class="mb-4">
+                            <label class="inline-flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                                <input type="checkbox" id="fltFlexible" class="w-4 h-4">
+                                <span>Flexible dates (compare ±3 days)</span>
+                            </label>
+                        </div>
+
+                        <!-- Passengers -->
+                        <div class="mb-4 pt-4 border-t border-slate-100">
+                            <div class="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Passengers</div>
+                            <div class="flex flex-col md:flex-row md:gap-8">
+                                <div class="flex items-center justify-between py-2 flex-1"><span class="text-sm font-semibold">Adults (18+)</span>
+                                    <div class="flex items-center gap-3">
+                                        <button type="button" onclick="fltAdjPax('adults',-1)" class="w-8 h-8 rounded-full border border-slate-200 bg-white text-slate-700 font-bold">-</button>
+                                        <span id="fltPax_adults" class="w-5 text-center font-bold">1</span>
+                                        <button type="button" onclick="fltAdjPax('adults',1)" class="w-8 h-8 rounded-full border border-slate-200 bg-white text-slate-700 font-bold">+</button>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between py-2 flex-1"><span class="text-sm font-semibold">Children (2-11)</span>
+                                    <div class="flex items-center gap-3">
+                                        <button type="button" onclick="fltAdjPax('children',-1)" class="w-8 h-8 rounded-full border border-slate-200 bg-white text-slate-700 font-bold">-</button>
+                                        <span id="fltPax_children" class="w-5 text-center font-bold">0</span>
+                                        <button type="button" onclick="fltAdjPax('children',1)" class="w-8 h-8 rounded-full border border-slate-200 bg-white text-slate-700 font-bold">+</button>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between py-2 flex-1"><span class="text-sm font-semibold">Infants (&lt;2)</span>
+                                    <div class="flex items-center gap-3">
+                                        <button type="button" onclick="fltAdjPax('infants',-1)" class="w-8 h-8 rounded-full border border-slate-200 bg-white text-slate-700 font-bold">-</button>
+                                        <span id="fltPax_infants" class="w-5 text-center font-bold">0</span>
+                                        <button type="button" onclick="fltAdjPax('infants',1)" class="w-8 h-8 rounded-full border border-slate-200 bg-white text-slate-700 font-bold">+</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="fltChildAges" class="hidden grid grid-cols-2 md:grid-cols-3 gap-3 mt-2"></div>
+                            <div id="fltInfantAges" class="hidden grid grid-cols-2 md:grid-cols-3 gap-3 mt-2"></div>
+                        </div>
+
+                        <!-- Cabin + filters -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Cabin Class</label>
+                                <select id="fltCabin" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-yareema-primary focus:outline-none">
+                                    <option value="economy">Economy</option>
+                                    <option value="premium_economy">Premium Economy</option>
+                                    <option value="business">Business</option>
+                                    <option value="first">First Class</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Filters</label>
+                                <div class="flex flex-wrap gap-4 pt-3">
+                                    <label class="inline-flex items-center gap-1.5 text-sm text-slate-600"><input type="checkbox" id="fltDirect" class="w-4 h-4"> Direct only</label>
+                                    <label class="inline-flex items-center gap-1.5 text-sm text-slate-600"><input type="checkbox" id="fltRefundable" class="w-4 h-4"> Refundable</label>
+                                    <label class="inline-flex items-center gap-1.5 text-sm text-slate-600"><input type="checkbox" id="fltCheckedBags" class="w-4 h-4"> Checked bags</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end">
+                            <button id="fltSearchBtn" onclick="fltDoSearch()" class="px-6 py-3 bg-yareema-primary hover:bg-yareema-secondary text-white rounded-xl text-sm font-semibold">Search Flights</button>
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Departure</label>
-                            <input id="flightDeparture" type="date" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-yareema-primary focus:outline-none">
+
+                    <div id="fltResultsBox" class="mt-6 space-y-4"></div>
+
+                    <!-- Passenger details -->
+                    <div id="fltPassengerSection" class="hidden mt-6 bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                        <div id="fltBookingSummary" class="mb-4 px-4 py-3 bg-sky-50 rounded-lg text-sm"></div>
+                        <div class="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-3">Passenger Details</div>
+                        <div id="fltPaxForms"></div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Contact Email</label><input type="email" id="fltContactEmail" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-yareema-primary focus:outline-none" placeholder="email@example.com"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Contact Phone</label><input type="tel" id="fltContactPhone" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-yareema-primary focus:outline-none" placeholder="+2348012345678"></div>
                         </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Passengers</label>
-                            <select id="flightPassengers" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-yareema-primary focus:outline-none">
-                                <option value="1">1 Adult</option>
-                                <option value="2">2 Adults</option>
-                                <option value="3">3 Adults</option>
-                                <option value="4">4 Adults</option>
-                            </select>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Booking Type</label>
+                                <select id="fltBookingChoice" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-yareema-primary focus:outline-none">
+                                    <option value="issue">Book now</option>
+                                    <option value="hold">Hold booking</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Transaction PIN</label>
+                                <input type="password" id="fltPin" maxlength="4" inputmode="numeric" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-yareema-primary focus:outline-none" placeholder="Enter 4-digit PIN">
+                            </div>
                         </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Cabin</label>
-                            <select id="flightCabin" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-yareema-primary focus:outline-none">
-                                <option value="economy">Economy</option>
-                                <option value="premium_economy">Premium Economy</option>
-                                <option value="business">Business</option>
-                                <option value="first">First</option>
-                            </select>
+                        <div class="flex justify-end mt-5">
+                            <button id="fltBookBtn" onclick="fltDoBook()" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-semibold">Book Flight</button>
                         </div>
-                    </div>
-                    <div class="flex justify-end">
-                        <button id="flightSearchBtn" onclick="searchFlights()" class="px-5 py-3 bg-yareema-primary hover:bg-yareema-secondary text-white rounded-xl text-sm font-semibold">Search Flights</button>
                     </div>
                 </div>
 
-                <div id="flightStatus" class="mt-6 hidden rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600"></div>
-                <div id="flightResults" class="mt-6 space-y-4"></div>
+                <!-- Bookings Section -->
+                <div id="fltBookingsSection" class="hidden">
+                    <div id="fltBookingsList" class="space-y-3"></div>
+                </div>
             </div>
         </div>
     </main>
@@ -81,164 +211,649 @@ Auth.protectPage();
 fetch('partials/sidebar.html').then(r=>r.text()).then(d=>{document.getElementById('sidebarContainer').innerHTML=d;lucide.createIcons();initSidebar();});
 fetch('partials/header.html').then(r=>r.text()).then(d=>{document.getElementById('headerContainer').innerHTML=d;updatePageTitle('flights');if(typeof initHeader==='function')initHeader();lucide.createIcons();});
 
-function setFlightStatus(message, type='info') {
-    const el = document.getElementById('flightStatus');
-    if (!el) return;
-    const colors = { info: 'border-slate-200 bg-slate-50 text-slate-700', success: 'border-green-200 bg-green-50 text-green-700', error: 'border-red-200 bg-red-50 text-red-700' };
-    el.className = `mt-6 rounded-xl border p-4 text-sm ${colors[type] || colors.info}`;
-    el.textContent = message;
-    el.classList.remove('hidden');
+// ==================== FLIGHT STATE ====================
+const FLT_BASE = (window.API_CONFIG && API_CONFIG.BASE_URL) || 'https://api.yareemadatahub.com/api/v1';
+const FLT_SUGGESTION_IDS = {
+    origin: 'fltOriginSuggestions',
+    destination: 'fltDestinationSuggestions',
+    leg2Origin: 'fltLeg2OriginSuggestions',
+    leg2Destination: 'fltLeg2DestinationSuggestions'
+};
+
+const fltState = {
+    tripType: 'oneway',
+    passengers: { adults: 1, children: 0, infants: 0, childAges: [], infantAges: [] },
+    searchResults: [],
+    selectedOffer: null,
+    offerSearchId: '',
+    offerId: '',
+    flexMatrix: [],
+    paxList: [],
+    holdQuoteId: '',
+    airports: {
+        origin: { selected: null, requestId: 0, timer: null },
+        destination: { selected: null, requestId: 0, timer: null },
+        leg2Origin: { selected: null, requestId: 0, timer: null },
+        leg2Destination: { selected: null, requestId: 0, timer: null }
+    }
+};
+
+function fltToken() {
+    try { return (window.API && API.getToken()) || localStorage.getItem('agentToken') || localStorage.getItem('user_token'); }
+    catch (e) { return localStorage.getItem('agentToken') || localStorage.getItem('user_token'); }
 }
 
-function renderFlightCards(list) {
-    const el = document.getElementById('flightResults');
-    if (!el) return;
-    if (!list.length) {
-        el.innerHTML = '<div class="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">No flights available for the selected route.</div>';
-        return;
+async function flightRequest(path, { method = 'GET', body, key } = {}) {
+    const res = await fetch(`${FLT_BASE}${path}`, {
+        method,
+        headers: {
+            ...(fltToken() && { Authorization: `Bearer ${fltToken()}` }),
+            ...(body !== undefined && { 'Content-Type': 'application/json' }),
+            ...(key && { 'Idempotency-Key': key })
+        },
+        ...(body !== undefined && { body: JSON.stringify(body) })
+    });
+    let json;
+    try { json = await res.json(); } catch (e) { json = {}; }
+    if (!res.ok) {
+        const error = new Error(json.message || json.data?.message || json.data?.lastError || 'Flight request failed');
+        error.httpStatus = res.status;
+        error.data = json.data;
+        throw error;
     }
-    el.innerHTML = list.map((flight, idx) => {
-        const airline = flight.airline || flight.owner?.name || 'Airline';
-        const price = flight.finalPrice || flight.price || flight.total_amount || flight.priceNgn || 0;
-        const departure = flight.departure || flight.departureTime || flight.itinerary?.[0]?.segments?.[0]?.departure?.datetime || '—';
-        const arrival = flight.arrival || flight.arrivalTime || flight.itinerary?.[0]?.segments?.slice(-1)[0]?.arrival?.datetime || '—';
-        return `
-            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" data-flight='${JSON.stringify(flight).replace(/'/g, "&apos;")}'>
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
-                    <div>
-                        <div class="text-lg font-bold text-slate-900">${airline}</div>
-                        <div class="text-xs text-slate-500">${flight.origin || document.getElementById('flightOrigin').value.toUpperCase()} → ${flight.destination || document.getElementById('flightDestination').value.toUpperCase()}</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="text-xl font-bold text-yareema-primary">₦${Number(price).toLocaleString()}</div>
-                        <div class="text-[11px] text-slate-500">${flight.cabin || document.getElementById('flightCabin').value}</div>
-                    </div>
+    return { httpStatus: res.status, data: json.data };
+}
+
+// ==================== HELPERS ====================
+function fltAirportCode(field) { return fltState.airports[field]?.selected?.code || ''; }
+function fltResetResults() {
+    fltState.searchResults = [];
+    fltState.selectedOffer = null;
+    fltState.offerSearchId = '';
+    fltState.offerId = '';
+    fltState.paxList = [];
+    document.getElementById('fltResultsBox').innerHTML = '';
+    document.getElementById('fltPassengerSection').classList.add('hidden');
+    const btn = document.getElementById('fltBookBtn'); if (btn) btn.textContent = 'Book Flight';
+}
+
+function fltShowTab(tab) {
+    const searchSection = document.getElementById('fltSearchSection');
+    const bookingsSection = document.getElementById('fltBookingsSection');
+    const tabSearch = document.getElementById('fltTabSearch');
+    const tabBookings = document.getElementById('fltTabBookings');
+    const active = 'px-5 py-2.5 bg-yareema-primary text-white rounded-lg text-sm font-semibold';
+    const inactive = 'px-5 py-2.5 bg-white text-slate-600 border border-slate-200 rounded-lg text-sm font-semibold';
+
+    if (tab === 'search') {
+        searchSection.classList.remove('hidden');
+        bookingsSection.classList.add('hidden');
+        tabSearch.className = active;
+        tabBookings.className = inactive;
+    } else {
+        searchSection.classList.add('hidden');
+        bookingsSection.classList.remove('hidden');
+        tabSearch.className = inactive;
+        tabBookings.className = active;
+        fltLoadBookings();
+    }
+}
+
+function fltSetTripType(type) {
+    fltState.tripType = type;
+    const active = 'px-3 py-2.5 bg-yareema-primary text-white rounded-lg text-sm font-semibold border border-yareema-primary';
+    const inactive = 'px-3 py-2.5 bg-white text-slate-600 rounded-lg text-sm font-semibold border border-slate-200';
+    document.getElementById('fltTripOneway').className = type === 'oneway' ? active : inactive;
+    document.getElementById('fltTripRoundtrip').className = type === 'roundtrip' ? active : inactive;
+    document.getElementById('fltTripMulticity').className = type === 'multicity' ? active : inactive;
+
+    const isMulti = type === 'multicity';
+    const isRound = type === 'roundtrip';
+    document.getElementById('fltLeg2').classList.toggle('hidden', !isMulti);
+    document.getElementById('fltLeg2').classList.toggle('grid', isMulti);
+    document.getElementById('fltDatesSimple').classList.toggle('hidden', isMulti);
+    document.getElementById('fltDatesMulti').classList.toggle('hidden', !isMulti);
+    document.getElementById('fltDatesMulti').classList.toggle('grid', isMulti);
+    document.getElementById('fltReturnDateWrap').classList.toggle('hidden', !isRound);
+    document.getElementById('fltFlexWrap').classList.toggle('hidden', isMulti);
+    fltResetResults();
+}
+
+function fltAdjPax(key, delta) {
+    const min = key === 'adults' ? 1 : 0;
+    const max = 9;
+    let v = fltState.passengers[key] + delta;
+    if (v < min) v = min;
+    if (v > max) v = max;
+    fltState.passengers[key] = v;
+
+    if (key === 'children') fltState.passengers.childAges = Array.from({ length: v }, (_, i) => fltState.passengers.childAges[i] || 8);
+    if (key === 'infants') fltState.passengers.infantAges = Array.from({ length: v }, (_, i) => fltState.passengers.infantAges[i] || 1);
+
+    document.getElementById('fltPax_' + key).textContent = v;
+    fltRenderAges();
+}
+
+function fltRenderAges() {
+    const childBox = document.getElementById('fltChildAges');
+    const infantBox = document.getElementById('fltInfantAges');
+    if (fltState.passengers.children > 0) {
+        childBox.classList.remove('hidden');
+        childBox.classList.add('grid');
+        childBox.innerHTML = fltState.passengers.childAges.slice(0, fltState.passengers.children).map((age, i) => `
+            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Child ${i + 1} age</label>
+            <input type="number" min="2" max="11" value="${age}" oninput="fltState.passengers.childAges[${i}]=Number(this.value)||0" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-yareema-primary focus:outline-none"></div>`).join('');
+    } else { childBox.classList.add('hidden'); childBox.classList.remove('grid'); childBox.innerHTML = ''; }
+
+    if (fltState.passengers.infants > 0) {
+        infantBox.classList.remove('hidden');
+        infantBox.classList.add('grid');
+        infantBox.innerHTML = fltState.passengers.infantAges.slice(0, fltState.passengers.infants).map((age, i) => `
+            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Infant ${i + 1} age</label>
+            <input type="number" min="0" max="1" value="${age}" oninput="fltState.passengers.infantAges[${i}]=Number(this.value)||0" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-yareema-primary focus:outline-none"></div>`).join('');
+    } else { infantBox.classList.add('hidden'); infantBox.classList.remove('grid'); infantBox.innerHTML = ''; }
+}
+
+function fltGetPassengerPayload() {
+    const p = { adults: fltState.passengers.adults };
+    if (fltState.passengers.children > 0) { p.children = fltState.passengers.children; p.child_ages = fltState.passengers.childAges.slice(0, fltState.passengers.children).map(Number); }
+    if (fltState.passengers.infants > 0) { p.infants = fltState.passengers.infants; p.infant_ages = fltState.passengers.infantAges.slice(0, fltState.passengers.infants).map(Number); }
+    return p;
+}
+
+function fltBuildSearchPayload() {
+    const cabin = document.getElementById('fltCabin').value || 'economy';
+    const passengers = fltGetPassengerPayload();
+    const filters = {};
+    if (document.getElementById('fltDirect').checked) filters.direct = true;
+    if (document.getElementById('fltRefundable').checked) filters.refundable = true;
+    if (document.getElementById('fltCheckedBags').checked) filters.checked_bags = true;
+
+    if (fltState.tripType === 'multicity') {
+        return {
+            segments: [
+                { origin: fltAirportCode('origin'), destination: fltAirportCode('destination'), date: document.getElementById('fltLeg1Date').value },
+                { origin: fltAirportCode('leg2Origin'), destination: fltAirportCode('leg2Destination'), date: document.getElementById('fltLeg2Date').value }
+            ],
+            cabin_class: cabin,
+            passengers,
+            ...filters
+        };
+    }
+
+    const payload = { origin: fltAirportCode('origin'), destination: fltAirportCode('destination'), departure_date: document.getElementById('fltDate').value, cabin_class: cabin, passengers, ...filters };
+    if (fltState.tripType === 'roundtrip') payload.return_date = document.getElementById('fltReturnDate').value;
+    return payload;
+}
+
+function fltSetStatus(message, type = 'info') {
+    const el = document.getElementById('fltResultsBox');
+    if (!el) return;
+    if (type === 'error') { showToast(message, 'error'); el.innerHTML = `<div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">${message}</div>`; }
+    else el.innerHTML = `<div class="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">${message}</div>`;
+}
+
+// ==================== SEARCH ====================
+async function fltDoSearch() {
+    const origin = fltAirportCode('origin');
+    const destination = fltAirportCode('destination');
+    if (!origin) { showToast('Please select a departure airport from the suggestions', 'error'); return; }
+    if (!destination) { showToast('Please select a destination airport from the suggestions', 'error'); return; }
+    if (origin === destination) { showToast('Origin and destination must be different', 'error'); return; }
+    if (fltState.passengers.infants > fltState.passengers.adults) { showToast('Infants cannot exceed the number of adults', 'error'); return; }
+
+    if (fltState.tripType === 'multicity') {
+        if (!fltAirportCode('leg2Origin')) { showToast('Please select the leg 2 origin airport', 'error'); return; }
+        if (!fltAirportCode('leg2Destination')) { showToast('Please select the leg 2 destination airport', 'error'); return; }
+        const d1 = document.getElementById('fltLeg1Date').value;
+        const d2 = document.getElementById('fltLeg2Date').value;
+        if (!d1 || !d2) { showToast('Please select both leg dates', 'error'); return; }
+        if (d2 < d1) { showToast('The second leg date cannot be before the first', 'error'); return; }
+    } else {
+        const departure = document.getElementById('fltDate').value;
+        if (!departure) { showToast('Please select a departure date', 'error'); return; }
+        if (fltState.tripType === 'roundtrip') {
+            const ret = document.getElementById('fltReturnDate').value;
+            if (!ret) { showToast('Please select a return date', 'error'); return; }
+            if (ret < departure) { showToast('Return date cannot be before the departure date', 'error'); return; }
+        }
+    }
+
+    const flexible = fltState.tripType !== 'multicity' && document.getElementById('fltFlexible').checked;
+    const btn = document.getElementById('fltSearchBtn');
+    btn.disabled = true; btn.textContent = 'Searching...';
+    const results = document.getElementById('fltResultsBox');
+    results.innerHTML = '<div class="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500"><div class="w-8 h-8 border-3 border-slate-200 border-t-sky-600 rounded-full animate-spin mx-auto mb-3"></div>Searching flights...</div>';
+
+    try {
+        const payload = fltBuildSearchPayload();
+        if (flexible) {
+            const res = await flightRequest('/flights/flexible-search', { method: 'POST', body: payload });
+            fltRenderFlexMatrix(res.data);
+            return;
+        }
+        const res = await flightRequest('/flights/search', { method: 'POST', body: payload });
+        const suppliers = Array.isArray(res.data?.suppliers) ? res.data.suppliers : [];
+        fltState.searchResults = suppliers.flatMap(supplier => {
+            const offers = Array.isArray(supplier?.results?.offers) ? supplier.results.offers : [];
+            return offers.map(offer => ({ ...offer, searchId: supplier.searchId, supportHold: Boolean(supplier.supportHold || offer.supportHold) }));
+        });
+
+        if (!fltState.searchResults.length) {
+            results.innerHTML = '<div class="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">No flights found for this route. Try another date or route.</div>';
+            return;
+        }
+        fltRenderResults();
+    } catch (error) {
+        results.innerHTML = `<div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">${error.message || 'Search failed.'}</div>`;
+    } finally {
+        btn.disabled = false; btn.textContent = 'Search Flights';
+    }
+}
+
+function fltRenderResults() {
+    const box = document.getElementById('fltResultsBox');
+    box.innerHTML = fltState.searchResults.slice(0, 10).map((offer, index) => {
+        const itinerary = Array.isArray(offer.itinerary) ? offer.itinerary : [];
+        const firstLeg = itinerary[0] || {};
+        const lastLeg = itinerary[itinerary.length - 1] || {};
+        const firstSegment = (firstLeg.segments || [])[0] || {};
+        const lastSegment = (lastLeg.segments || []).slice(-1)[0] || {};
+        const airline = firstSegment.flight?.carrierName || firstSegment.flight?.carrierCode || 'Airline';
+        const departure = firstSegment.departure?.datetime || '';
+        const arrival = lastSegment.arrival?.datetime || '';
+        const price = Number(offer.pricing?.finalPrice || 0);
+        const depTime = departure ? new Date(departure).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
+        const arrTime = arrival ? new Date(arrival).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
+        const totalSegments = itinerary.reduce((c, leg) => c + (Array.isArray(leg.segments) ? leg.segments.length : 0), 0);
+        const stops = Math.max(0, totalSegments - 1);
+
+        return `<div onclick="fltSelectOffer(${index}, this)" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm cursor-pointer hover:border-sky-400 transition">
+            <div class="flex items-start justify-between mb-3">
+                <div>
+                    <div class="text-lg font-bold text-slate-900">${airline}</div>
+                    ${offer.supportHold ? '<span class="text-[10px] rounded-full px-2 py-0.5 bg-green-100 text-green-700 inline-block mt-1">Hold available</span>' : ''}
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-slate-600">
-                    <div class="rounded-xl bg-slate-50 p-3"><span class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Departure</span><strong>${departure}</strong></div>
-                    <div class="rounded-xl bg-slate-50 p-3"><span class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Arrival</span><strong>${arrival}</strong></div>
-                    <div class="rounded-xl bg-slate-50 p-3"><span class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Provider</span><strong>${flight.provider || 'FX-Port'}</strong></div>
-                </div>
-                <div class="mt-4 flex justify-end">
-                    <button onclick="bookSelectedFlight(${idx})" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold">Book</button>
-                </div>
+                <div class="text-xl font-bold text-yareema-primary">₦${price.toLocaleString()}</div>
             </div>
-        `;
+            <div class="flex items-center gap-3">
+                <div class="text-center min-w-[56px]"><div class="text-sm font-bold">${depTime}</div><div class="text-[10px] text-slate-500">${fltAirportCode('origin') || 'DEP'}</div></div>
+                <div class="flex-1 text-center"><div class="border-t border-slate-200 relative"><span class="absolute -top-2.5 left-1/2 -translate-x-1/2 text-xs">✈</span></div>${stops > 0 ? `<div class="text-[10px] text-amber-600 mt-1">${stops} stop${stops > 1 ? 's' : ''}</div>` : ''}</div>
+                <div class="text-center min-w-[56px]"><div class="text-sm font-bold">${arrTime}</div><div class="text-[10px] text-slate-500">${fltAirportCode('destination') || 'ARR'}</div></div>
+            </div>
+        </div>`;
     }).join('');
 }
 
-async function searchFlights() {
-    const origin = document.getElementById('flightOrigin').value.trim().toUpperCase();
-    const destination = document.getElementById('flightDestination').value.trim().toUpperCase();
-    const departure = document.getElementById('flightDeparture').value;
-    const adults = Number(document.getElementById('flightPassengers').value || 1);
-    const cabin = document.getElementById('flightCabin').value || 'economy';
+function fltRenderFlexMatrix(data) {
+    const box = document.getElementById('fltResultsBox');
+    const suppliers = Array.isArray(data?.suppliers) ? data.suppliers : [];
+    const entries = [];
+    suppliers.forEach(s => { const m = s?.flexPrices?.matrix; if (Array.isArray(m)) m.forEach(e => entries.push(e)); });
+    fltState.flexMatrix = entries;
+    if (!entries.length) { box.innerHTML = '<div class="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">No flexible date options available.</div>'; return; }
 
-    if (!origin || !destination || !departure) {
-        setFlightStatus('Please complete origin, destination and departure date.', 'error');
-        return;
-    }
-    if (origin === destination) {
-        setFlightStatus('Origin and destination cannot be the same.', 'error');
-        return;
+    box.innerHTML = '<div class="text-sm font-semibold text-slate-600 mb-3">Choose a travel date</div>' + entries.map((m, i) => {
+        const available = m.status === 'available' && Number.isFinite(Number(m.finalPrice));
+        const price = available ? '₦' + Number(m.finalPrice).toLocaleString() : '—';
+        return `<button type="button" onclick="fltPickFlexDate(${i})" class="block w-full text-left p-4 rounded-xl border ${available ? 'border-slate-200 bg-white hover:border-sky-400' : 'border-slate-100 bg-slate-50'} mb-2">
+            <div class="flex justify-between items-center"><span class="text-sm font-semibold">${m.departure}${m.return ? ' → ' + m.return : ''}</span><span class="font-bold ${available ? 'text-yareema-primary' : 'text-slate-400'}">${price}</span></div>
+        </button>`;
+    }).join('');
+}
+
+function fltPickFlexDate(i) {
+    const m = fltState.flexMatrix[i];
+    if (!m || m.status !== 'available') return;
+    if (fltState.tripType === 'roundtrip' && m.return) document.getElementById('fltReturnDate').value = m.return;
+    document.getElementById('fltDate').value = m.departure;
+    document.getElementById('fltFlexible').checked = false;
+    fltDoSearch();
+}
+
+// ==================== OFFER SELECTION + BOOKING ====================
+function fltSelectOffer(index, el) {
+    fltState.selectedOffer = fltState.searchResults[index];
+    fltState.offerSearchId = fltState.selectedOffer?.searchId || '';
+    fltState.offerId = fltState.selectedOffer?.id || '';
+
+    document.querySelectorAll('#fltResultsBox [onclick^="fltSelectOffer"]').forEach(d => { d.classList.remove('border-sky-400'); });
+    if (el) el.classList.add('border-sky-400');
+
+    const price = Number(fltState.selectedOffer?.pricing?.finalPrice || 0);
+    const airline = fltState.selectedOffer?.itinerary?.[0]?.segments?.[0]?.flight?.carrierName || 'Selected Flight';
+    document.getElementById('fltBookingSummary').innerHTML = `<strong>${airline}</strong> <span class="float-right font-bold text-sky-600">₦${price.toLocaleString()}</span>`;
+
+    const choice = document.getElementById('fltBookingChoice');
+    choice.innerHTML = fltState.selectedOffer?.supportHold
+        ? '<option value="issue">Book now</option><option value="hold">Hold booking</option>'
+        : '<option value="issue">Book now</option>';
+
+    fltState.paxList = [];
+    for (let i = 0; i < fltState.passengers.adults; i++) fltState.paxList.push({ type: 'adult' });
+    for (let i = 0; i < fltState.passengers.children; i++) fltState.paxList.push({ type: 'child' });
+    for (let i = 0; i < fltState.passengers.infants; i++) fltState.paxList.push({ type: 'infant' });
+    fltRenderPaxForms();
+
+    document.getElementById('fltPassengerSection').classList.remove('hidden');
+    document.getElementById('fltPassengerSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function fltRenderPaxForms() {
+    const container = document.getElementById('fltPaxForms');
+    const typeLabels = { adult: 'Adult', child: 'Child (2-11)', infant: 'Infant (under 2)' };
+    container.innerHTML = fltState.paxList.map((p, i) => `
+        <div class="rounded-xl border border-slate-200 p-4 mb-3">
+            <div class="text-sm font-bold text-sky-600 mb-3">${typeLabels[p.type]} ${i + 1}</div>
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="block text-xs font-semibold text-slate-600 mb-1">First name</label><input id="pax_${i}_first" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-yareema-primary focus:outline-none" placeholder="First name"></div>
+                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Last name</label><input id="pax_${i}_last" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-yareema-primary focus:outline-none" placeholder="Last name"></div>
+                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Date of birth</label><input type="date" id="pax_${i}_dob" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-yareema-primary focus:outline-none"></div>
+                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Gender</label><select id="pax_${i}_gender" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-yareema-primary focus:outline-none"><option value="MALE">Male</option><option value="FEMALE">Female</option></select></div>
+                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Passport no.</label><input id="pax_${i}_passport" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-yareema-primary focus:outline-none" placeholder="A12345678"></div>
+                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Passport expiry</label><input type="date" id="pax_${i}_expiry" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-yareema-primary focus:outline-none"></div>
+                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Issuing country</label><input id="pax_${i}_country" maxlength="2" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm uppercase focus:border-yareema-primary focus:outline-none" placeholder="NG"></div>
+                <div><label class="block text-xs font-semibold text-slate-600 mb-1">Nationality</label><input id="pax_${i}_nationality" maxlength="2" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm uppercase focus:border-yareema-primary focus:outline-none" placeholder="NG"></div>
+            </div>
+        </div>`).join('');
+}
+
+function fltBuildBookingPassengers() {
+    return fltState.paxList.map((p, i) => ({
+        type: p.type,
+        gender: document.getElementById(`pax_${i}_gender`)?.value || 'MALE',
+        first_name: document.getElementById(`pax_${i}_first`)?.value.trim(),
+        last_name: document.getElementById(`pax_${i}_last`)?.value.trim(),
+        date_of_birth: document.getElementById(`pax_${i}_dob`)?.value,
+        identity_documents: [{
+            type: 'passport',
+            number: document.getElementById(`pax_${i}_passport`)?.value.trim(),
+            issuing_country: (document.getElementById(`pax_${i}_country`)?.value || '').trim().toUpperCase(),
+            nationality: (document.getElementById(`pax_${i}_nationality`)?.value || '').trim().toUpperCase(),
+            expiry_date: document.getElementById(`pax_${i}_expiry`)?.value
+        }]
+    }));
+}
+
+async function fltDoBook() {
+    if (!fltState.selectedOffer) { showToast('Please select a flight first', 'error'); return; }
+    if (!fltState.offerSearchId || !fltState.offerId) { showToast('Flight offer is incomplete. Please search again.', 'error'); return; }
+    const pin = document.getElementById('fltPin').value.trim();
+    if (!pin || !/^\d{4}$/.test(pin)) { showToast('Please enter your 4-digit transaction PIN', 'error'); return; }
+    const bookingChoice = document.getElementById('fltBookingChoice').value || 'issue';
+    if (bookingChoice === 'hold' && !fltState.selectedOffer.supportHold) { showToast('This flight does not support holding.', 'error'); return; }
+
+    const email = document.getElementById('fltContactEmail').value.trim();
+    const phone = document.getElementById('fltContactPhone').value.trim();
+    if (!email || !email.includes('@')) { showToast('Please enter a valid contact email', 'error'); return; }
+    if (!phone) { showToast('Please enter a contact phone number', 'error'); return; }
+
+    for (let i = 0; i < fltState.paxList.length; i++) {
+        const first = document.getElementById(`pax_${i}_first`)?.value.trim();
+        const last = document.getElementById(`pax_${i}_last`)?.value.trim();
+        const dob = document.getElementById(`pax_${i}_dob`)?.value;
+        const passport = document.getElementById(`pax_${i}_passport`)?.value.trim();
+        const country = (document.getElementById(`pax_${i}_country`)?.value || '').trim().toUpperCase();
+        const nationality = (document.getElementById(`pax_${i}_nationality`)?.value || '').trim().toUpperCase();
+        const expiry = document.getElementById(`pax_${i}_expiry`)?.value;
+        if (!first || !last) { showToast(`Passenger ${i + 1}: enter first and last name`, 'error'); return; }
+        if (!dob) { showToast(`Passenger ${i + 1}: enter date of birth`, 'error'); return; }
+        if (!passport) { showToast(`Passenger ${i + 1}: enter passport number`, 'error'); return; }
+        if (country.length !== 2) { showToast(`Passenger ${i + 1}: issuing country must be a 2-letter code`, 'error'); return; }
+        if (nationality.length !== 2) { showToast(`Passenger ${i + 1}: nationality must be a 2-letter code`, 'error'); return; }
+        if (!expiry) { showToast(`Passenger ${i + 1}: enter passport expiry date`, 'error'); return; }
     }
 
-    const btn = document.getElementById('flightSearchBtn');
-    if (btn) {
-        btn.disabled = true;
-        btn.textContent = 'Searching...';
-    }
-    setFlightStatus('Searching available flights...', 'info');
+    const btn = document.getElementById('fltBookBtn');
+    btn.disabled = true; btn.textContent = bookingChoice === 'hold' ? 'Holding...' : 'Booking...';
 
     try {
-        const token = localStorage.getItem('agentToken') || localStorage.getItem('user_token');
-        const response = await fetch(`${API_CONFIG.BASE_URL}/flights/search`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(token ? { Authorization: `Bearer ${token}` } : {})
-            },
-            body: JSON.stringify({
-                origin,
-                destination,
-                departure_date: departure,
-                cabin_class: cabin,
-                passengers: { adults }
-            })
-        });
-        const json = await response.json();
-        if (!response.ok) throw new Error(json.message || 'Flight search failed.');
+        const quoteRes = await flightRequest('/flights/price', { method: 'POST', body: { search_id: fltState.offerSearchId, offer_id: fltState.offerId } });
+        const quote = quoteRes.data || {};
+        const walletPrice = Number(quote.walletPrice?.amount || 0);
+        const flightQuoteId = quote.flightQuoteId;
+        if (!flightQuoteId) throw new Error('The quote could not be created for this flight.');
 
-        const providers = json.data?.suppliers || [];
-        const offers = providers.flatMap((supplier) => (supplier.results?.offers || []).map((offer) => ({
-            ...offer,
-            provider: supplier.meta?.supplierId || supplier.searchId || 'FX-Port',
-            origin,
-            destination,
-            cabin,
-            departureDate: departure
-        })));
+        const payload = {
+            flightQuoteId,
+            booking_type: bookingChoice,
+            transactionPin: pin,
+            send_email: true,
+            passengers: fltBuildBookingPassengers(),
+            contact_details: { email, phone_number: phone }
+        };
+        const idempotencyKey = `flight_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+        const res = await flightRequest('/flights/book', { method: 'POST', body: payload, key: idempotencyKey });
+        const booking = res.data || {};
+        const status = (booking.status || '').toLowerCase();
+        const amountText = walletPrice ? '₦' + walletPrice.toLocaleString() : 'wallet price';
 
-        renderFlightCards(offers);
-        setFlightStatus(`Found ${offers.length} flight offer${offers.length === 1 ? '' : 's'} for ${origin} → ${destination}.`, 'success');
-    } catch (error) {
-        renderFlightCards([]);
-        setFlightStatus(error.message || 'Unable to find flights.', 'error');
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.textContent = 'Search Flights';
+        if (status === 'processing' || booking.outcomeUnknown) {
+            showToast('Your booking is being processed. Check My Bookings for the final status.', 'success');
+        } else if (status === 'held') {
+            showToast(`Flight held successfully. Estimated amount: ${amountText}`, 'success');
+        } else {
+            showToast(`Flight booked successfully. Wallet charged: ${amountText}`, 'success');
         }
+        fltResetResults();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (error) {
+        showToast(error.message || 'Flight booking failed.', 'error');
+    } finally {
+        btn.disabled = false; btn.textContent = 'Book Flight';
     }
 }
 
-async function bookSelectedFlight(index) {
-    const blocks = document.querySelectorAll('#flightResults [data-flight]');
-    const block = blocks[index];
-    if (!block) return;
-    const flight = JSON.parse(block.getAttribute('data-flight'));
-    if (!flight || !flight.id) {
-        setFlightStatus('Flight details are missing.', 'error');
-        return;
-    }
-    setFlightStatus('Booking flight... please wait.', 'info');
+// ==================== AIRPORT AUTOCOMPLETE ====================
+async function fltSearchAirports(inputEl, field) {
+    const state = fltState.airports[field];
+    const list = document.getElementById(FLT_SUGGESTION_IDS[field]);
+    if (!state || !list) return;
+    const value = (inputEl.value || '').trim();
+    if (state.selected?.label === value) return;
+    state.selected = null;
+    const requestId = ++state.requestId;
+    clearTimeout(state.timer);
+    if (value.length < 2) { list.classList.add('hidden'); list.innerHTML = ''; return; }
+
+    list.classList.remove('hidden');
+    list.innerHTML = '<div class="px-4 py-3 text-xs text-slate-500">Searching airports...</div>';
+    state.timer = setTimeout(async () => {
+        try {
+            const res = await flightRequest(`/flights/airports?query=${encodeURIComponent(value)}`);
+            if (requestId !== state.requestId) return;
+            const airports = Array.isArray(res.data) ? res.data : [];
+            if (!airports.length) { list.innerHTML = '<div class="px-4 py-3 text-xs text-slate-500">No matching airports found.</div>'; return; }
+            list.innerHTML = '';
+            airports.forEach(airport => {
+                const code = typeof airport?.ap === 'string' ? airport.ap.trim().toUpperCase() : '';
+                const label = String(airport?.displayname || airport?.shortdisplayname || airport?.airportname || code);
+                if (code.length !== 3 || !label) return;
+                const option = document.createElement('button');
+                option.type = 'button';
+                option.textContent = label;
+                option.className = 'block w-full px-4 py-3 text-left text-sm hover:bg-slate-50';
+                option.addEventListener('mousedown', e => e.preventDefault());
+                option.addEventListener('click', () => {
+                    state.selected = { code, label };
+                    inputEl.value = label;
+                    list.classList.add('hidden');
+                    list.innerHTML = '';
+                });
+                list.appendChild(option);
+            });
+            if (!list.childElementCount) list.innerHTML = '<div class="px-4 py-3 text-xs text-slate-500">No valid airports found.</div>';
+        } catch (error) {
+            if (requestId !== state.requestId) return;
+            list.innerHTML = `<div class="px-4 py-3 text-xs text-red-600">${error.message || 'Could not load airports.'}</div>`;
+        }
+    }, 250);
+}
+
+// ==================== BOOKINGS ====================
+function fltStatusMeta(status) {
+    const s = (status || '').toLowerCase();
+    const map = { processing: ['#2563eb', 'Processing'], held: ['#d97706', 'Held'], paying: ['#7c3aed', 'Paying'], confirmed: ['#16a34a', 'Confirmed'], failed: ['#dc2626', 'Failed'], cancelling: ['#64748b', 'Cancelling'], cancelled: ['#64748b', 'Cancelled'], review: ['#ea580c', 'Review'] };
+    return map[s] || ['#64748b', status || 'Pending'];
+}
+
+async function fltLoadBookings() {
+    const container = document.getElementById('fltBookingsList');
+    container.innerHTML = '<div class="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500"><div class="w-8 h-8 border-3 border-slate-200 border-t-sky-600 rounded-full animate-spin mx-auto mb-3"></div>Loading bookings...</div>';
     try {
-        const token = localStorage.getItem('agentToken') || localStorage.getItem('user_token');
-        const response = await fetch(`${API_CONFIG.BASE_URL}/flights/book`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(token ? { Authorization: `Bearer ${token}` } : {})
-            },
-            body: JSON.stringify({
-                flightQuoteId: flight.id,
-                booking_type: 'issue',
-                transactionPin: '1234',
-                passengers: [{
-                    type: 'adult',
-                    gender: 'MALE',
-                    first_name: 'Agent',
-                    last_name: 'Booking',
-                    date_of_birth: '1990-01-15',
-                    identity_documents: [{
-                        type: 'passport',
-                        number: 'A12345678',
-                        issuing_country: 'NG',
-                        nationality: 'NG',
-                        expiry_date: '2035-12-31'
-                    }]
-                }],
-                contact_details: {
-                    email: 'agent@example.com',
-                    phone_number: '+2348012345678'
-                }
-            })
-        });
-        const json = await response.json();
-        if (!response.ok) throw new Error(json.message || 'Flight booking failed.');
-        setFlightStatus('Flight booked successfully.', 'success');
+        const res = await flightRequest('/flights/bookings?page=1&limit=20');
+        const bookings = res.data?.bookings || res.data || (Array.isArray(res.data) ? res.data : []);
+        if (!bookings.length) { container.innerHTML = '<div class="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">No bookings found.</div>'; return; }
+
+        container.innerHTML = bookings.map(booking => {
+            const [color, label] = fltStatusMeta(booking.status);
+            const price = Number(booking.pricing?.finalPrice || booking.amountNgn || booking.totalAmount || 0);
+            const route = booking.origin && booking.destination ? `${booking.origin} → ${booking.destination}` : (booking.pnr || booking.orderId || 'Flight booking');
+            const date = booking.createdAt || booking.created_at || '';
+            const status = (booking.status || '').toLowerCase();
+            const id = booking._id || booking.id || booking.orderId || '';
+
+            let actions = `<button onclick="fltShowBookingDetail('${id}')" class="px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs font-semibold">View</button>`;
+            if (status === 'held') actions += `<button onclick="fltShowBookingDetail('${id}')" class="ml-2 px-3 py-2 bg-green-600 text-white rounded-lg text-xs font-semibold">Pay</button>`;
+            if (status === 'confirmed' || status === 'review') actions += `<button onclick="fltFetchTicket('${id}')" class="ml-2 px-3 py-2 bg-sky-600 text-white rounded-lg text-xs font-semibold">Ticket</button>`;
+
+            return `<div class="rounded-2xl border border-slate-200 bg-white p-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div><div class="text-sm font-semibold">${route}</div><div class="text-xs text-slate-500 mt-1">${date ? new Date(date).toLocaleDateString() : ''}</div></div>
+                    <div class="text-right"><div class="text-sm font-bold">₦${price.toLocaleString()}</div><div class="text-xs font-semibold mt-1" style="color:${color}">${label}</div></div>
+                </div>
+                <div class="mt-3 flex gap-2">${actions}</div>
+            </div>`;
+        }).join('');
     } catch (error) {
-        setFlightStatus(error.message || 'Booking could not be completed.', 'error');
+        container.innerHTML = `<div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">${error.message || 'Failed to load bookings.'}</div>`;
+    }
+}
+
+async function fltShowBookingDetail(id) {
+    const container = document.getElementById('fltBookingsList');
+    container.innerHTML = '<div class="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500"><div class="w-8 h-8 border-3 border-slate-200 border-t-sky-600 rounded-full animate-spin mx-auto mb-3"></div>Loading booking...</div>';
+    try {
+        const res = await flightRequest(`/flights/bookings/${id}`);
+        const data = res.data || {};
+        const local = data.localBooking || data.booking || {};
+        fltRenderBookingDetail(local);
+        const status = (local.status || '').toLowerCase();
+        if (status === 'processing' || status === 'paying' || status === 'cancelling') fltPollBooking(id, status);
+    } catch (error) {
+        container.innerHTML = `<div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">${error.message || 'Could not load booking.'}</div>
+            <div class="text-center mt-3"><button onclick="fltLoadBookings()" class="px-4 py-2 bg-sky-600 text-white rounded-lg text-sm">Back to bookings</button></div>`;
+    }
+}
+
+function fltRenderBookingDetail(local) {
+    const container = document.getElementById('fltBookingsList');
+    const status = (local.status || '').toLowerCase();
+    const [color, label] = fltStatusMeta(status);
+    const price = Number(local.pricing?.finalPrice || 0);
+    const pnr = local.pnr || '—';
+    const orderId = local.orderId || '—';
+    const bookingId = local._id || local.id || '';
+    const providerBookingId = local.providerBookingId || '';
+
+    let actionHTML = '';
+    if (status === 'held') {
+        actionHTML = `
+            <div class="mt-4 p-4 border border-slate-200 rounded-xl bg-slate-50">
+                <div class="text-sm font-bold mb-3">Pay this hold</div>
+                <div id="fltHoldPrice" class="text-xs text-slate-600 mb-3"><button onclick="fltLoadHoldQuote('${bookingId}')" class="px-3 py-2 bg-sky-600 text-white rounded-lg text-xs font-semibold">Get payment quote</button></div>
+                <div class="flex gap-2 items-center">
+                    <input type="password" id="fltHoldPin" maxlength="4" inputmode="numeric" placeholder="4-digit PIN" class="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-yareema-primary focus:outline-none">
+                    <button onclick="fltPayHold('${bookingId}')" class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold">Pay</button>
+                </div>
+                <button onclick="fltCancelHold('${bookingId}')" class="mt-3 px-3 py-2 border border-red-300 rounded-lg bg-white text-red-600 text-xs font-semibold">Cancel hold</button>
+            </div>`;
+    } else if (status === 'confirmed' || status === 'review') {
+        actionHTML = `<button onclick="fltFetchTicket('${bookingId}')" class="mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg text-sm font-semibold">Download ticket PDF</button>`;
+    }
+
+    container.innerHTML = `
+        <div class="mb-3"><button onclick="fltLoadBookings()" class="px-4 py-2 border border-slate-200 rounded-lg bg-white text-sm">← Back to bookings</button></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-5">
+            <div class="flex items-start justify-between">
+                <div>
+                    <div class="text-base font-bold">Booking ${orderId}</div>
+                    <div class="text-xs text-slate-500 mt-1">PNR: ${pnr}</div>
+                    ${providerBookingId ? `<div class="text-[11px] text-slate-500">Provider ID: ${providerBookingId}</div>` : ''}
+                </div>
+                <div class="text-right">
+                    <div class="text-base font-bold">₦${price.toLocaleString()}</div>
+                    <div class="text-xs font-semibold mt-1" style="color:${color}">${label}</div>
+                </div>
+            </div>
+            ${actionHTML}
+        </div>`;
+}
+
+function fltPollBooking(id, initialStatus) {
+    let attempts = 0;
+    const maxAttempts = 12;
+    const interval = setInterval(async () => {
+        attempts++;
+        try {
+            const res = await flightRequest(`/flights/bookings/${id}`);
+            const data = res.data || {};
+            const local = data.localBooking || data.booking || {};
+            const status = (local.status || '').toLowerCase();
+            if (status !== 'processing' && status !== 'paying' && status !== 'cancelling') { clearInterval(interval); fltRenderBookingDetail(local); }
+            else if (attempts >= maxAttempts) { clearInterval(interval); fltRenderBookingDetail(local); }
+        } catch (e) { if (attempts >= maxAttempts) clearInterval(interval); }
+    }, 10000);
+}
+
+async function fltLoadHoldQuote(id) {
+    const priceEl = document.getElementById('fltHoldPrice');
+    if (priceEl) priceEl.textContent = 'Getting quote...';
+    try {
+        const res = await flightRequest(`/flights/bookings/${id}/quote`);
+        const data = res.data || {};
+        const amount = Number(data.walletPrice?.amount || 0);
+        fltState.holdQuoteId = data.flightQuoteId || '';
+        if (!fltState.holdQuoteId) throw new Error('Could not obtain a payment quote.');
+        if (priceEl) priceEl.innerHTML = `<strong class="text-sky-600">Amount to pay: ₦${amount.toLocaleString()}</strong>`;
+    } catch (error) {
+        if (priceEl) priceEl.textContent = '';
+        showToast(error.message || 'Could not load payment quote.', 'error');
+    }
+}
+
+async function fltPayHold(id) {
+    const pin = document.getElementById('fltHoldPin')?.value.trim();
+    if (!pin || !/^\d{4}$/.test(pin)) { showToast('Please enter your 4-digit transaction PIN', 'error'); return; }
+    if (!fltState.holdQuoteId) { showToast('Please get a payment quote first', 'error'); return; }
+    const key = `pay_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    try {
+        await flightRequest(`/flights/bookings/${id}/pay`, { method: 'POST', body: { flightQuoteId: fltState.holdQuoteId, transactionPin: pin }, key });
+        showToast('Payment submitted.', 'success');
+        fltShowBookingDetail(id);
+    } catch (error) {
+        showToast(error.message || 'Payment failed.', 'error');
+    }
+}
+
+async function fltCancelHold(id) {
+    try {
+        await flightRequest(`/flights/bookings/${id}/cancel`, { method: 'POST', body: {} });
+        showToast('Hold cancelled.', 'success');
+        fltLoadBookings();
+    } catch (error) {
+        showToast(error.message || 'Could not cancel this hold.', 'error');
+    }
+}
+
+async function fltFetchTicket(id) {
+    try {
+        const res = await flightRequest(`/flights/bookings/${id}/ticket`);
+        const data = res.data || {};
+        if (data.ticket_ready && data.download_url) window.open(data.download_url, '_blank');
+        else showToast(data.message || 'Ticket is not ready yet. Please try again shortly.', 'warning');
+    } catch (error) {
+        showToast(error.message || 'Could not retrieve the ticket.', 'error');
     }
 }
 

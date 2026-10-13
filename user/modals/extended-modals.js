@@ -1410,8 +1410,6 @@ async function submitKirani() {
         showInlineError(e.message || 'Transaction failed. Please try again.');
     }
 }
-
-
 // ============================================================
 // 7. FLIGHTS
 // ============================================================
@@ -1419,22 +1417,75 @@ let fltSearchResults = [];
 let fltSelectedOffer = null;
 let fltOfferSearchId = '';
 let fltOfferId = '';
+let fltTripType = 'oneway';          // 'oneway' | 'roundtrip' | 'multicity'
+let fltFlexMatrix = [];
+let fltPassengers = { adults: 1, children: 0, infants: 0, childAges: [], infantAges: [] };
+let fltPaxList = [];
+let fltHoldQuoteId = '';
 let fltAirportSearchState = {
     origin: { selected: null, requestId: 0, timer: null },
-    destination: { selected: null, requestId: 0, timer: null }
+    destination: { selected: null, requestId: 0, timer: null },
+    leg2Origin: { selected: null, requestId: 0, timer: null },
+    leg2Destination: { selected: null, requestId: 0, timer: null }
 };
 
-function showFlightsModal() {
+const FLT_SUGGESTION_IDS = {
+    origin: 'fltOriginSuggestions',
+    destination: 'fltDestinationSuggestions',
+    leg2Origin: 'fltLeg2OriginSuggestions',
+    leg2Destination: 'fltLeg2DestinationSuggestions'
+};
+
+function fltResetState() {
     fltSearchResults = [];
     fltSelectedOffer = null;
     fltOfferSearchId = '';
     fltOfferId = '';
+    fltTripType = 'oneway';
+    fltFlexMatrix = [];
+    fltPassengers = { adults: 1, children: 0, infants: 0, childAges: [], infantAges: [] };
+    fltPaxList = [];
+    fltHoldQuoteId = '';
     fltAirportSearchState = {
         origin: { selected: null, requestId: 0, timer: null },
-        destination: { selected: null, requestId: 0, timer: null }
+        destination: { selected: null, requestId: 0, timer: null },
+        leg2Origin: { selected: null, requestId: 0, timer: null },
+        leg2Destination: { selected: null, requestId: 0, timer: null }
     };
+}
 
+function fltAirportCode(field) {
+    return fltAirportSearchState[field]?.selected?.code || '';
+}
+
+function fltAirportFieldHTML(field, label, placeholder) {
+    const listId = FLT_SUGGESTION_IDS[field];
+    return `
+        <div class="form-group">
+            <label>${label}</label>
+            <div style="position:relative;">
+                <input id="fltInput_${field}" class="form-input" placeholder="${placeholder}" autocomplete="off" spellcheck="false" autocapitalize="characters" oninput="fltSearchAirports(this, '${field}')" aria-autocomplete="list" aria-controls="${listId}">
+                <div id="${listId}" role="listbox" style="display:none;position:absolute;z-index:20;top:calc(100% + 4px);left:0;right:0;max-height:220px;overflow-y:auto;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 10px 24px rgba(15,23,42,.12);"></div>
+            </div>
+        </div>`;
+}
+
+function fltPaxStepperHTML(label, key) {
+    return `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;">
+            <span style="font-size:13px;font-weight:600;color:#0f172a;">${label}</span>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <button type="button" onclick="fltAdjPax('${key}', -1)" style="width:28px;height:28px;border:1px solid #e2e8f0;border-radius:50%;background:#fff;color:#0f172a;font-size:16px;line-height:1;cursor:pointer;">-</button>
+                <span id="fltPax_${key}" style="min-width:20px;text-align:center;font-weight:700;font-size:14px;">${fltPassengers[key]}</span>
+                <button type="button" onclick="fltAdjPax('${key}', 1)" style="width:28px;height:28px;border:1px solid #e2e8f0;border-radius:50%;background:#fff;color:#0f172a;font-size:16px;line-height:1;cursor:pointer;">+</button>
+            </div>
+        </div>`;
+}
+
+function showFlightsModal() {
+    fltResetState();
     const today = new Date().toISOString().split('T')[0];
+
     showModal('Flight Tickets', `
         <div style="display:flex;gap:0;background:#f1f5f9;border-radius:10px;padding:4px;margin-bottom:12px;">
             <button type="button" id="fltMainTabSearch" onclick="fltMainTab('search')"
@@ -1444,108 +1495,108 @@ function showFlightsModal() {
         </div>
 
         <div id="fltSearchSection">
-            <div class="form-group">
-                <label>From</label>
-                <div style="position:relative;">
-                    <input id="fltOrigin" class="form-input" placeholder="Search airport or IATA code" autocomplete="off" spellcheck="false" autocapitalize="characters" oninput="fltSearchAirports(this, 'origin')" aria-autocomplete="list" aria-controls="fltOriginSuggestions">
-                    <div id="fltOriginSuggestions" role="listbox" style="display:none;position:absolute;z-index:20;top:calc(100% + 4px);left:0;right:0;max-height:220px;overflow-y:auto;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 10px 24px rgba(15,23,42,.12);"></div>
-                </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px;">
+                <button type="button" id="fltTripOneway" onclick="fltSetTripType('oneway')" style="padding:8px;border:1.5px solid #0284c7;border-radius:8px;background:#0284c7;color:#fff;font-weight:600;font-size:12px;cursor:pointer;">One-way</button>
+                <button type="button" id="fltTripRoundtrip" onclick="fltSetTripType('roundtrip')" style="padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;font-weight:600;font-size:12px;cursor:pointer;">Round-trip</button>
+                <button type="button" id="fltTripMulticity" onclick="fltSetTripType('multicity')" style="padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;font-weight:600;font-size:12px;cursor:pointer;">Multi-city</button>
             </div>
-            <div class="form-group">
-                <label>To</label>
-                <div style="position:relative;">
-                    <input id="fltDestination" class="form-input" placeholder="Search airport or IATA code" autocomplete="off" spellcheck="false" autocapitalize="characters" oninput="fltSearchAirports(this, 'destination')" aria-autocomplete="list" aria-controls="fltDestinationSuggestions">
-                    <div id="fltDestinationSuggestions" role="listbox" style="display:none;position:absolute;z-index:20;top:calc(100% + 4px);left:0;right:0;max-height:220px;overflow-y:auto;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 10px 24px rgba(15,23,42,.12);"></div>
-                </div>
+
+            <div id="fltLeg1" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                ${fltAirportFieldHTML('origin', 'From', 'Search airport or IATA code')}
+                ${fltAirportFieldHTML('destination', 'To', 'Search airport or IATA code')}
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+
+            <div id="fltLeg2" style="display:none;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px;">
+                ${fltAirportFieldHTML('leg2Origin', 'Leg 2 From', 'Search airport or IATA code')}
+                ${fltAirportFieldHTML('leg2Destination', 'Leg 2 To', 'Search airport or IATA code')}
+            </div>
+
+            <div id="fltDatesSimple" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                 <div class="form-group" style="margin:0;">
                     <label>Departure Date</label>
                     <input type="date" id="fltDate" class="form-input" min="${today}">
                 </div>
-                <div class="form-group" style="margin:0;">
-                    <label>Adults</label>
-                    <select id="fltAdults" class="form-input">
-                        ${[1,2,3,4,5,6].map(n => `<option value="${n}">${n} Adult${n > 1 ? 's' : ''}</option>`).join('')}
-                    </select>
+                <div id="fltReturnDateWrap" class="form-group" style="margin:0;display:none;">
+                    <label>Return Date</label>
+                    <input type="date" id="fltReturnDate" class="form-input" min="${today}">
                 </div>
             </div>
-            <div class="form-group">
-                <label>Cabin Class</label>
-                <select id="fltCabin" class="form-input">
-                    <option value="economy">Economy</option>
-                    <option value="premium_economy">Premium Economy</option>
-                    <option value="business">Business</option>
-                    <option value="first">First Class</option>
-                </select>
+
+            <div id="fltDatesMulti" style="display:none;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="form-group" style="margin:0;">
+                    <label>Leg 1 Date</label>
+                    <input type="date" id="fltLeg1Date" class="form-input" min="${today}">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label>Leg 2 Date</label>
+                    <input type="date" id="fltLeg2Date" class="form-input" min="${today}">
+                </div>
             </div>
+
+            <div id="fltFlexWrap" style="margin-top:10px;">
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#0f172a;cursor:pointer;">
+                    <input type="checkbox" id="fltFlexible" style="width:16px;height:16px;">
+                    <span>Flexible dates (compare ±3 days)</span>
+                </label>
+            </div>
+
+            <div style="margin-top:12px;padding-top:12px;border-top:1px solid #f1f5f9;">
+                <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:4px;">Passengers</div>
+                ${fltPaxStepperHTML('Adults (18+)', 'adults')}
+                ${fltPaxStepperHTML('Children (2–11)', 'children')}
+                ${fltPaxStepperHTML('Infants (under 2)', 'infants')}
+                <div id="fltChildAges" style="display:none;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px;"></div>
+                <div id="fltInfantAges" style="display:none;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px;"></div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px;">
+                <div class="form-group" style="margin:0;">
+                    <label>Cabin Class</label>
+                    <select id="fltCabin" class="form-input">
+                        <option value="economy">Economy</option>
+                        <option value="premium_economy">Premium Economy</option>
+                        <option value="business">Business</option>
+                        <option value="first">First Class</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label>Filters</label>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;padding-top:8px;">
+                        <label style="font-size:12px;color:#475569;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="fltDirect" style="width:14px;height:14px;"> Direct only</label>
+                        <label style="font-size:12px;color:#475569;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="fltRefundable" style="width:14px;height:14px;"> Refundable</label>
+                        <label style="font-size:12px;color:#475569;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="fltCheckedBags" style="width:14px;height:14px;"> Checked bags</label>
+                    </div>
+                </div>
+            </div>
+
             <div id="fltResultsBox" style="margin-top:14px;"></div>
+
             <div id="fltPassengerSection" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid #f1f5f9;">
                 <div id="fltBookingSummary" style="padding:10px 14px;background:#f0f9ff;border-radius:8px;margin-bottom:12px;font-size:13px;"></div>
                 <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:10px;">Passenger Details</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div id="fltPaxForms"></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;">
                     <div class="form-group" style="margin:0;">
-                        <label style="font-size:11px;">First Name</label>
-                        <input type="text" id="paxFirst" class="form-input" placeholder="First name">
+                        <label style="font-size:11px;">Contact Email</label>
+                        <input type="email" id="fltContactEmail" class="form-input" placeholder="email@example.com">
                     </div>
                     <div class="form-group" style="margin:0;">
-                        <label style="font-size:11px;">Last Name</label>
-                        <input type="text" id="paxLast" class="form-input" placeholder="Last name">
+                        <label style="font-size:11px;">Contact Phone</label>
+                        <input type="tel" id="fltContactPhone" class="form-input" placeholder="+2348012345678">
                     </div>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
                     <div class="form-group" style="margin:0;">
-                        <label style="font-size:11px;">Date of Birth</label>
-                        <input type="date" id="paxDob" class="form-input">
-                    </div>
-                    <div class="form-group" style="margin:0;">
-                        <label style="font-size:11px;">Gender</label>
-                        <select id="paxGender" class="form-input">
-                            <option value="male">Male</option>
-                            <option value="female">Female</option>
+                        <label>Booking Type</label>
+                        <select id="fltBookingChoice" class="form-input">
+                            <option value="issue">Book now</option>
+                            <option value="hold">Hold booking</option>
                         </select>
                     </div>
-                </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
                     <div class="form-group" style="margin:0;">
-                        <label style="font-size:11px;">Email</label>
-                        <input type="email" id="paxEmail" class="form-input" placeholder="email@example.com">
+                        <label>Transaction PIN</label>
+                        <input type="password" id="fltPin" class="form-input" placeholder="Enter 4-digit PIN" maxlength="4" inputmode="numeric">
                     </div>
-                    <div class="form-group" style="margin:0;">
-                        <label style="font-size:11px;">Phone</label>
-                        <input type="tel" id="paxPhone" class="form-input" placeholder="+2348012345678">
-                    </div>
-                </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
-                    <div class="form-group" style="margin:0;">
-                        <label style="font-size:11px;">Passport No.</label>
-                        <input type="text" id="paxPassportNumber" class="form-input" placeholder="A12345678">
-                    </div>
-                    <div class="form-group" style="margin:0;">
-                        <label style="font-size:11px;">Expiry</label>
-                        <input type="date" id="paxPassportExpiry" class="form-input">
-                    </div>
-                </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
-                    <div class="form-group" style="margin:0;">
-                        <label style="font-size:11px;">Issuing Country</label>
-                        <input type="text" id="paxIssuingCountry" class="form-input" placeholder="NG" maxlength="2" style="text-transform:uppercase;">
-                    </div>
-                    <div class="form-group" style="margin:0;">
-                        <label style="font-size:11px;">Nationality</label>
-                        <input type="text" id="paxNationality" class="form-input" placeholder="NG" maxlength="2" style="text-transform:uppercase;">
-                    </div>
-                </div>
-                <div class="form-group" style="margin-top:12px;">
-                    <label>Booking Type</label>
-                    <select id="fltBookingChoice" class="form-input">
-                        <option value="issue">Book now</option>
-                        <option value="hold">Hold booking</option>
-                    </select>
-                </div>
-                <div class="form-group" style="margin-top:12px;">
-                    <label>Transaction PIN</label>
-                    <input type="password" id="fltPin" class="form-input" placeholder="Enter 4-digit PIN" maxlength="4" inputmode="numeric">
                 </div>
             </div>
         </div>
@@ -1554,7 +1605,7 @@ function showFlightsModal() {
             <div id="fltBookingsList" style="display:flex;flex-direction:column;gap:8px;">
                 <div style="text-align:center;padding:24px 0;color:#94a3b8;font-size:13px;">
                     <div style="width:28px;height:28px;border:3px solid #e2e8f0;border-top-color:#0284c7;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 10px;"></div>
-                    Loading bookings�
+                    Loading bookings...
                 </div>
             </div>
         </div>
@@ -1562,6 +1613,8 @@ function showFlightsModal() {
         <button onclick="closeModal()" class="btn-secondary">Cancel</button>
         <button id="fltPrimaryBtn" onclick="fltHandlePrimary()" class="btn-primary">Search Flights</button>
     `);
+
+    fltRenderAges();
 }
 
 function fltMainTab(tab) {
@@ -1579,20 +1632,172 @@ function fltMainTab(tab) {
     if (bookingsSection) bookingsSection.style.display = tab === 'bookings' ? '' : 'none';
     if (btn) btn.style.display = tab === 'search' ? '' : 'none';
 
-    if (tab === 'bookings') _loadFltBookings();
+    if (tab === 'bookings') fltLoadBookings();
+}
+
+function fltSetTripType(type) {
+    fltTripType = type;
+    const active = 'padding:8px;border:1.5px solid #0284c7;border-radius:8px;background:#0284c7;color:#fff;font-weight:600;font-size:12px;cursor:pointer;';
+    const inactive = 'padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;font-weight:600;font-size:12px;cursor:pointer;';
+    document.getElementById('fltTripOneway').style.cssText = type === 'oneway' ? active : inactive;
+    document.getElementById('fltTripRoundtrip').style.cssText = type === 'roundtrip' ? active : inactive;
+    document.getElementById('fltTripMulticity').style.cssText = type === 'multicity' ? active : inactive;
+
+    const leg2 = document.getElementById('fltLeg2');
+    const datesSimple = document.getElementById('fltDatesSimple');
+    const datesMulti = document.getElementById('fltDatesMulti');
+    const retWrap = document.getElementById('fltReturnDateWrap');
+    const flexWrap = document.getElementById('fltFlexWrap');
+
+    const isMulti = type === 'multicity';
+    const isRound = type === 'roundtrip';
+    if (leg2) leg2.style.display = isMulti ? 'grid' : 'none';
+    if (datesSimple) datesSimple.style.display = isMulti ? 'none' : 'grid';
+    if (datesMulti) datesMulti.style.display = isMulti ? 'grid' : 'none';
+    if (retWrap) retWrap.style.display = isRound ? '' : 'none';
+    if (flexWrap) flexWrap.style.display = isMulti ? 'none' : '';
+
+    // clear results on trip type change
+    fltSearchResults = [];
+    fltSelectedOffer = null;
+    const box = document.getElementById('fltResultsBox');
+    if (box) box.innerHTML = '';
+    const paxSection = document.getElementById('fltPassengerSection');
+    if (paxSection) paxSection.style.display = 'none';
+    const btn = document.getElementById('fltPrimaryBtn');
+    if (btn) { btn.textContent = 'Search Flights'; btn.disabled = false; }
+}
+
+function fltAdjPax(key, delta) {
+    const min = key === 'adults' ? 1 : 0;
+    const max = 9;
+    let v = fltPassengers[key] + delta;
+    if (v < min) v = min;
+    if (v > max) v = max;
+    fltPassengers[key] = v;
+
+    if (key === 'children') {
+        fltPassengers.childAges = Array.from({ length: v }, (_, i) => fltPassengers.childAges[i] || 8);
+    }
+    if (key === 'infants') {
+        fltPassengers.infantAges = Array.from({ length: v }, (_, i) => fltPassengers.infantAges[i] || 1);
+    }
+
+    const el = document.getElementById('fltPax_' + key);
+    if (el) el.textContent = v;
+    fltRenderAges();
+}
+
+function fltRenderAges() {
+    const childBox = document.getElementById('fltChildAges');
+    const infantBox = document.getElementById('fltInfantAges');
+    if (childBox) {
+        if (fltPassengers.children > 0) {
+            childBox.style.display = 'grid';
+            childBox.innerHTML = fltPassengers.childAges.slice(0, fltPassengers.children).map((age, i) => `
+                <div class="form-group" style="margin:0;">
+                    <label style="font-size:11px;">Child ${i + 1} age</label>
+                    <input type="number" min="2" max="11" value="${age}" oninput="fltPassengers.childAges[${i}]=Number(this.value)||0" class="form-input">
+                </div>`).join('');
+        } else {
+            childBox.style.display = 'none';
+            childBox.innerHTML = '';
+        }
+    }
+    if (infantBox) {
+        if (fltPassengers.infants > 0) {
+            infantBox.style.display = 'grid';
+            infantBox.innerHTML = fltPassengers.infantAges.slice(0, fltPassengers.infants).map((age, i) => `
+                <div class="form-group" style="margin:0;">
+                    <label style="font-size:11px;">Infant ${i + 1} age</label>
+                    <input type="number" min="0" max="1" value="${age}" oninput="fltPassengers.infantAges[${i}]=Number(this.value)||0" class="form-input">
+                </div>`).join('');
+        } else {
+            infantBox.style.display = 'none';
+            infantBox.innerHTML = '';
+        }
+    }
+}
+
+function fltGetPassengerPayload() {
+    const p = { adults: fltPassengers.adults };
+    if (fltPassengers.children > 0) {
+        p.children = fltPassengers.children;
+        p.child_ages = fltPassengers.childAges.slice(0, fltPassengers.children).map(Number);
+    }
+    if (fltPassengers.infants > 0) {
+        p.infants = fltPassengers.infants;
+        p.infant_ages = fltPassengers.infantAges.slice(0, fltPassengers.infants).map(Number);
+    }
+    return p;
+}
+
+function fltBuildSearchPayload() {
+    const cabin = document.getElementById('fltCabin')?.value || 'economy';
+    const passengers = fltGetPassengerPayload();
+    const filters = {};
+    if (document.getElementById('fltDirect')?.checked) filters.direct = true;
+    if (document.getElementById('fltRefundable')?.checked) filters.refundable = true;
+    if (document.getElementById('fltCheckedBags')?.checked) filters.checked_bags = true;
+
+    const origin = fltAirportCode('origin');
+    const destination = fltAirportCode('destination');
+
+    if (fltTripType === 'multicity') {
+        return {
+            segments: [
+                { origin, destination, date: document.getElementById('fltLeg1Date')?.value },
+                { origin: fltAirportCode('leg2Origin'), destination: fltAirportCode('leg2Destination'), date: document.getElementById('fltLeg2Date')?.value }
+            ],
+            cabin_class: cabin,
+            passengers,
+            ...filters
+        };
+    }
+
+    const payload = {
+        origin,
+        destination,
+        departure_date: document.getElementById('fltDate')?.value,
+        cabin_class: cabin,
+        passengers,
+        ...filters
+    };
+    if (fltTripType === 'roundtrip') {
+        payload.return_date = document.getElementById('fltReturnDate')?.value;
+    }
+    return payload;
 }
 
 async function fltDoSearch() {
-    const origin = fltAirportSearchState.origin.selected?.code || '';
-    const destination = fltAirportSearchState.destination.selected?.code || '';
-    const departureDate = document.getElementById('fltDate')?.value;
-    const adults = parseInt(document.getElementById('fltAdults')?.value, 10) || 1;
-    const cabinClass = document.getElementById('fltCabin')?.value || 'economy';
-
+    const origin = fltAirportCode('origin');
+    const destination = fltAirportCode('destination');
     if (!origin) { showInlineError('Please select a departure airport from the suggestions'); return; }
     if (!destination) { showInlineError('Please select a destination airport from the suggestions'); return; }
     if (origin === destination) { showInlineError('Origin and destination must be different'); return; }
-    if (!departureDate) { showInlineError('Please select a departure date'); return; }
+
+    if (fltPassengers.infants > fltPassengers.adults) { showInlineError('Infants cannot exceed the number of adults'); return; }
+
+    if (fltTripType === 'multicity') {
+        const l2o = fltAirportCode('leg2Origin');
+        const l2d = fltAirportCode('leg2Destination');
+        const d1 = document.getElementById('fltLeg1Date')?.value;
+        const d2 = document.getElementById('fltLeg2Date')?.value;
+        if (!l2o) { showInlineError('Please select the leg 2 origin airport'); return; }
+        if (!l2d) { showInlineError('Please select the leg 2 destination airport'); return; }
+        if (!d1 || !d2) { showInlineError('Please select both leg dates'); return; }
+        if (d2 < d1) { showInlineError('The second leg date cannot be before the first'); return; }
+    } else {
+        const departure = document.getElementById('fltDate')?.value;
+        if (!departure) { showInlineError('Please select a departure date'); return; }
+        if (fltTripType === 'roundtrip') {
+            const ret = document.getElementById('fltReturnDate')?.value;
+            if (!ret) { showInlineError('Please select a return date'); return; }
+            if (ret < departure) { showInlineError('Return date cannot be before the departure date'); return; }
+        }
+    }
+
+    const flexible = fltTripType !== 'multicity' && document.getElementById('fltFlexible')?.checked;
 
     const box = document.getElementById('fltResultsBox');
     if (box) {
@@ -1606,15 +1811,16 @@ async function fltDoSearch() {
     if (btn) { btn.disabled = true; btn.textContent = 'Searching...'; }
 
     try {
-        const payload = {
-            origin,
-            destination,
-            departure_date: departureDate,
-            cabin_class: cabinClass,
-            passengers: { adults }
-        };
+        const payload = fltBuildSearchPayload();
+        let res;
+        if (flexible) {
+            res = await api.flexibleSearchFlights(payload);
+            fltRenderFlexMatrix(res);
+            if (btn) { btn.disabled = false; btn.textContent = 'Search Flights'; }
+            return;
+        }
 
-        const res = await api.searchFlights(payload);
+        res = await api.searchFlights(payload);
         const suppliers = Array.isArray(res?.data?.suppliers) ? res.data.suppliers : [];
         fltSearchResults = suppliers.flatMap(supplier => {
             const offers = Array.isArray(supplier?.results?.offers) ? supplier.results.offers : [];
@@ -1627,23 +1833,66 @@ async function fltDoSearch() {
 
         if (!fltSearchResults.length) {
             if (box) {
-                box.innerHTML = `<div style="text-align:center;padding:30px 0;color:#64748b;font-size:13px;">No flights found for ${origin} to ${destination}. Try another date or route.</div>`;
+                box.innerHTML = `<div style="text-align:center;padding:30px 0;color:#64748b;font-size:13px;">No flights found for this route. Try another date or route.</div>`;
             }
             if (btn) { btn.disabled = false; btn.textContent = 'Search Flights'; }
             return;
         }
 
         fltRenderResults(origin, destination);
-        if (btn) { btn.disabled = false; btn.textContent = 'Book Flight'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'Search Flights'; }
     } catch (error) {
         if (box) {
             box.innerHTML = `<div style="text-align:center;padding:24px 0;">
-                <p style="color:#dc2626;font-size:13px;margin-bottom:12px;">${error.message || 'Search failed. Please try again.'}</p>
-                <button onclick="showFlightsModal()" style="padding:8px 20px;background:#0284c7;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;">Try again</button>
+                <p style="color:#dc2626;font-size:13px;margin-bottom:12px;">${escapeHtml(error.message || 'Search failed. Please try again.')}</p>
+                <button onclick="fltDoSearch()" style="padding:8px 20px;background:#0284c7;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;">Try again</button>
             </div>`;
         }
         if (btn) { btn.disabled = false; btn.textContent = 'Search Flights'; }
     }
+}
+
+function fltRenderFlexMatrix(res) {
+    const box = document.getElementById('fltResultsBox');
+    if (!box) return;
+    const suppliers = Array.isArray(res?.data?.suppliers) ? res.data.suppliers : [];
+    const entries = [];
+    suppliers.forEach(s => {
+        const matrix = s?.flexPrices?.matrix;
+        if (Array.isArray(matrix)) matrix.forEach(m => entries.push(m));
+    });
+    fltFlexMatrix = entries;
+
+    if (!entries.length) {
+        box.innerHTML = `<div style="text-align:center;padding:30px 0;color:#64748b;font-size:13px;">No flexible date options available.</div>`;
+        return;
+    }
+
+    box.innerHTML = `<div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:10px;">Choose a travel date</div>` + entries.map((m, i) => {
+        const available = m.status === 'available' && Number.isFinite(Number(m.finalPrice));
+        const price = available ? '₦' + Number(m.finalPrice).toLocaleString() : '—';
+        return `<button type="button" onclick="fltPickFlexDate(${i})"
+            style="display:block;width:100%;text-align:left;padding:12px 14px;border:1.5px solid ${available ? '#e2e8f0' : '#f1f5f9'};border-radius:10px;background:#fff;margin-bottom:8px;cursor:${available ? 'pointer' : 'default'};">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:13px;font-weight:600;color:#0f172a;">${m.departure}${m.return ? ' → ' + m.return : ''}</span>
+                <span style="font-size:14px;font-weight:700;color:${available ? '#0284c7' : '#94a3b8'};">${price}</span>
+            </div>
+        </button>`;
+    }).join('');
+}
+
+function fltPickFlexDate(i) {
+    const m = fltFlexMatrix[i];
+    if (!m || m.status !== 'available') return;
+    if (fltTripType === 'roundtrip' && m.return) {
+        const ret = document.getElementById('fltReturnDate');
+        if (ret) ret.value = m.return;
+    }
+    const dep = document.getElementById('fltDate');
+    if (dep) dep.value = m.departure;
+    const flex = document.getElementById('fltFlexible');
+    if (flex) flex.checked = false;
+    fltDoSearch();
 }
 
 function fltRenderResults(origin, destination) {
@@ -1660,9 +1909,10 @@ function fltRenderResults(origin, destination) {
         const departure = firstSegment.departure?.datetime || '';
         const arrival = lastSegment.arrival?.datetime || '';
         const price = Number(offer.pricing?.finalPrice || 0);
-        const departureTime = departure ? new Date(departure).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '�';
-        const arrivalTime = arrival ? new Date(arrival).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '�';
-        const stops = Math.max(0, (itinerary.reduce((count, leg) => count + (Array.isArray(leg.segments) ? leg.segments.length : 0), 0) - 1));
+        const departureTime = departure ? new Date(departure).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
+        const arrivalTime = arrival ? new Date(arrival).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
+        const totalSegments = itinerary.reduce((count, leg) => count + (Array.isArray(leg.segments) ? leg.segments.length : 0), 0);
+        const stops = Math.max(0, totalSegments - 1);
 
         return `<div onclick="fltSelectOffer(${index}, this)" data-fltidx="${index}" style="padding:14px;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;background:#fff;margin-bottom:8px;transition:all .2s;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
@@ -1670,7 +1920,7 @@ function fltRenderResults(origin, destination) {
                     <span style="font-size:13px;font-weight:700;color:#0f172a;display:block;">${airline}</span>
                     ${offer.supportHold ? '<span style="font-size:10px;border-radius:9999px;padding:3px 6px;background:#dcfce7;color:#166534;margin-top:4px;display:inline-block;">Hold available</span>' : ''}
                 </div>
-                <span style="font-size:15px;font-weight:700;color:#0284c7;">?${price.toLocaleString()}</span>
+                <span style="font-size:15px;font-weight:700;color:#0284c7;">₦${price.toLocaleString()}</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
                 <div style="text-align:center;min-width:48px;">
@@ -1679,7 +1929,7 @@ function fltRenderResults(origin, destination) {
                 </div>
                 <div style="flex:1;text-align:center;">
                     <div style="border-top:1.5px solid #e2e8f0;position:relative;">
-                        <span style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-size:12px;">??</span>
+                        <span style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-size:12px;">✈</span>
                     </div>
                     ${stops > 0 ? `<div style="font-size:10px;color:#f59e0b;margin-top:4px;">${stops} stop${stops > 1 ? 's' : ''}</div>` : ''}
                 </div>
@@ -1709,15 +1959,20 @@ function fltSelectOffer(index, el) {
     const price = Number(fltSelectedOffer?.pricing?.finalPrice || 0);
     const airline = fltSelectedOffer?.itinerary?.[0]?.segments?.[0]?.flight?.carrierName || 'Selected Flight';
     const summary = document.getElementById('fltBookingSummary');
-    if (summary) summary.innerHTML = `<strong>${airline}</strong><span style="float:right;font-weight:700;color:#0284c7;">?${price.toLocaleString()}</span>`;
+    if (summary) summary.innerHTML = `<strong>${airline}</strong><span style="float:right;font-weight:700;color:#0284c7;">₦${price.toLocaleString()}</span>`;
 
     const passengerSection = document.getElementById('fltPassengerSection');
     if (passengerSection) passengerSection.style.display = '';
 
     const bookingChoice = document.getElementById('fltBookingChoice');
-    if (bookingChoice && !fltSelectedOffer?.supportHold) {
-        bookingChoice.value = 'issue';
+    if (bookingChoice) {
+        bookingChoice.innerHTML = fltSelectedOffer?.supportHold
+            ? '<option value="issue">Book now</option><option value="hold">Hold booking</option>'
+            : '<option value="issue">Book now</option>';
     }
+
+    fltPaxList = fltBuildPaxList();
+    fltRenderPaxForms();
 
     const btn = document.getElementById('fltPrimaryBtn');
     if (btn) {
@@ -1726,14 +1981,63 @@ function fltSelectOffer(index, el) {
     }
 }
 
+function fltBuildPaxList() {
+    const list = [];
+    for (let i = 0; i < fltPassengers.adults; i++) list.push({ type: 'adult' });
+    for (let i = 0; i < fltPassengers.children; i++) list.push({ type: 'child' });
+    for (let i = 0; i < fltPassengers.infants; i++) list.push({ type: 'infant' });
+    return list;
+}
+
+function fltRenderPaxForms() {
+    const container = document.getElementById('fltPaxForms');
+    if (!container) return;
+    const typeLabels = { adult: 'Adult', child: 'Child (2–11)', infant: 'Infant (under 2)' };
+    container.innerHTML = fltPaxList.map((p, i) => `
+        <div style="border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:10px;">
+            <div style="font-size:12px;font-weight:700;color:#0284c7;margin-bottom:8px;">${typeLabels[p.type]} ${i + 1}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div class="form-group" style="margin:0;"><label style="font-size:11px;">First name</label><input id="pax_${i}_first" class="form-input" placeholder="First name"></div>
+                <div class="form-group" style="margin:0;"><label style="font-size:11px;">Last name</label><input id="pax_${i}_last" class="form-input" placeholder="Last name"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+                <div class="form-group" style="margin:0;"><label style="font-size:11px;">Date of birth</label><input type="date" id="pax_${i}_dob" class="form-input"></div>
+                <div class="form-group" style="margin:0;"><label style="font-size:11px;">Gender</label><select id="pax_${i}_gender" class="form-input"><option value="MALE">Male</option><option value="FEMALE">Female</option></select></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+                <div class="form-group" style="margin:0;"><label style="font-size:11px;">Passport no.</label><input id="pax_${i}_passport" class="form-input" placeholder="A12345678"></div>
+                <div class="form-group" style="margin:0;"><label style="font-size:11px;">Passport expiry</label><input type="date" id="pax_${i}_expiry" class="form-input"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+                <div class="form-group" style="margin:0;"><label style="font-size:11px;">Issuing country</label><input id="pax_${i}_country" class="form-input" placeholder="NG" maxlength="2" style="text-transform:uppercase;"></div>
+                <div class="form-group" style="margin:0;"><label style="font-size:11px;">Nationality</label><input id="pax_${i}_nationality" class="form-input" placeholder="NG" maxlength="2" style="text-transform:uppercase;"></div>
+            </div>
+        </div>`).join('');
+}
+
 function fltHandlePrimary() {
-    if (!fltSelectedOffer) {
+    if (fltSelectedOffer) {
+        fltDoBook();
+    } else {
         fltDoSearch();
-        return;
     }
-    const btn = document.getElementById('fltPrimaryBtn');
-    if (btn) { btn.textContent = 'Booking�'; btn.disabled = true; }
-    fltDoBook();
+}
+
+function fltBuildBookingPassengers() {
+    return fltPaxList.map((p, i) => ({
+        type: p.type,
+        gender: document.getElementById(`pax_${i}_gender`)?.value || 'MALE',
+        first_name: document.getElementById(`pax_${i}_first`)?.value.trim(),
+        last_name: document.getElementById(`pax_${i}_last`)?.value.trim(),
+        date_of_birth: document.getElementById(`pax_${i}_dob`)?.value,
+        identity_documents: [{
+            type: 'passport',
+            number: document.getElementById(`pax_${i}_passport`)?.value.trim(),
+            issuing_country: (document.getElementById(`pax_${i}_country`)?.value || '').trim().toUpperCase(),
+            nationality: (document.getElementById(`pax_${i}_nationality`)?.value || '').trim().toUpperCase(),
+            expiry_date: document.getElementById(`pax_${i}_expiry`)?.value
+        }]
+    }));
 }
 
 async function fltDoBook() {
@@ -1749,31 +2053,35 @@ async function fltDoBook() {
         return;
     }
 
-    const firstName = document.getElementById('paxFirst')?.value.trim();
-    const lastName = document.getElementById('paxLast')?.value.trim();
-    const dob = document.getElementById('paxDob')?.value;
-    const email = document.getElementById('paxEmail')?.value.trim();
-    const phone = document.getElementById('paxPhone')?.value.trim();
-    const passportNumber = document.getElementById('paxPassportNumber')?.value.trim();
-    const issuingCountry = (document.getElementById('paxIssuingCountry')?.value || '').trim().toUpperCase();
-    const nationality = (document.getElementById('paxNationality')?.value || '').trim().toUpperCase();
-    const passportExpiry = document.getElementById('paxPassportExpiry')?.value;
+    const email = document.getElementById('fltContactEmail')?.value.trim();
+    const phone = document.getElementById('fltContactPhone')?.value.trim();
+    if (!email || !email.includes('@')) { showInlineError('Please enter a valid contact email'); return; }
+    if (!phone) { showInlineError('Please enter a contact phone number'); return; }
 
-    if (!firstName || !lastName) { showInlineError('Please enter passenger name'); return; }
-    if (!dob) { showInlineError('Please enter passenger date of birth'); return; }
-    if (!email || !email.includes('@')) { showInlineError('Please enter a valid email'); return; }
-    if (!phone) { showInlineError('Please enter contact phone number'); return; }
-    if (!passportNumber) { showInlineError('Please enter passport number'); return; }
-    if (!issuingCountry || issuingCountry.length !== 2) { showInlineError('Please enter issuing country as a 2-letter code'); return; }
-    if (!nationality || nationality.length !== 2) { showInlineError('Please enter nationality as a 2-letter code'); return; }
-    if (!passportExpiry) { showInlineError('Please enter passport expiry date'); return; }
+    // Validate every passenger form
+    for (let i = 0; i < fltPaxList.length; i++) {
+        const first = document.getElementById(`pax_${i}_first`)?.value.trim();
+        const last = document.getElementById(`pax_${i}_last`)?.value.trim();
+        const dob = document.getElementById(`pax_${i}_dob`)?.value;
+        const passport = document.getElementById(`pax_${i}_passport`)?.value.trim();
+        const country = (document.getElementById(`pax_${i}_country`)?.value || '').trim().toUpperCase();
+        const nationality = (document.getElementById(`pax_${i}_nationality`)?.value || '').trim().toUpperCase();
+        const expiry = document.getElementById(`pax_${i}_expiry`)?.value;
 
-    setSubmitLoading(true, bookingChoice === 'hold' ? 'Holding booking�' : 'Booking�');
+        if (!first || !last) { showInlineError(`Passenger ${i + 1}: please enter first and last name`); return; }
+        if (!dob) { showInlineError(`Passenger ${i + 1}: please enter date of birth`); return; }
+        if (!passport) { showInlineError(`Passenger ${i + 1}: please enter passport number`); return; }
+        if (country.length !== 2) { showInlineError(`Passenger ${i + 1}: issuing country must be a 2-letter code`); return; }
+        if (nationality.length !== 2) { showInlineError(`Passenger ${i + 1}: nationality must be a 2-letter code`); return; }
+        if (!expiry) { showInlineError(`Passenger ${i + 1}: please enter passport expiry date`); return; }
+    }
+
+    setSubmitLoading(true, bookingChoice === 'hold' ? 'Holding booking...' : 'Booking...');
 
     try {
         const quoteResponse = await api.priceFlightQuote({ search_id: fltOfferSearchId, offer_id: fltOfferId });
         const quote = quoteResponse?.data || quoteResponse;
-        const walletPrice = Number(quote?.walletPrice?.amount ?? quote?.walletPrice?.value ?? 0);
+        const walletPrice = Number(quote?.walletPrice?.amount ?? 0);
         const flightQuoteId = quote?.flightQuoteId;
         if (!flightQuoteId) throw new Error('The quote could not be created for this flight.');
 
@@ -1782,33 +2090,24 @@ async function fltDoBook() {
             booking_type: bookingChoice,
             transactionPin: pin,
             send_email: true,
-            passengers: [{
-                type: 'adult',
-                gender: (document.getElementById('paxGender')?.value || 'male').toUpperCase() === 'FEMALE' ? 'FEMALE' : 'MALE',
-                first_name: firstName,
-                last_name: lastName,
-                date_of_birth: dob,
-                identity_documents: [{
-                    type: 'passport',
-                    number: passportNumber,
-                    issuing_country: issuingCountry,
-                    nationality,
-                    expiry_date: passportExpiry
-                }]
-            }],
-            contact_details: {
-                email,
-                phone_number: phone
-            }
+            passengers: fltBuildBookingPassengers(),
+            contact_details: { email, phone_number: phone }
         };
 
         const idempotencyKey = `flight_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-        await api.bookFlight(payload, idempotencyKey);
-        const amountText = walletPrice ? `?${walletPrice.toLocaleString()}` : 'wallet price';
+        const res = await api.bookFlight(payload, idempotencyKey);
+        const booking = res?.data || res || {};
+        const status = (booking.status || '').toLowerCase();
+        const amountText = walletPrice ? '₦' + walletPrice.toLocaleString() : 'wallet price';
+
         closeModal();
-        setTimeout(() => showSuccess(bookingChoice === 'hold'
-            ? `Flight held successfully. Your wallet will be charged only when you pay. Estimated amount: ${amountText}`
-            : `Flight booked successfully. Wallet charged: ${amountText}`), 300);
+        if (status === 'processing' || booking.outcomeUnknown) {
+            setTimeout(() => showSuccess(`Your booking is being processed. Check "My Bookings" for the final status.`), 300);
+        } else if (status === 'held') {
+            setTimeout(() => showSuccess(`Flight held successfully. Your wallet will be charged only when you pay. Estimated amount: ${amountText}`), 300);
+        } else {
+            setTimeout(() => showSuccess(`Flight booked successfully. Wallet charged: ${amountText}`), 300);
+        }
     } catch (error) {
         setSubmitLoading(false, '', bookingChoice === 'hold' ? 'Hold Booking' : 'Book Flight');
         showInlineError(error.message || 'Flight booking failed. Please try again.');
@@ -1826,7 +2125,7 @@ function fltRenderAirportMessage(list, message, color = '#64748b') {
 
 async function fltSearchAirports(inputEl, field) {
     const state = fltAirportSearchState[field];
-    const list = document.getElementById(field === 'origin' ? 'fltOriginSuggestions' : 'fltDestinationSuggestions');
+    const list = document.getElementById(FLT_SUGGESTION_IDS[field]);
     if (!state || !list) return;
 
     const value = (inputEl.value || '').trim();
@@ -1841,7 +2140,7 @@ async function fltSearchAirports(inputEl, field) {
         return;
     }
 
-    fltRenderAirportMessage(list, 'Searching airports…');
+    fltRenderAirportMessage(list, 'Searching airports...');
     state.timer = setTimeout(async () => {
         try {
             const response = await api.searchAirports(value);
@@ -1888,9 +2187,31 @@ async function fltSearchAirports(inputEl, field) {
     }, 250);
 }
 
-async function _loadFltBookings() {
+// ============================================================
+// 7b. FLIGHT BOOKINGS — history, detail, hold pay, cancel, ticket
+// ============================================================
+
+function fltBookingStatusMeta(status) {
+    const s = (status || '').toLowerCase();
+    const map = {
+        processing: { color: '#2563eb', label: 'Processing' },
+        held: { color: '#d97706', label: 'Held' },
+        paying: { color: '#7c3aed', label: 'Paying' },
+        confirmed: { color: '#16a34a', label: 'Confirmed' },
+        failed: { color: '#dc2626', label: 'Failed' },
+        cancelling: { color: '#64748b', label: 'Cancelling' },
+        cancelled: { color: '#64748b', label: 'Cancelled' },
+        review: { color: '#ea580c', label: 'Review' }
+    };
+    return map[s] || { color: '#64748b', label: status || 'Pending' };
+}
+
+async function fltLoadBookings() {
     const container = document.getElementById('fltBookingsList');
     if (!container) return;
+    container.innerHTML = `<div style="text-align:center;padding:24px 0;color:#94a3b8;font-size:13px;">
+        <div style="width:28px;height:28px;border:3px solid #e2e8f0;border-top-color:#0284c7;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 10px;"></div>
+        Loading bookings...</div>`;
     try {
         const response = await api.getFlightBookings(1, 20);
         const bookings = response?.data?.bookings || response?.data || (Array.isArray(response) ? response : []);
@@ -1899,25 +2220,191 @@ async function _loadFltBookings() {
             return;
         }
         container.innerHTML = bookings.map(booking => {
-            const status = (booking.status || '').toLowerCase();
-            const statusColor = status === 'confirmed' ? '#16a34a' : status === 'held' ? '#f59e0b' : status === 'failed' ? '#dc2626' : '#64748b';
+            const meta = fltBookingStatusMeta(booking.status);
             const price = Number(booking.pricing?.finalPrice || booking.amountNgn || booking.totalAmount || 0);
-            const route = booking.origin && booking.destination ? `${booking.origin} ? ${booking.destination}` : (booking.pnr || booking.orderId || 'Flight booking');
+            const route = booking.origin && booking.destination ? `${booking.origin} → ${booking.destination}` : (booking.pnr || booking.orderId || 'Flight booking');
             const date = booking.createdAt || booking.created_at || '';
+            const status = (booking.status || '').toLowerCase();
+            const id = booking._id || booking.id || booking.orderId || '';
+
+            let actions = `<button onclick="fltShowBookingDetail('${escapeHtml(id)}')" style="padding:6px 12px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#0f172a;font-size:12px;cursor:pointer;">View</button>`;
+            if (status === 'held') {
+                actions += `<button onclick="fltShowBookingDetail('${escapeHtml(id)}')" style="padding:6px 12px;border:1px solid #16a34a;border-radius:8px;background:#16a34a;color:#fff;font-size:12px;cursor:pointer;margin-left:6px;">Pay</button>`;
+            }
+            if (status === 'confirmed' || status === 'review') {
+                actions += `<button onclick="fltFetchTicket('${escapeHtml(id)}')" style="padding:6px 12px;border:1px solid #0284c7;border-radius:8px;background:#0284c7;color:#fff;font-size:12px;cursor:pointer;margin-left:6px;">Ticket</button>`;
+            }
+
             return `<div style="padding:12px 14px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
                     <div>
-                        <div style="font-size:13px;font-weight:600;color:#0f172a;">${route}</div>
+                        <div style="font-size:13px;font-weight:600;color:#0f172a;">${escapeHtml(route)}</div>
                         <div style="font-size:11px;color:#94a3b8;margin-top:2px;">${date ? new Date(date).toLocaleDateString() : ''}</div>
                     </div>
                     <div style="text-align:right;">
-                        <div style="font-size:13px;font-weight:700;color:#0f172a;">?${price.toLocaleString()}</div>
-                        <div style="font-size:11px;font-weight:600;color:${statusColor};margin-top:2px;">${status || 'pending'}</div>
+                        <div style="font-size:13px;font-weight:700;color:#0f172a;">₦${price.toLocaleString()}</div>
+                        <div style="font-size:11px;font-weight:600;color:${meta.color};margin-top:2px;">${meta.label}</div>
                     </div>
                 </div>
+                <div style="margin-top:10px;display:flex;gap:6px;">${actions}</div>
             </div>`;
         }).join('');
     } catch (error) {
-        container.innerHTML = `<div style="text-align:center;padding:16px;color:#dc2626;font-size:13px;">${error.message || 'Failed to load bookings.'}</div>`;
+        container.innerHTML = `<div style="text-align:center;padding:16px;color:#dc2626;font-size:13px;">${escapeHtml(error.message || 'Failed to load bookings.')}</div>`;
+    }
+}
+
+async function fltShowBookingDetail(id) {
+    const container = document.getElementById('fltBookingsList');
+    if (!container) return;
+    container.innerHTML = `<div style="text-align:center;padding:24px 0;color:#94a3b8;font-size:13px;">
+        <div style="width:28px;height:28px;border:3px solid #e2e8f0;border-top-color:#0284c7;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 10px;"></div>
+        Loading booking...</div>`;
+
+    try {
+        const res = await api.getFlightBookingById(id);
+        const data = res?.data || {};
+        const local = data.localBooking || data.booking || {};
+        fltRenderBookingDetail(local);
+
+        const status = (local.status || '').toLowerCase();
+        if (status === 'processing' || status === 'paying' || status === 'cancelling') {
+            fltPollBooking(id, container, status);
+        }
+    } catch (error) {
+        container.innerHTML = `<div style="text-align:center;padding:16px;color:#dc2626;font-size:13px;">${escapeHtml(error.message || 'Could not load booking.')}</div>
+            <div style="text-align:center;margin-top:10px;"><button onclick="fltLoadBookings()" style="padding:8px 20px;background:#0284c7;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;">Back to bookings</button></div>`;
+    }
+}
+
+function fltRenderBookingDetail(local) {
+    const container = document.getElementById('fltBookingsList');
+    if (!container) return;
+
+    const status = (local.status || '').toLowerCase();
+    const meta = fltBookingStatusMeta(status);
+    const price = Number(local.pricing?.finalPrice || 0);
+    const pnr = local.pnr || '—';
+    const orderId = local.orderId || '—';
+    const bookingId = local._id || local.id || '';
+    const providerBookingId = local.providerBookingId || '';
+
+    const backBtn = `<button onclick="fltLoadBookings()" style="padding:8px 16px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#0f172a;font-size:13px;cursor:pointer;margin-bottom:10px;">← Back to bookings</button>`;
+
+    let actionHTML = '';
+    if (status === 'held') {
+        actionHTML = `
+            <div id="fltHoldPayBox" style="margin-top:12px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;">
+                <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:8px;">Pay this hold</div>
+                <div id="fltHoldPrice" style="font-size:12px;color:#64748b;margin-bottom:8px;"><button onclick="fltLoadHoldQuote('${escapeHtml(bookingId)}')" style="padding:6px 12px;background:#0284c7;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;">Get payment quote</button></div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <input type="password" id="fltHoldPin" placeholder="4-digit PIN" maxlength="4" inputmode="numeric" style="flex:1;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;">
+                    <button onclick="fltPayHold('${escapeHtml(bookingId)}')" style="padding:10px 16px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">Pay</button>
+                </div>
+                <button onclick="fltCancelHold('${escapeHtml(bookingId)}')" style="margin-top:8px;padding:6px 12px;border:1px solid #dc2626;border-radius:8px;background:#fff;color:#dc2626;cursor:pointer;font-size:12px;">Cancel hold</button>
+            </div>`;
+    } else if (status === 'confirmed' || status === 'review') {
+        actionHTML = `<button onclick="fltFetchTicket('${escapeHtml(bookingId)}')" style="margin-top:12px;padding:10px 16px;background:#0284c7;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">Download ticket PDF</button>`;
+    }
+
+    container.innerHTML = `
+        ${backBtn}
+        <div style="padding:14px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                <div>
+                    <div style="font-size:15px;font-weight:700;color:#0f172a;">Booking ${escapeHtml(orderId)}</div>
+                    <div style="font-size:12px;color:#94a3b8;margin-top:2px;">PNR: ${escapeHtml(pnr)}</div>
+                    ${providerBookingId ? `<div style="font-size:11px;color:#94a3b8;">Provider ID: ${escapeHtml(providerBookingId)}</div>` : ''}
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:15px;font-weight:700;color:#0f172a;">₦${price.toLocaleString()}</div>
+                    <div style="font-size:12px;font-weight:600;color:${meta.color};margin-top:2px;">${meta.label}</div>
+                </div>
+            </div>
+            ${actionHTML}
+        </div>`;
+}
+
+function fltPollBooking(id, container, initialStatus) {
+    let attempts = 0;
+    const maxAttempts = 12;
+    const interval = setInterval(async () => {
+        attempts++;
+        try {
+            const res = await api.getFlightBookingById(id);
+            const data = res?.data || {};
+            const local = data.localBooking || data.booking || {};
+            const status = (local.status || '').toLowerCase();
+            if (status !== 'processing' && status !== 'paying' && status !== 'cancelling') {
+                clearInterval(interval);
+                fltRenderBookingDetail(local);
+            } else if (attempts >= maxAttempts) {
+                clearInterval(interval);
+                fltRenderBookingDetail(local);
+            }
+        } catch (e) {
+            if (attempts >= maxAttempts) clearInterval(interval);
+        }
+    }, 10000);
+}
+
+async function fltLoadHoldQuote(id) {
+    const priceEl = document.getElementById('fltHoldPrice');
+    if (priceEl) priceEl.textContent = 'Getting quote...';
+    try {
+        const res = await api.getFlightBookingQuote(id);
+        const data = res?.data || {};
+        const amount = Number(data.walletPrice?.amount || 0);
+        fltHoldQuoteId = data.flightQuoteId || '';
+        if (!fltHoldQuoteId) throw new Error('Could not obtain a payment quote.');
+        if (priceEl) priceEl.innerHTML = `<strong style="color:#0284c7;">Amount to pay: ₦${amount.toLocaleString()}</strong>`;
+    } catch (error) {
+        if (priceEl) priceEl.textContent = '';
+        showInlineError(error.message || 'Could not load payment quote.');
+    }
+}
+
+async function fltPayHold(id) {
+    const pin = document.getElementById('fltHoldPin')?.value.trim();
+    if (!pin || !/^\d{4}$/.test(pin)) { showInlineError('Please enter your 4-digit transaction PIN'); return; }
+    if (!fltHoldQuoteId) { showInlineError('Please get a payment quote first'); return; }
+
+    const key = `pay_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    try {
+        const res = await api.payFlightBooking(id, { flightQuoteId: fltHoldQuoteId, transactionPin: pin }, key);
+        const data = res?.data || {};
+        const local = data.localBooking || data || {};
+        const status = (local.status || '').toLowerCase();
+        if (status === 'paying' || status === 'processing') {
+            showInlineError('Payment is being processed. Check back shortly.');
+            fltShowBookingDetail(id);
+        } else {
+            fltShowBookingDetail(id);
+        }
+    } catch (error) {
+        showInlineError(error.message || 'Payment failed. Please try again.');
+    }
+}
+
+async function fltCancelHold(id) {
+    try {
+        await api.cancelFlightBooking(id);
+        fltLoadBookings();
+    } catch (error) {
+        showInlineError(error.message || 'Could not cancel this hold.');
+    }
+}
+
+async function fltFetchTicket(id) {
+    try {
+        const res = await api.getFlightTicket(id);
+        const data = res?.data || {};
+        if (data.ticket_ready && data.download_url) {
+            window.open(data.download_url, '_blank');
+        } else {
+            showInlineError(data.message || 'Ticket is not ready yet. Please try again shortly.');
+        }
+    } catch (error) {
+        showInlineError(error.message || 'Could not retrieve the ticket.');
     }
 }
