@@ -133,7 +133,7 @@ function openModal(type) {
         'tv':              showTVModal,
         'education':       showEducationModal,
         'sms':             showSMSModal,
-        'swap':            showSwapModal,
+        'swap':            openWhatsAppLang,
         'rechargepin':     showRechargePINModal,
         'remita':          showRemitaModal,
         'alpha':           showAlphaModal,
